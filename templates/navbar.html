@@ -1,0 +1,166 @@
+<!-- NAVBAR COMPONENT - يتضمن في كل صفحة -->
+<nav class="navbar" id="navbar">
+    <div class="nav-logo">🤟 إشارة</div>
+
+    <div class="nav-links" id="navLinks">
+        <!-- يتحدث بـ JS حسب الصلاحيات -->
+    </div>
+
+    <div class="nav-user" id="navUser">
+        <div class="nav-avatar" id="navAvatar">؟</div>
+        <div class="nav-name" id="navName">...</div>
+        <button class="nav-logout" onclick="doLogout()">خروج</button>
+    </div>
+</nav>
+
+<style>
+.navbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    background: rgba(10,10,15,0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    z-index: 500;
+    font-family: 'Cairo', sans-serif;
+}
+
+.nav-logo {
+    font-size: 15px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #00d4aa, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.nav-links {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+.nav-links::-webkit-scrollbar { display: none; }
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #6b7280;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+}
+.nav-link:hover { color: #f0f0f8; background: rgba(255,255,255,0.06); }
+.nav-link.active { color: #00d4aa; background: rgba(0,212,170,0.12); }
+.nav-link.admin-link { color: #f59e0b; }
+.nav-link.admin-link:hover { background: rgba(245,158,11,0.1); }
+.nav-link.admin-link.active { background: rgba(245,158,11,0.12); }
+
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.nav-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00d4aa, #7c3aed);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.nav-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: #f0f0f8;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.nav-logout {
+    background: rgba(239,68,68,0.1);
+    border: 1px solid rgba(239,68,68,0.2);
+    color: #ef4444;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-family: 'Cairo', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s;
+}
+.nav-logout:hover { background: rgba(239,68,68,0.2); }
+
+/* محتوى الصفحة يبدأ تحت الـ navbar */
+.page-content { padding-top: 52px; height: 100dvh; display: flex; flex-direction: column; }
+</style>
+
+<script>
+// ===== تحديث الـ Navbar حسب الصفحة والصلاحيات =====
+async function initNavbar() {
+    const res = await fetch('/auth/me');
+    const user = await res.json();
+
+    if (!user.logged_in) {
+        if (!window._adminPage) window.location.href = '/login';
+        return;
+    }
+
+    // اسم المستخدم
+    document.getElementById('navName').textContent = user.name;
+    document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
+
+    // الصفحة الحالية
+    const path = window.location.pathname;
+
+    // روابط الـ navbar حسب الصلاحيات
+    const links = [
+        { href: '/',             icon: '🤟', label: 'التعرف',    roles: ['user', 'admin'] },
+        { href: '/collect-data', icon: '📝', label: 'تسجيل بيانات', roles: ['user', 'admin'] },
+        { href: '/profile',      icon: '👤', label: 'حسابي',     roles: ['user', 'admin'] },
+        { href: '/admin',        icon: '🛡️', label: 'الأدمن',    roles: ['admin'], cls: 'admin-link' },
+    ];
+
+    const role = user.is_admin ? 'admin' : 'user';
+
+    document.getElementById('navLinks').innerHTML = links
+        .filter(l => l.roles.includes(role))
+        .map(l => `
+            <a href="${l.href}" class="nav-link ${l.cls || ''} ${path === l.href ? 'active' : ''}">
+                <span>${l.icon}</span><span>${l.label}</span>
+            </a>
+        `).join('');
+}
+
+async function doLogout() {
+    await fetch('/auth/logout');
+    window.location.href = '/login';
+}
+
+// تشغيل تلقائي
+initNavbar();
+</script>

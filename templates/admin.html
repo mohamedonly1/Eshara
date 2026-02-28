@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة التحكم</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444; --purple:#7c3aed; --text:#f0f0f8; --text-dim:#6b7280; --radius:14px; }
+        body { background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; min-height: 100vh; }
+
+        /* GATE */
+        .gate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
+        .gate-card { background: var(--surface); border-radius: 20px; padding: 32px 28px; width: 320px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
+        .gate input { width: 100%; background: var(--surface2); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius); padding: 12px; font-family: 'Cairo', sans-serif; font-size: 15px; color: var(--text); outline: none; margin: 16px 0 12px; }
+        .gate input:focus { border-color: var(--warn); }
+        .gate-btn { width: 100%; padding: 12px; border-radius: var(--radius); border: none; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 900; background: var(--warn); color: #000; cursor: pointer; }
+        .gate-err { color: var(--danger); font-size: 12px; margin-top: 8px; }
+
+        /* DASHBOARD */
+        .dashboard { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+        .dash-title { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, var(--warn), #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-actions { display: flex; gap: 8px; }
+        .action-btn { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.25); color: var(--accent); padding: 7px 14px; border-radius: 20px; font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; transition: all 0.15s; }
+        .action-btn:hover { background: rgba(0,212,170,0.2); }
+
+        /* STAT CARDS */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
+        .stat-num { font-size: 28px; font-weight: 900; }
+        .stat-label { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+
+        /* SECTION */
+        .section { margin-bottom: 28px; }
+        .section-title { font-size: 14px; font-weight: 700; color: var(--text-dim); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+        /* LETTERS GRID */
+        .letters-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+        .letter-stat { background: var(--surface); border-radius: 10px; padding: 8px 4px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        .letter-stat .l { font-size: 16px; font-weight: 700; }
+        .letter-stat .c { font-size: 10px; margin-top: 2px; }
+        .ls-done { border-color: rgba(0,212,170,0.35); background: rgba(0,212,170,0.08); }
+        .ls-done .c { color: var(--accent); }
+        .ls-mid { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+        .ls-mid .c { color: var(--warn); }
+        .ls-low .c { color: var(--text-dim); }
+
+        /* USERS TABLE */
+        .users-table { background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
+        .table-head { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1.2fr auto; padding: 11px 16px; background: var(--surface2); font-size: 11px; font-weight: 700; color: var(--text-dim); gap: 6px; align-items: center; }
+        .user-row { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1.2fr auto; padding: 11px 16px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px; gap: 6px; align-items: center; cursor: pointer; transition: background 0.15s; }
+        .user-row:hover { background: rgba(255,255,255,0.03); }
+        .q-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+        .q-high { background: rgba(0,212,170,0.15); color: var(--accent); }
+        .q-mid { background: rgba(245,158,11,0.15); color: var(--warn); }
+        .q-low { background: rgba(239,68,68,0.15); color: var(--danger); }
+        .del-btn { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--danger); padding: 4px 10px; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 11px; cursor: pointer; white-space: nowrap; }
+        .device-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface2); padding: 3px 8px; border-radius: 20px; font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+
+        /* MODAL */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
+        .modal.show { display: flex; }
+        .modal-card { background: var(--surface); border-radius: 20px; padding: 24px; width: 100%; max-width: 560px; max-height: 85vh; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-title { font-size: 16px; font-weight: 900; }
+        .close-btn { background: var(--surface2); border: none; color: var(--text-dim); width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 14px; }
+
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px; }
+        .info-card { background: var(--surface2); border-radius: 10px; padding: 12px; }
+        .info-label { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+        .info-val { font-size: 14px; font-weight: 700; }
+
+        .device-section { background: var(--surface2); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+        .device-title { font-size: 12px; font-weight: 700; color: var(--text-dim); margin-bottom: 10px; }
+        .device-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12px; }
+        .device-row:last-child { border-bottom: none; }
+        .device-key { color: var(--text-dim); }
+
+        .login-history { margin-bottom: 16px; }
+        .login-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 11px; }
+        .login-item:last-child { border-bottom: none; }
+
+        .modal-letters { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .ml-item { background: var(--surface2); border-radius: 8px; padding: 8px; text-align: center; }
+        .ml-item.done { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.2); }
+        .ml-l { font-size: 18px; font-weight: 700; }
+        .ml-c { font-size: 10px; color: var(--text-dim); }
+        .ml-item.done .ml-c { color: var(--accent); }
+
+        /* EXPORT */
+        .export-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 200; padding: 16px; }
+        .export-modal.show { display: flex; }
+        .export-card { background: var(--surface); border-radius: 20px; padding: 24px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.08); }
+        .export-option { display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: 12px; padding: 14px; margin-bottom: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,0.06); transition: all 0.15s; }
+        .export-option:hover { border-color: var(--accent); background: rgba(0,212,170,0.05); }
+        .export-icon { font-size: 24px; }
+        .export-title { font-size: 14px; font-weight: 700; }
+        .export-sub { font-size: 11px; color: var(--text-dim); }
+    </style>
+<script>
+// override initNavbar for admin page - no redirect needed, has its own gate
+window._adminPage = true;
+</script>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<!-- Gate -->
+<div class="gate" id="gate">
+    <div class="gate-card">
+        <div style="font-size:40px">🔐</div>
+        <div style="font-size:17px;font-weight:900;margin-top:10px;color:var(--warn)">لوحة التحكم</div>
+        <input type="password" id="adminPass" placeholder="كلمة مرور الأدمن" onkeydown="if(event.key==='Enter')checkAdmin()">
+        <button class="gate-btn" onclick="checkAdmin()">دخول</button>
+        <div class="gate-err" id="gateErr"></div>
+    </div>
+</div>
+
+<!-- Dashboard -->
+<div class="dashboard" id="dashboard">
+    <div class="dash-header">
+        <div class="dash-title">🛡️ لوحة التحكم</div>
+        <div class="header-actions">
+            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')">📥 تصدير</button>
+            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)">🔄 تحديث</button>
+        </div>
+    </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="section">
+        <div class="section-title">📊 عينات كل حرف (إجمالي الكل)</div>
+        <div class="letters-grid" id="lettersOverview"></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">👥 المستخدمون</div>
+        <div class="users-table">
+            <div class="table-head">
+                <span>الاسم</span>
+                <span>مقبول</span>
+                <span>مرفوض</span>
+                <span>حروف</span>
+                <span>جودة</span>
+                <span>الجهاز</span>
+                <span></span>
+            </div>
+            <div id="usersBody"></div>
+        </div>
+    </div>
+</div>
+
+<!-- User Detail Modal -->
+<div class="modal" id="userModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title" id="modalTitle"></div>
+            <button class="close-btn" onclick="document.getElementById('userModal').classList.remove('show')">✕</button>
+        </div>
+        <div id="modalContent"></div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="export-modal" id="exportModal">
+    <div class="export-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+            <div style="font-size:16px;font-weight:900">📥 تصدير البيانات</div>
+            <button class="close-btn" onclick="document.getElementById('exportModal').classList.remove('show')">✕</button>
+        </div>
+        <div class="export-option" onclick="exportJSON()">
+            <div class="export-icon">📋</div>
+            <div><div class="export-title">تصدير JSON</div><div class="export-sub">كل بيانات المستخدمين والإحصائيات</div></div>
+        </div>
+        <div class="export-option" onclick="exportCSV()">
+            <div class="export-icon">📊</div>
+            <div><div class="export-title">تصدير CSV</div><div class="export-sub">جدول المستخدمين لـ Excel</div></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+let allStats = [];
+
+async function checkAdmin() {
+    const pass = document.getElementById('adminPass').value;
+    const res = await fetch('/admin/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pass })
+    });
+    const data = await res.json();
+    if (data.ok) {
+        document.getElementById('gate').style.display = 'none';
+        document.getElementById('dashboard').style.display = 'block';
+        loadDashboard();
+    } else {
+        document.getElementById('gateErr').textContent = 'كلمة المرور غلط';
+    }
+}
+
+async function loadDashboard() {
+    const res = await fetch('/admin/stats');
+    const data = await res.json();
+    allStats = data.users || [];
+
+    const totalSamples = allStats.reduce((s,u) => s + u.total, 0);
+    const totalRejected = allStats.reduce((s,u) => s + u.rejected, 0);
+    const avgQuality = allStats.length ? Math.round(allStats.reduce((s,u) => s + u.quality, 0) / allStats.length) : 0;
+    const completedLetters = getLetterTotals();
+    const doneLetters = Object.values(completedLetters).filter(v => v >= 200).length;
+
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${allStats.length}</div><div class="stat-label">مستخدم</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${totalSamples}</div><div class="stat-label">عينة مقبولة</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${totalRejected}</div><div class="stat-label">عينة مرفوضة</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${avgQuality}%</div><div class="stat-label">متوسط الجودة</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--purple)">${doneLetters}/29</div><div class="stat-label">حرف مكتمل</div></div>
+    `;
+
+    // حروف
+    const lt = getLetterTotals();
+    document.getElementById('lettersOverview').innerHTML = ARABIC_LETTERS.map((l, idx) => {
+        const c = lt[idx] || 0;
+        const cls = c >= 200 ? 'ls-done' : c >= 100 ? 'ls-mid' : 'ls-low';
+        return `<div class="letter-stat ${cls}"><div class="l">${l}</div><div class="c">${c}</div></div>`;
+    }).join('');
+
+    // مستخدمين
+    document.getElementById('usersBody').innerHTML = allStats.length ? allStats.map(u => {
+        const qcls = u.quality >= 80 ? 'q-high' : u.quality >= 60 ? 'q-mid' : 'q-low';
+        const dev = u.device || {};
+        return `<div class="user-row" onclick="showUser('${u.id}')">
+            <span style="font-weight:700">${u.name}</span>
+            <span style="color:var(--accent)">${u.total}</span>
+            <span style="color:var(--danger)">${u.rejected}</span>
+            <span>${u.letters_count}</span>
+            <span><div class="q-badge ${qcls}">${u.quality}%</div></span>
+            <span><div class="device-chip">${dev.device_type||'?'} ${dev.os||''}</div></span>
+            <span><button class="del-btn" onclick="event.stopPropagation();deleteUser('${u.id}','${u.name}')">حذف</button></span>
+        </div>`;
+    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">لا يوجد مستخدمون بعد</div>';
+}
+
+function getLetterTotals() {
+    const totals = {};
+    allStats.forEach(u => {
+        Object.entries(u.samples || {}).forEach(([k,v]) => {
+            totals[k] = (totals[k] || 0) + v;
+        });
+    });
+    return totals;
+}
+
+function showUser(userId) {
+    const u = allStats.find(x => x.id === userId);
+    if (!u) return;
+    const dev = u.device || {};
+    const history = u.login_history || [];
+
+    document.getElementById('modalTitle').textContent = '👤 ' + u.name;
+    document.getElementById('modalContent').innerHTML = `
+        <div class="info-grid">
+            <div class="info-card"><div class="info-label">العينات المقبولة</div><div class="info-val" style="color:var(--accent)">${u.total}</div></div>
+            <div class="info-card"><div class="info-label">العينات المرفوضة</div><div class="info-val" style="color:var(--danger)">${u.rejected}</div></div>
+            <div class="info-card"><div class="info-label">الحروف المسجّلة</div><div class="info-val">${u.letters_count} / 29</div></div>
+            <div class="info-card"><div class="info-label">الجودة</div><div class="info-val">${u.quality}%</div></div>
+        </div>
+
+        <div class="device-section">
+            <div class="device-title">📱 معلومات الجهاز</div>
+            <div class="device-row"><span class="device-key">عنوان IP</span><span style="font-family:monospace">${dev.ip || 'unknown'}</span></div>
+            <div class="device-row"><span class="device-key">نوع الجهاز</span><span>${dev.device_type || 'unknown'}</span></div>
+            <div class="device-row"><span class="device-key">نظام التشغيل</span><span>${dev.os || 'unknown'}</span></div>
+            <div class="device-row"><span class="device-key">المتصفح</span><span>${dev.browser || 'unknown'}</span></div>
+            <div class="device-row"><span class="device-key">تاريخ التسجيل</span><span>${u.created || '-'}</span></div>
+            <div class="device-row"><span class="device-key">آخر نشاط</span><span>${u.last_active || '-'}</span></div>
+        </div>
+
+        ${history.length ? `
+        <div class="login-history">
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">🕐 سجل تسجيلات الدخول (آخر ${history.length})</div>
+            ${[...history].reverse().map(h => `
+                <div class="login-item">
+                    <span>${h.time}</span>
+                    <span style="color:var(--text-dim)">${h.device || ''}</span>
+                    <span style="font-family:monospace;font-size:10px;color:var(--text-dim)">${h.ip || ''}</span>
+                </div>
+            `).join('')}
+        </div>` : ''}
+
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">📝 عينات كل حرف:</div>
+        <div class="modal-letters">
+            ${ARABIC_LETTERS.map((l, idx) => {
+                const c = u.samples[idx] || 0;
+                return `<div class="ml-item ${c >= 200 ? 'done' : ''}">
+                    <div class="ml-l">${l}</div>
+                    <div class="ml-c">${c}/200</div>
+                </div>`;
+            }).join('')}
+        </div>
+    `;
+    document.getElementById('userModal').classList.add('show');
+}
+
+async function deleteUser(userId, name) {
+    if (!confirm('حذف المستخدم: ' + name + '؟')) return;
+    await fetch('/admin/delete_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId })
+    });
+    loadDashboard();
+}
+
+function exportJSON() {
+    const data = JSON.stringify({ users: allStats, exported: new Date().toISOString() }, null, 2);
+    download('users_data.json', data, 'application/json');
+    document.getElementById('exportModal').classList.remove('show');
+}
+
+function exportCSV() {
+    const rows = [['الاسم','ID','العينات المقبولة','المرفوضة','الجودة%','الحروف','IP','الجهاز','نظام التشغيل','المتصفح','آخر نشاط']];
+    allStats.forEach(u => {
+        const dev = u.device || {};
+        rows.push([u.name, u.id, u.total, u.rejected, u.quality, u.letters_count, dev.ip||'', dev.device_type||'', dev.os||'', dev.browser||'', u.last_active||'']);
+    });
+    const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+    download('users_data.csv', '\uFEFF' + csv, 'text/csv');
+    document.getElementById('exportModal').classList.remove('show');
+}
+
+function download(filename, content, type) {
+    const blob = new Blob([content], { type });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+}
+</script>
+</body>
+</html>

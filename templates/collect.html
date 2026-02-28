@@ -9,90 +9,229 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280; --radius:16px; }
+        :root {
+            --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28;
+            --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444;
+            --text:#f0f0f8; --text-dim:#6b7280; --radius:14px;
+            --navbar: 52px;
+        }
         html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; overflow: hidden; }
-        .app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; }
 
-        .header { padding: 10px 16px 8px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        .header-title { font-size: 15px; font-weight: 900; background: linear-gradient(135deg, var(--warn), #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .back-btn { background: var(--surface2); border: none; color: var(--text-dim); padding: 6px 12px; border-radius: 20px; font-family: 'Cairo', sans-serif; font-size: 12px; cursor: pointer; text-decoration: none; }
+        /* الصفحة كلها تحت الـ navbar */
+        .page-content {
+            padding-top: var(--navbar);
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            max-width: 480px;
+            margin: 0 auto;
+        }
 
-        .letter-selector { padding: 8px 16px; flex-shrink: 0; }
-        .selector-label { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
-        .letters-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .letter-btn { aspect-ratio: 1; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); background: var(--surface2); color: var(--text); font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
-        .letter-btn:active { transform: scale(0.9); }
+        /* شبكة الحروف */
+        .letter-selector { padding: 6px 12px; flex-shrink: 0; }
+        .selector-label { font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+        .letters-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+        .letter-btn {
+            aspect-ratio: 1;
+            border-radius: 7px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: var(--surface2);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            line-height: 1;
+        }
+        .letter-btn:active { transform: scale(0.88); }
         .letter-btn.selected { background: var(--accent); color: #000; border-color: var(--accent); }
-        .letter-btn.complete { background: rgba(0,212,170,0.15); border-color: rgba(0,212,170,0.3); color: var(--accent); }
-        .letter-count { font-size: 7px; opacity: 0.7; line-height: 1; }
+        .letter-btn.complete { background: rgba(0,212,170,0.12); border-color: rgba(0,212,170,0.3); color: var(--accent); }
+        .letter-count { font-size: 6px; opacity: 0.65; margin-top: 1px; }
 
-        .camera-wrap { flex: 1; position: relative; overflow: hidden; background: #000; min-height: 0; }
-        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        #overlay { position: absolute; inset: 0; transform: scaleX(-1); }
-        .bracket { position: absolute; width: 30px; height: 30px; border-color: var(--warn); border-style: solid; opacity: 0.8; }
-        .bracket.tl { top:12px; right:12px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
-        .bracket.tr { top:12px; left:12px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
-        .bracket.bl { bottom:180px; right:12px; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
-        .bracket.br { bottom:180px; left:12px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+        /* الكاميرا تملأ باقي المساحة */
+        .camera-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+            min-height: 0;
+        }
+        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+        #overlay { position: absolute; inset: 0; transform: scaleX(-1); pointer-events: none; }
 
-        .hand-status { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); padding: 4px 12px; border-radius: 20px; font-size: 11px; border: 1px solid rgba(255,255,255,0.1); white-space: nowrap; transition: all 0.3s; }
-        .hand-status.detected { border-color: rgba(0,212,170,0.4); color: var(--accent); }
+        /* إطار التركيز */
+        .bracket { position: absolute; width: 28px; height: 28px; border-color: var(--warn); border-style: solid; opacity: 0.75; }
+        .bracket.tl { top:10px; right:10px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+        .bracket.tr { top:10px; left:10px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
+        .bracket.bl { bottom:175px; right:10px; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
+        .bracket.br { bottom:175px; left:10px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
 
-        .bottom-panel { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(0deg, rgba(10,10,15,0.97) 0%, rgba(10,10,15,0.75) 100%); backdrop-filter: blur(15px); padding: 10px 16px 14px; }
-        .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .progress-letter { font-size: 36px; font-weight: 900; color: var(--warn); min-width: 44px; text-align: center; }
+        /* حالة اليد - فوق الكاميرا مش تحت الـ navbar */
+        .hand-status {
+            position: absolute;
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            transition: all 0.3s;
+            z-index: 10;
+        }
+        .hand-status.detected { border-color: rgba(0,212,170,0.5); color: var(--accent); }
+
+        /* رسالة الرفض - داخل الكاميرا */
+        .reject-msg {
+            position: absolute;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-10px);
+            background: rgba(239,68,68,0.9);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            color: #fff;
+            white-space: nowrap;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .reject-msg.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* البانل السفلي داخل الكاميرا */
+        .bottom-panel {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(0deg, rgba(10,10,15,0.97) 0%, rgba(10,10,15,0.7) 100%);
+            backdrop-filter: blur(16px);
+            padding: 10px 14px 12px;
+        }
+
+        .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+        .progress-letter { font-size: 38px; font-weight: 900; color: var(--warn); min-width: 46px; text-align: center; line-height: 1; }
         .progress-info { flex: 1; }
         .progress-nums { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
         .progress-nums span:last-child { color: var(--accent); font-weight: 700; }
         .progress-track { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
         .progress-fill { height: 100%; background: linear-gradient(90deg, var(--warn), var(--accent)); border-radius: 3px; transition: width 0.3s; }
 
-        .auto-bar-wrap { height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
+        .auto-bar-wrap { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin-bottom: 8px; }
         .auto-bar { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.08s linear; width: 0%; }
 
         .btns-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
-        .record-btn { padding: 13px; border-radius: var(--radius); border: none; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 900; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; background: linear-gradient(135deg, var(--warn), #f97316); color: #000; }
+        .record-btn {
+            padding: 12px;
+            border-radius: var(--radius);
+            border: none;
+            font-family: 'Cairo', sans-serif;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            background: linear-gradient(135deg, var(--warn), #f97316);
+            color: #000;
+        }
         .record-btn:active { transform: scale(0.97); }
         .record-btn:disabled { background: var(--surface2); color: var(--text-dim); cursor: not-allowed; }
-        .record-btn.success { background: linear-gradient(135deg, var(--accent), #059669); }
-        .auto-toggle { min-width: 75px; padding: 13px 8px; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.1); background: var(--surface2); color: var(--text-dim); font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-align: center; -webkit-tap-highlight-color: transparent; }
+        .record-btn.success { background: linear-gradient(135deg, var(--accent), #059669); color: #000; }
+
+        .auto-toggle {
+            min-width: 68px;
+            padding: 12px 6px;
+            border-radius: var(--radius);
+            border: 1px solid rgba(255,255,255,0.1);
+            background: var(--surface2);
+            color: var(--text-dim);
+            font-family: 'Cairo', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            -webkit-tap-highlight-color: transparent;
+        }
         .auto-toggle.active { background: rgba(0,212,170,0.15); border-color: var(--accent); color: var(--accent); }
 
-        .toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-60px); background: var(--surface2); padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; border: 1px solid rgba(0,212,170,0.3); color: var(--accent); transition: transform 0.3s; z-index: 100; white-space: nowrap; }
-        .toast.show { transform: translateX(-50%) translateY(0); }
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--surface2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid rgba(0,212,170,0.3);
+            color: var(--accent);
+            transition: all 0.3s;
+            z-index: 200;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+        /* Loading */
         .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; transition: opacity 0.5s; }
         .loading-screen.hidden { opacity: 0; pointer-events: none; }
-        .spinner { width: 30px; height: 30px; border: 3px solid var(--surface2); border-top-color: var(--warn); border-radius: 50%; animation: spin 0.8s linear infinite; margin-top: 14px; }
+        .spinner { width: 28px; height: 28px; border: 3px solid var(--surface2); border-top-color: var(--warn); border-radius: 50%; animation: spin 0.8s linear infinite; margin-top: 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+{% include 'navbar.html' %}
 
 <div class="loading-screen" id="loadingScreen">
-    <div style="font-size:38px">📝</div>
-    <div style="font-size:19px;font-weight:900;margin-top:10px;color:#f59e0b">تسجيل البيانات</div>
+    <div style="font-size:36px">📝</div>
+    <div style="font-size:18px;font-weight:900;margin-top:10px;color:#f59e0b">تسجيل البيانات</div>
     <div style="font-size:12px;color:#6b7280;margin-top:6px" id="loadingSub">جاري تحميل MediaPipe...</div>
     <div class="spinner"></div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<div class="app">
-    <div class="header">
-        <div class="header-title">📝 تسجيل بيانات الحروف</div>
-        <a href="/" class="back-btn">← التطبيق</a>
-    </div>
+<div class="page-content">
+    <!-- شبكة الحروف -->
     <div class="letter-selector">
         <div class="selector-label">اختر الحرف للتسجيل:</div>
         <div class="letters-grid" id="lettersGrid"></div>
     </div>
+
+    <!-- الكاميرا تملأ باقي المساحة -->
     <div class="camera-wrap">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="overlay"></canvas>
-        <div class="bracket tl"></div><div class="bracket tr"></div>
-        <div class="bracket bl"></div><div class="bracket br"></div>
+        <div class="bracket tl"></div>
+        <div class="bracket tr"></div>
+        <div class="bracket bl"></div>
+        <div class="bracket br"></div>
+
+        <!-- حالة اليد داخل الكاميرا -->
         <div class="hand-status" id="handStatus">🖐 في انتظار اليد...</div>
+
+        <!-- رسالة الرفض داخل الكاميرا -->
+        <div class="reject-msg" id="rejectMsg"></div>
+
+        <!-- البانل السفلي -->
         <div class="bottom-panel">
             <div class="progress-row">
                 <div class="progress-letter" id="currentLetterDisplay">—</div>
@@ -129,7 +268,6 @@ let autoMode = false;
 let autoFrameCount = 0;
 let isRecording = false;
 let currentLandmarks = null;
-let handPresent = false;
 
 const video = document.getElementById('video');
 const overlayCanvas = document.getElementById('overlay');
@@ -169,16 +307,17 @@ function updateAllCounts() {
 
 function selectLetter(idx, letter) {
     if (selectedIdx !== null) document.getElementById('lbtn_' + selectedIdx)?.classList.remove('selected');
-    selectedIdx = idx; selectedLetter = letter;
+    selectedIdx = idx;
+    selectedLetter = letter;
     document.getElementById('lbtn_' + idx).classList.add('selected');
     document.getElementById('currentLetterDisplay').textContent = letter;
     const count = sampleCounts[idx] || 0;
     document.getElementById('progressLabel').textContent = 'حرف: ' + letter;
     document.getElementById('progressCount').textContent = count + '/' + TARGET_SAMPLES;
-    document.getElementById('progressFill').style.width = Math.min(count/TARGET_SAMPLES*100, 100) + '%';
+    document.getElementById('progressFill').style.width = Math.min(count / TARGET_SAMPLES * 100, 100) + '%';
     const btn = document.getElementById('recordBtn');
     btn.disabled = false;
-    btn.textContent = '📸 سجّل حرف ' + letter;
+    btn.textContent = '📸 سجّل ' + letter;
     btn.className = 'record-btn';
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
@@ -204,22 +343,28 @@ async function recordSample(auto) {
             sampleCounts[selectedIdx] = (sampleCounts[selectedIdx] || 0) + 1;
             const count = sampleCounts[selectedIdx];
             document.getElementById('progressCount').textContent = count + '/' + TARGET_SAMPLES;
-            document.getElementById('progressFill').style.width = Math.min(count/TARGET_SAMPLES*100, 100) + '%';
+            document.getElementById('progressFill').style.width = Math.min(count / TARGET_SAMPLES * 100, 100) + '%';
             const countEl = document.getElementById('lcount_' + selectedIdx);
             if (countEl) countEl.textContent = count >= TARGET_SAMPLES ? '✓' : count;
             if (count >= TARGET_SAMPLES) {
                 document.getElementById('lbtn_' + selectedIdx).classList.add('complete');
-                showToast('✅ اكتمل حرف ' + selectedLetter + '!');
+                showToast('✅ اكتمل ' + selectedLetter + '!');
             }
             btn.className = 'record-btn success';
-            btn.textContent = '✅ تم! (' + count + ')';
+            btn.textContent = '✅ ' + count;
             if (navigator.vibrate) navigator.vibrate(30);
             setTimeout(() => {
                 btn.className = 'record-btn';
-                btn.textContent = '📸 سجّل حرف ' + selectedLetter;
+                btn.textContent = '📸 سجّل ' + selectedLetter;
                 btn.disabled = false;
                 isRecording = false;
-            }, auto ? 300 : 600);
+            }, auto ? 250 : 500);
+
+        } else if (data.rejected) {
+            // رسالة الرفض داخل الكاميرا
+            showReject(data.error || 'إيماءة غلط، جرّب تاني');
+            btn.disabled = false;
+            isRecording = false;
         } else {
             showToast('❌ ' + (data.error || 'فشل'));
             btn.disabled = false;
@@ -236,8 +381,8 @@ function toggleAuto() {
     autoMode = !autoMode;
     const btn = document.getElementById('autoToggle');
     btn.className = autoMode ? 'auto-toggle active' : 'auto-toggle';
-    btn.innerHTML = autoMode ? '🤖<br>تلقائي ✓' : '🤖<br>تلقائي';
-    showToast(autoMode ? '🤖 التسجيل التلقائي مفعّل' : 'التسجيل التلقائي متوقف');
+    btn.innerHTML = autoMode ? '🤖<br>✓ تلقائي' : '🤖<br>تلقائي';
+    showToast(autoMode ? '🤖 تلقائي مفعّل' : 'تلقائي متوقف');
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
 }
@@ -245,50 +390,61 @@ function toggleAuto() {
 // ===== رسم اليد =====
 function drawHand(landmarks, w, h) {
     overlayCtx.clearRect(0, 0, w, h);
-    const conns = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
-    overlayCtx.strokeStyle = 'rgba(245,158,11,0.7)';
+    const conns = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
+                   [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
+                   [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+    overlayCtx.strokeStyle = 'rgba(245,158,11,0.75)';
     overlayCtx.lineWidth = 2;
-    conns.forEach(([a,b]) => {
+    conns.forEach(([a, b]) => {
         overlayCtx.beginPath();
-        overlayCtx.moveTo(landmarks[a].x*w, landmarks[a].y*h);
-        overlayCtx.lineTo(landmarks[b].x*w, landmarks[b].y*h);
+        overlayCtx.moveTo(landmarks[a].x * w, landmarks[a].y * h);
+        overlayCtx.lineTo(landmarks[b].x * w, landmarks[b].y * h);
         overlayCtx.stroke();
     });
     overlayCtx.fillStyle = '#f59e0b';
     landmarks.forEach(lm => {
         overlayCtx.beginPath();
-        overlayCtx.arc(lm.x*w, lm.y*h, 4, 0, Math.PI*2);
+        overlayCtx.arc(lm.x * w, lm.y * h, 3.5, 0, Math.PI * 2);
         overlayCtx.fill();
     });
 }
 
+// ===== Toast و Reject =====
+let toastTimer = null;
 function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2000);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+let rejectTimer = null;
+function showReject(msg) {
+    const el = document.getElementById('rejectMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(rejectTimer);
+    rejectTimer = setTimeout(() => el.classList.remove('show'), 2500);
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
 }
 
 // ===== MediaPipe =====
 function initMediaPipe() {
     document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
-
     const hands = new Hands({
-        locateFile: (file) => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + file
+        locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f
     });
-
     hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
 
-    hands.onResults((results) => {
+    hands.onResults(results => {
         const w = overlayCanvas.width;
         const h = overlayCanvas.height;
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            handPresent = true;
             const landmarks = results.multiHandLandmarks[0];
             drawHand(landmarks, w, h);
 
-            // استخراج raw landmarks
             const raw = [];
             landmarks.forEach(lm => raw.push(lm.x, lm.y));
             currentLandmarks = raw;
@@ -296,10 +452,9 @@ function initMediaPipe() {
             document.getElementById('handStatus').textContent = '✅ يد مكتشفة';
             document.getElementById('handStatus').className = 'hand-status detected';
 
-            // تسجيل تلقائي
             if (autoMode && selectedLetter && !isRecording) {
                 autoFrameCount++;
-                document.getElementById('autoBar').style.width = Math.min(autoFrameCount/AUTO_CONFIRM_FRAMES*100, 100) + '%';
+                document.getElementById('autoBar').style.width = Math.min(autoFrameCount / AUTO_CONFIRM_FRAMES * 100, 100) + '%';
                 if (autoFrameCount >= AUTO_CONFIRM_FRAMES) {
                     autoFrameCount = 0;
                     document.getElementById('autoBar').style.width = '0%';
@@ -307,7 +462,6 @@ function initMediaPipe() {
                 }
             }
         } else {
-            handPresent = false;
             currentLandmarks = null;
             overlayCtx.clearRect(0, 0, w, h);
             document.getElementById('handStatus').textContent = '🖐 في انتظار اليد...';

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>حسابي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280; --radius:14px; }
+        html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; }
+
+        .page-content { padding-top: 52px; max-width: 480px; margin: 0 auto; padding-bottom: 30px; }
+        .inner { padding: 20px 16px; }
+
+        /* Header Card */
+        .profile-header { background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(124,58,237,0.15)); border: 1px solid rgba(0,212,170,0.2); border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 20px; }
+        .profile-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #00d4aa, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #fff; margin: 0 auto 12px; }
+        .profile-name { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
+        .profile-since { font-size: 12px; color: var(--text-dim); }
+
+        /* Stats */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .stat-card { background: var(--surface); border-radius: var(--radius); padding: 14px; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
+        .stat-num { font-size: 24px; font-weight: 900; }
+        .stat-label { font-size: 10px; color: var(--text-dim); margin-top: 3px; }
+
+        /* Progress section */
+        .section-title { font-size: 13px; font-weight: 700; color: var(--text-dim); margin-bottom: 12px; }
+        .overall-bar-wrap { background: var(--surface); border-radius: var(--radius); padding: 16px; border: 1px solid rgba(255,255,255,0.06); margin-bottom: 16px; }
+        .overall-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+        .overall-track { height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+        .overall-fill { height: 100%; background: linear-gradient(90deg, #00d4aa, #7c3aed); border-radius: 4px; transition: width 0.5s ease; }
+
+        /* Letters grid */
+        .letters-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+        .letter-item { background: var(--surface); border-radius: 10px; padding: 10px 6px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+        .letter-item.done { background: rgba(0,212,170,0.1); border-color: rgba(0,212,170,0.25); }
+        .letter-item.started { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.2); }
+        .li-char { font-size: 20px; font-weight: 700; }
+        .li-bar { height: 3px; background: var(--surface2); border-radius: 2px; overflow: hidden; margin: 5px 0 3px; }
+        .li-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s; }
+        .letter-item.started .li-fill { background: var(--warn); }
+        .li-count { font-size: 9px; color: var(--text-dim); }
+        .letter-item.done .li-count { color: var(--accent); }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="page-content">
+    <div class="inner">
+        <div class="profile-header" id="profileHeader">
+            <div class="profile-avatar" id="profileAvatar">؟</div>
+            <div class="profile-name" id="profileName">...</div>
+            <div class="profile-since" id="profileSince"></div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--accent)" id="statTotal">0</div>
+                <div class="stat-label">عينة مقبولة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--danger)" id="statRejected">0</div>
+                <div class="stat-label">مرفوضة</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" style="color:var(--warn)" id="statLetters">0</div>
+                <div class="stat-label">حرف مسجّل</div>
+            </div>
+        </div>
+
+        <div class="section-title">تقدمك في تسجيل الحروف</div>
+        <div class="overall-bar-wrap">
+            <div class="overall-label">
+                <span>الإجمالي</span>
+                <span id="overallPct" style="color:var(--accent);font-weight:700">0%</span>
+            </div>
+            <div class="overall-track">
+                <div class="overall-fill" id="overallFill" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div class="section-title">تفاصيل كل حرف</div>
+        <div class="letters-grid" id="lettersGrid"></div>
+    </div>
+</div>
+
+<script>
+const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+const TARGET = 200;
+
+async function loadProfile() {
+    const res = await fetch('/auth/me');
+    const user = await res.json();
+    if (!user.logged_in) return;
+
+    document.getElementById('profileAvatar').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('profileName').textContent = user.name;
+    document.getElementById('profileSince').textContent = 'عضو منذ: ' + (user.created || '');
+    document.getElementById('statTotal').textContent = user.total || 0;
+    document.getElementById('statRejected').textContent = user.rejected || 0;
+
+    const samples = user.samples || {};
+    const lettersWithSamples = Object.keys(samples).filter(k => (samples[k] || 0) > 0).length;
+    document.getElementById('statLetters').textContent = lettersWithSamples;
+
+    // إجمالي التقدم
+    const totalPossible = ARABIC_LETTERS.length * TARGET;
+    const totalDone = Object.values(samples).reduce((s,v) => s + Math.min(v, TARGET), 0);
+    const pct = Math.round(totalDone / totalPossible * 100);
+    document.getElementById('overallPct').textContent = pct + '%';
+    document.getElementById('overallFill').style.width = pct + '%';
+
+    // شبكة الحروف
+    document.getElementById('lettersGrid').innerHTML = ARABIC_LETTERS.map((l, idx) => {
+        const count = samples[idx] || 0;
+        const barPct = Math.min(count / TARGET * 100, 100);
+        const cls = count >= TARGET ? 'done' : count > 0 ? 'started' : '';
+        return `<div class="letter-item ${cls}">
+            <div class="li-char">${l}</div>
+            <div class="li-bar"><div class="li-fill" style="width:${barPct}%"></div></div>
+            <div class="li-count">${count}/${TARGET}</div>
+        </div>`;
+    }).join('');
+}
+
+loadProfile();
+</script>
+</body>
+</html>

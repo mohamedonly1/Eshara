@@ -7,8 +7,8 @@
     <title>لغة الإشارة العربية</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <!-- MediaPipe JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -16,9 +16,10 @@
             --accent: #00d4aa; --accent2: #7c3aed; --warn: #f59e0b;
             --danger: #ef4444; --text: #f0f0f8; --text-dim: #6b7280;
             --radius: 20px; --glow: 0 0 30px rgba(0,212,170,0.3);
+        .page-content { padding-top: 52px; display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; position: relative; }
+
         }
         html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; overflow: hidden; touch-action: manipulation; }
-        .app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; position: relative; }
 
         .header { padding: 12px 20px 8px; display: flex; align-items: center; justify-content: space-between; z-index: 10; flex-shrink: 0; }
         .header-title { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -80,6 +81,7 @@
     </style>
 </head>
 <body>
+{% include 'navbar.html' %}
 
 <div class="loading-screen" id="loadingScreen">
     <div class="loading-logo">🤟</div>
@@ -88,7 +90,7 @@
     <div class="spinner"></div>
 </div>
 
-<div class="app">
+<div class="page-content">
     <div class="header">
         <div class="header-title">🤟 لغة الإشارة العربية</div>
         <div class="status-dot" id="statusDot"></div>
@@ -136,7 +138,7 @@
 </div>
 
 <script>
-const CONFIDENCE_THRESHOLD = 0.65;
+const CONFIDENCE_THRESHOLD = 0.75;
 const HISTORY_LENGTH = 10;
 const AGREEMENT_RATIO = 0.75;
 const COOLDOWN_MS = 800;
@@ -294,14 +296,13 @@ function initMediaPipe() {
     document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
 
     const hands = new Hands({
-    locateFile: (file) => 
-        `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`
-      });
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
 
     hands.setOptions({
         maxNumHands: 1,
         modelComplexity: 1,
-        minDetectionConfidence: 0.5,
+        minDetectionConfidence: 0.7,
         minTrackingConfidence: 0.5
     });
 

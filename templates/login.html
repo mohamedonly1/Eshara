@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تسجيل الدخول</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --accent2:#7c3aed; --warn:#f59e0b; --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280; --radius:16px; }
+        html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+        .card { width: 100%; max-width: 400px; background: var(--surface); border-radius: 24px; padding: 36px 28px; border: 1px solid rgba(255,255,255,0.06); }
+
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo-icon { font-size: 52px; }
+        .logo-title { font-size: 22px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-top: 8px; }
+        .logo-sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+
+        .tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--surface2); padding: 5px; border-radius: 12px; margin-bottom: 24px; }
+        .tab { padding: 9px; border-radius: 9px; border: none; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; color: var(--text-dim); background: transparent; }
+        .tab.active { background: var(--accent); color: #000; }
+
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
+        input { width: 100%; background: var(--surface2); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius); padding: 12px 16px; font-family: 'Cairo', sans-serif; font-size: 15px; color: var(--text); outline: none; transition: border-color 0.2s; }
+        input:focus { border-color: var(--accent); }
+
+        .submit-btn { width: 100%; padding: 14px; border-radius: var(--radius); border: none; font-family: 'Cairo', sans-serif; font-size: 16px; font-weight: 900; cursor: pointer; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; margin-top: 8px; transition: all 0.15s; }
+        .submit-btn:active { transform: scale(0.98); }
+
+        .error-msg { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--danger); padding: 10px 14px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; display: none; }
+        .error-msg.show { display: block; }
+
+        .admin-link { text-align: center; margin-top: 20px; }
+        .admin-link a { font-size: 12px; color: var(--text-dim); text-decoration: none; }
+        .admin-link a:hover { color: var(--accent); }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo">
+        <div class="logo-icon">🤟</div>
+        <div class="logo-title">لغة الإشارة العربية</div>
+        <div class="logo-sub">سجّل دخولك للمشاركة في جمع البيانات</div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" id="loginTab" onclick="showTab('login')">دخول</button>
+        <button class="tab" id="registerTab" onclick="showTab('register')">حساب جديد</button>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <!-- Login Form -->
+    <div id="loginForm">
+        <div class="form-group">
+            <label>الاسم</label>
+            <input type="text" id="loginName" placeholder="أدخل اسمك" autocomplete="username">
+        </div>
+        <div class="form-group">
+            <label>كلمة المرور</label>
+            <input type="password" id="loginPass" placeholder="••••••" autocomplete="current-password">
+        </div>
+        <button class="submit-btn" onclick="doLogin()">دخول ←</button>
+    </div>
+
+    <!-- Register Form -->
+    <div id="registerForm" style="display:none">
+        <div class="form-group">
+            <label>الاسم</label>
+            <input type="text" id="regName" placeholder="اسمك بالعربي أو الإنجليزي">
+        </div>
+        <div class="form-group">
+            <label>كلمة المرور</label>
+            <input type="password" id="regPass" placeholder="اختر كلمة مرور">
+        </div>
+        <div class="form-group">
+            <label>تأكيد كلمة المرور</label>
+            <input type="password" id="regPass2" placeholder="أعد كتابة كلمة المرور">
+        </div>
+        <button class="submit-btn" onclick="doRegister()">إنشاء حساب ✓</button>
+    </div>
+
+    <div class="admin-link">
+        <a href="/admin">لوحة التحكم (أدمن)</a>
+    </div>
+</div>
+
+<script>
+function showTab(tab) {
+    document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
+    document.getElementById('loginTab').className = 'tab' + (tab === 'login' ? ' active' : '');
+    document.getElementById('registerTab').className = 'tab' + (tab === 'register' ? ' active' : '');
+    hideError();
+}
+
+function showError(msg) {
+    const el = document.getElementById('errorMsg');
+    el.textContent = msg;
+    el.classList.add('show');
+}
+
+function hideError() {
+    document.getElementById('errorMsg').classList.remove('show');
+}
+
+async function doLogin() {
+    const name = document.getElementById('loginName').value.trim();
+    const pass = document.getElementById('loginPass').value;
+    if (!name || !pass) { showError('من فضلك أدخل الاسم وكلمة المرور'); return; }
+
+    const res = await fetch('/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = '/collect-data';
+    } else {
+        showError(data.error || 'خطأ في تسجيل الدخول');
+    }
+}
+
+async function doRegister() {
+    const name = document.getElementById('regName').value.trim();
+    const pass = document.getElementById('regPass').value;
+    const pass2 = document.getElementById('regPass2').value;
+
+    if (!name || !pass) { showError('من فضلك أدخل جميع البيانات'); return; }
+    if (pass !== pass2) { showError('كلمات المرور غير متطابقة'); return; }
+    if (pass.length < 4) { showError('كلمة المرور قصيرة جداً (4 أحرف على الأقل)'); return; }
+
+    const res = await fetch('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password: pass })
+    });
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = '/collect-data';
+    } else {
+        showError(data.error || 'خطأ في إنشاء الحساب');
+    }
+}
+
+// Enter key
+document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+        if (document.getElementById('loginForm').style.display !== 'none') doLogin();
+        else doRegister();
+    }
+});
+</script>
+</body>
+</html>
