@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تسجيل البيانات - لغة الإشارة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0a0a0f;
+            --surface: #13131a;
+            --surface2: #1c1c28;
+            --accent: #00d4aa;
+            --accent2: #7c3aed;
+            --warn: #f59e0b;
+            --danger: #ef4444;
+            --text: #f0f0f8;
+            --text-dim: #6b7280;
+            --radius: 18px;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            overflow: hidden;
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            max-width: 480px;
+            margin: 0 auto;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            padding: 12px 16px 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--warn), #f97316);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .back-btn {
+            background: var(--surface2);
+            border: none;
+            color: var(--text-dim);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* ===== LETTER SELECTOR ===== */
+        .letter-selector {
+            padding: 10px 16px;
+            flex-shrink: 0;
+        }
+
+        .selector-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 8px;
+        }
+
+        .letters-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .letter-btn {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: var(--surface2);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .letter-btn:active { transform: scale(0.92); }
+
+        .letter-btn.selected {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            box-shadow: 0 0 12px rgba(0,212,170,0.4);
+        }
+
+        .letter-btn.complete {
+            background: rgba(0,212,170,0.15);
+            border-color: rgba(0,212,170,0.3);
+            color: var(--accent);
+        }
+
+        .letter-count {
+            font-size: 7px;
+            font-weight: 600;
+            opacity: 0.7;
+            line-height: 1;
+        }
+
+        /* ===== CAMERA ===== */
+        .camera-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #000;
+            min-height: 0;
+        }
+
+        #video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        #canvas { display: none; }
+
+        /* corner brackets */
+        .bracket { position: absolute; width: 35px; height: 35px; border-color: var(--warn); border-style: solid; opacity: 0.8; }
+        .bracket.tl { top: 15px; right: 15px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+        .bracket.tr { top: 15px; left: 15px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+        .bracket.bl { bottom: 80px; right: 15px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+        .bracket.br { bottom: 80px; left: 15px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+        /* hand status */
+        .hand-status {
+            position: absolute;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            white-space: nowrap;
+            transition: all 0.3s;
+        }
+
+        .hand-status.detected {
+            border-color: rgba(0,212,170,0.4);
+            color: var(--accent);
+        }
+
+        /* ===== BOTTOM PANEL ===== */
+        .bottom-panel {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: linear-gradient(0deg, rgba(10,10,15,0.97) 0%, rgba(10,10,15,0.7) 100%);
+            backdrop-filter: blur(15px);
+            padding: 12px 16px 16px;
+        }
+
+        /* progress */
+        .progress-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .progress-letter {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--warn);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .progress-info { flex: 1; }
+
+        .progress-nums {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-bottom: 5px;
+        }
+
+        .progress-nums span:last-child { color: var(--accent); font-weight: 700; }
+
+        .progress-track {
+            height: 6px;
+            background: var(--surface2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--warn), var(--accent));
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        /* record button */
+        .record-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius);
+            border: none;
+            font-family: 'Cairo', sans-serif;
+            font-size: 16px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            background: linear-gradient(135deg, var(--warn), #f97316);
+            color: #000;
+        }
+
+        .record-btn:active { transform: scale(0.97); }
+        .record-btn:disabled {
+            background: var(--surface2);
+            color: var(--text-dim);
+            cursor: not-allowed;
+        }
+
+        .record-btn.success {
+            background: linear-gradient(135deg, var(--accent), #059669);
+            animation: pulse 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+
+        /* auto record indicator */
+        .auto-bar-wrap {
+            height: 4px;
+            background: var(--surface2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 8px;
+            display: none;
+        }
+
+        .auto-bar-wrap.visible { display: block; }
+
+        .auto-bar {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.1s linear;
+        }
+
+        /* toast */
+        .toast {
+            position: fixed;
+            top: 16px; left: 50%;
+            transform: translateX(-50%) translateY(-60px);
+            background: var(--surface2);
+            padding: 8px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid rgba(0,212,170,0.3);
+            color: var(--accent);
+            transition: transform 0.3s;
+            z-index: 100;
+            white-space: nowrap;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* loading */
+        .loading-screen {
+            position: fixed; inset: 0;
+            background: var(--bg);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 999; transition: opacity 0.5s;
+        }
+        .loading-screen.hidden { opacity: 0; pointer-events: none; }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--surface2); border-top-color: var(--warn); border-radius: 50%; animation: spin 0.8s linear infinite; margin-top: 16px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+    <div style="font-size:40px">📝</div>
+    <div style="font-size:20px;font-weight:900;margin-top:12px;color:#f59e0b">تسجيل البيانات</div>
+    <div style="font-size:13px;color:#6b7280;margin-top:6px">جاري تشغيل الكاميرا...</div>
+    <div class="spinner"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="app">
+    <!-- Header -->
+    <div class="header">
+        <div class="header-title">📝 تسجيل بيانات الحروف</div>
+        <a href="/" class="back-btn">← التطبيق</a>
+    </div>
+
+    <!-- Letter Selector -->
+    <div class="letter-selector">
+        <div class="selector-label">اختر الحرف للتسجيل:</div>
+        <div class="letters-grid" id="lettersGrid"></div>
+    </div>
+
+    <!-- Camera -->
+    <div class="camera-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas"></canvas>
+
+        <div class="bracket tl"></div>
+        <div class="bracket tr"></div>
+        <div class="bracket bl"></div>
+        <div class="bracket br"></div>
+
+        <div class="hand-status" id="handStatus">🖐 في انتظار اليد...</div>
+
+        <!-- Bottom Panel -->
+        <div class="bottom-panel">
+            <div class="progress-row">
+                <div class="progress-letter" id="currentLetterDisplay">—</div>
+                <div class="progress-info">
+                    <div class="progress-nums">
+                        <span id="progressLabel">اختر حرفاً</span>
+                        <span id="progressCount">0/200</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Auto record bar -->
+            <div class="auto-bar-wrap" id="autoBarWrap">
+                <div class="auto-bar" id="autoBar" style="width:0%"></div>
+            </div>
+
+            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>
+                اختر حرفاً أولاً
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== إعدادات =====
+const TARGET_SAMPLES = 200;
+const AUTO_RECORD_FRAMES = 8;   // إطارات للتسجيل التلقائي
+const CAPTURE_INTERVAL = 100;
+
+// ===== الحروف =====
+const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+
+// ===== متغيرات =====
+let selectedLetter = null;
+let selectedIdx = null;
+let sampleCounts = {};
+let handDetected = false;
+let autoRecordCount = 0;
+let isCapturing = false;
+let lastFrameData = null;
+
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// ===== بناء شبكة الحروف =====
+function buildLettersGrid() {
+    const grid = document.getElementById('lettersGrid');
+    ARABIC_LETTERS.forEach((letter, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'letter-btn';
+        btn.id = `lbtn_${idx}`;
+        btn.innerHTML = `${letter}<span class="letter-count" id="lcount_${idx}">0</span>`;
+        btn.onclick = () => selectLetter(idx, letter);
+        grid.appendChild(btn);
+    });
+}
+
+// ===== تحميل عدد العينات =====
+async function loadCounts() {
+    try {
+        const res = await fetch('/sample_counts');
+        const data = await res.json();
+        sampleCounts = data.counts || {};
+        updateAllCounts();
+    } catch(e) {
+        sampleCounts = {};
+    }
+}
+
+function updateAllCounts() {
+    ARABIC_LETTERS.forEach((letter, idx) => {
+        const count = sampleCounts[idx] || 0;
+        const countEl = document.getElementById(`lcount_${idx}`);
+        const btnEl = document.getElementById(`lbtn_${idx}`);
+        if (countEl) countEl.textContent = count >= 100 ? '✓' : count;
+        if (btnEl) {
+            btnEl.classList.toggle('complete', count >= TARGET_SAMPLES);
+        }
+    });
+}
+
+// ===== اختيار حرف =====
+function selectLetter(idx, letter) {
+    // إزالة التحديد القديم
+    if (selectedIdx !== null) {
+        document.getElementById(`lbtn_${selectedIdx}`)?.classList.remove('selected');
+    }
+
+    selectedIdx = idx;
+    selectedLetter = letter;
+    document.getElementById(`lbtn_${idx}`).classList.add('selected');
+    document.getElementById('currentLetterDisplay').textContent = letter;
+
+    const count = sampleCounts[idx] || 0;
+    document.getElementById('progressLabel').textContent = `حرف: ${letter}`;
+    document.getElementById('progressCount').textContent = `${count}/${TARGET_SAMPLES}`;
+    document.getElementById('progressFill').style.width = Math.min(count/TARGET_SAMPLES*100, 100) + '%';
+
+    const btn = document.getElementById('recordBtn');
+    btn.disabled = false;
+    btn.textContent = `📸 سجّل حرف ${letter}`;
+    btn.className = 'record-btn';
+
+    showToast(`تم اختيار حرف: ${letter}`);
+}
+
+// ===== تسجيل عينة =====
+async function recordSample() {
+    if (!selectedLetter || !lastFrameData) return;
+
+    const btn = document.getElementById('recordBtn');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/collect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                image: lastFrameData,
+                label: selectedIdx
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            sampleCounts[selectedIdx] = (sampleCounts[selectedIdx] || 0) + 1;
+            const count = sampleCounts[selectedIdx];
+
+            // تحديث الـ UI
+            document.getElementById('progressCount').textContent = `${count}/${TARGET_SAMPLES}`;
+            document.getElementById('progressFill').style.width = Math.min(count/TARGET_SAMPLES*100, 100) + '%';
+            document.getElementById(`lcount_${selectedIdx}`).textContent = count >= 100 ? '✓' : count;
+
+            if (count >= TARGET_SAMPLES) {
+                document.getElementById(`lbtn_${selectedIdx}`).classList.add('complete');
+                showToast(`✅ اكتمل حرف ${selectedLetter}!`);
+            } else {
+                showToast(`✓ ${selectedLetter}: ${count}/${TARGET_SAMPLES}`);
+            }
+
+            // تأثير النجاح
+            btn.className = 'record-btn success';
+            btn.textContent = `✅ تم! (${count})`;
+            setTimeout(() => {
+                btn.className = 'record-btn';
+                btn.textContent = `📸 سجّل حرف ${selectedLetter}`;
+                btn.disabled = false;
+            }, 600);
+
+            if (navigator.vibrate) navigator.vibrate(40);
+
+        } else {
+            showToast('❌ ' + (data.error || 'فشل التسجيل'));
+            btn.disabled = false;
+            btn.textContent = `📸 سجّل حرف ${selectedLetter}`;
+        }
+    } catch(e) {
+        showToast('❌ خطأ في الاتصال');
+        btn.disabled = false;
+    }
+}
+
+// ===== التقاط الإطارات =====
+function captureFrame() {
+    if (video.readyState !== 4) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+async function checkHand(imageData) {
+    try {
+        const res = await fetch('/check_hand', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageData })
+        });
+        const data = await res.json();
+        return data.detected;
+    } catch(e) {
+        return false;
+    }
+}
+
+function startCapturing() {
+    setInterval(async () => {
+        const frame = captureFrame();
+        if (!frame) return;
+        lastFrameData = frame;
+
+        // تحقق من وجود اليد
+        const detected = await checkHand(frame);
+        handDetected = detected;
+
+        const statusEl = document.getElementById('handStatus');
+        if (detected) {
+            statusEl.textContent = '✅ يد مكتشفة';
+            statusEl.className = 'hand-status detected';
+        } else {
+            statusEl.textContent = '🖐 في انتظار اليد...';
+            statusEl.className = 'hand-status';
+        }
+    }, CAPTURE_INTERVAL);
+}
+
+// ===== Toast =====
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== تشغيل الكاميرا =====
+async function startCamera() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            document.getElementById('loadingScreen').classList.add('hidden');
+            startCapturing();
+        };
+    } catch(e) {
+        document.querySelector('.loading-screen div:nth-child(3)').textContent = '❌ تعذّر الوصول للكاميرا';
+    }
+}
+
+// ===== تشغيل =====
+buildLettersGrid();
+loadCounts();
+startCamera();
+</script>
+</body>
+</html>

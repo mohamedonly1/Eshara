@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0a0f">
+    <title>لغة الإشارة العربية</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- MediaPipe JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0a0a0f; --surface: #13131a; --surface2: #1c1c28;
+            --accent: #00d4aa; --accent2: #7c3aed; --warn: #f59e0b;
+            --danger: #ef4444; --text: #f0f0f8; --text-dim: #6b7280;
+            --radius: 20px; --glow: 0 0 30px rgba(0,212,170,0.3);
+        }
+        html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; overflow: hidden; touch-action: manipulation; }
+        .app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; position: relative; }
+
+        .header { padding: 12px 20px 8px; display: flex; align-items: center; justify-content: space-between; z-index: 10; flex-shrink: 0; }
+        .header-title { font-size: 18px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); transition: all 0.3s; box-shadow: 0 0 8px currentColor; }
+        .status-dot.active { background: var(--accent); }
+
+        .camera-wrap { position: relative; flex: 1; overflow: hidden; background: #000; }
+        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+        #overlay { position: absolute; inset: 0; transform: scaleX(-1); }
+
+        .scan-overlay { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(transparent 49%, rgba(0,212,170,0.03) 50%, transparent 51%); background-size: 100% 4px; }
+        .brackets { position: absolute; inset: 0; pointer-events: none; }
+        .bracket { position: absolute; width: 40px; height: 40px; border-color: var(--accent); border-style: solid; opacity: 0.7; }
+        .bracket.tl { top: 20px; right: 20px; border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+        .bracket.tr { top: 20px; left: 20px; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+        .bracket.bl { bottom: 20px; right: 20px; border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+        .bracket.br { bottom: 20px; left: 20px; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+        .result-card { position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(0deg, rgba(10,10,15,0.97) 0%, rgba(10,10,15,0.8) 100%); backdrop-filter: blur(20px); padding: 16px 20px 20px; border-top: 1px solid rgba(0,212,170,0.15); }
+
+        .current-letter-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .letter-display { font-size: 72px; font-weight: 900; line-height: 1; transition: all 0.2s; min-width: 90px; text-align: center; }
+        .letter-display.detected { color: var(--accent); text-shadow: var(--glow); }
+        .letter-display.empty { color: var(--text-dim); font-size: 40px; }
+
+        .confidence-col { flex: 1; padding-right: 16px; }
+        .confidence-label { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; text-align: right; }
+        .confidence-bar-track { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+        .confidence-bar-fill { height: 100%; border-radius: 3px; transition: width 0.15s ease, background 0.3s; background: var(--accent); }
+        .confidence-value { font-size: 13px; font-weight: 700; color: var(--accent); text-align: right; }
+
+        .confirm-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+        .confirm-label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+        .confirm-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+        .confirm-fill { height: 100%; border-radius: 2px; background: var(--warn); transition: width 0.1s linear; }
+        .confirm-fill.ready { background: var(--accent); }
+
+        .word-section { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 12px; border: 1px solid rgba(255,255,255,0.06); min-height: 60px; display: flex; align-items: center; justify-content: space-between; }
+        .word-text { font-size: 28px; font-weight: 700; color: var(--text); flex: 1; word-break: break-all; line-height: 1.3; }
+        .word-placeholder { color: var(--text-dim); font-size: 14px; }
+        .word-count { font-size: 11px; color: var(--text-dim); white-space: nowrap; padding-right: 8px; }
+
+        .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+        .btn { padding: 12px 8px; border-radius: 14px; border: none; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+        .btn:active { transform: scale(0.94); }
+        .btn-space { background: var(--surface2); color: var(--text); border: 1px solid rgba(255,255,255,0.08); }
+        .btn-delete { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.2); }
+        .btn-clear { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+
+        .collect-link { position: absolute; top: 12px; left: 16px; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.3); color: #a78bfa; padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-decoration: none; }
+
+        .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; transition: opacity 0.5s; }
+        .loading-screen.hidden { opacity: 0; pointer-events: none; }
+        .spinner { width: 36px; height: 36px; border: 3px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        .loading-logo { font-size: 48px; margin-bottom: 16px; }
+        .loading-title { font-size: 22px; font-weight: 900; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+        .loading-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 30px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+    <div class="loading-logo">🤟</div>
+    <div class="loading-title">لغة الإشارة العربية</div>
+    <div class="loading-sub" id="loadingSub">جاري تحميل MediaPipe...</div>
+    <div class="spinner"></div>
+</div>
+
+<div class="app">
+    <div class="header">
+        <div class="header-title">🤟 لغة الإشارة العربية</div>
+        <div class="status-dot" id="statusDot"></div>
+    </div>
+
+    <div class="camera-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="scan-overlay"></div>
+        <div class="brackets">
+            <div class="bracket tl"></div><div class="bracket tr"></div>
+            <div class="bracket bl"></div><div class="bracket br"></div>
+        </div>
+
+        <a href="/collect-data" class="collect-link">📝 تسجيل بيانات</a>
+
+        <div class="result-card">
+            <div class="current-letter-row">
+                <div class="letter-display empty" id="letterDisplay">—</div>
+                <div class="confidence-col">
+                    <div class="confidence-label">مستوى الثقة</div>
+                    <div class="confidence-bar-track">
+                        <div class="confidence-bar-fill" id="confBar" style="width:0%"></div>
+                    </div>
+                    <div class="confidence-value" id="confValue">0%</div>
+                </div>
+            </div>
+            <div class="confirm-row">
+                <div class="confirm-label">تأكيد الحرف</div>
+                <div class="confirm-track">
+                    <div class="confirm-fill" id="confirmFill" style="width:0%"></div>
+                </div>
+            </div>
+            <div class="word-section">
+                <div class="word-count" id="wordCount">0</div>
+                <div id="wordDisplay" class="word-text word-placeholder">ابدأ بالإشارة...</div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-space" onclick="addSpace()">مسافة</button>
+                <button class="btn btn-delete" onclick="deleteLetter()">حذف ←</button>
+                <button class="btn btn-clear" onclick="clearWord()">مسح كل</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const CONFIDENCE_THRESHOLD = 0.65;
+const HISTORY_LENGTH = 10;
+const AGREEMENT_RATIO = 0.75;
+const COOLDOWN_MS = 800;
+
+let currentWord = [];
+let predictionHistory = [];
+let lastLetter = null;
+let lastLetterTime = 0;
+let noHandCount = 0;
+
+const video = document.getElementById('video');
+const overlayCanvas = document.getElementById('overlay');
+const overlayCtx = overlayCanvas.getContext('2d');
+
+// ===== استخراج landmarks من MediaPipe =====
+function extractLandmarks(landmarks) {
+    // landmarks: قائمة من 21 نقطة {x, y, z}
+    const raw = [];
+    landmarks.forEach(lm => {
+        raw.push(lm.x, lm.y);
+    });
+    return raw; // 42 رقم — السيرفر هيطبّعهم
+}
+
+// ===== رسم نقاط اليد =====
+function drawHand(landmarks, w, h) {
+    overlayCtx.clearRect(0, 0, w, h);
+    const connections = [
+        [0,1],[1,2],[2,3],[3,4],
+        [0,5],[5,6],[6,7],[7,8],
+        [0,9],[9,10],[10,11],[11,12],
+        [0,13],[13,14],[14,15],[15,16],
+        [0,17],[17,18],[18,19],[19,20],
+        [5,9],[9,13],[13,17]
+    ];
+
+    overlayCtx.strokeStyle = 'rgba(0,212,170,0.7)';
+    overlayCtx.lineWidth = 2;
+    connections.forEach(([a, b]) => {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(landmarks[a].x * w, landmarks[a].y * h);
+        overlayCtx.lineTo(landmarks[b].x * w, landmarks[b].y * h);
+        overlayCtx.stroke();
+    });
+
+    overlayCtx.fillStyle = '#00d4aa';
+    landmarks.forEach(lm => {
+        overlayCtx.beginPath();
+        overlayCtx.arc(lm.x * w, lm.y * h, 4, 0, Math.PI * 2);
+        overlayCtx.fill();
+    });
+}
+
+// ===== إرسال للسيرفر =====
+async function sendLandmarks(rawLandmarks) {
+    try {
+        const res = await fetch('/predict', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ landmarks: rawLandmarks })
+        });
+        const data = await res.json();
+        handlePrediction(data);
+    } catch(e) {
+        console.error(e);
+    }
+}
+
+// ===== معالجة النتيجة =====
+function handlePrediction(data) {
+    const { letter, confidence, status } = data;
+    const now = Date.now();
+
+    if (status !== 'ok' || !letter) return;
+
+    updateUI(letter, confidence / 100);
+
+    if (confidence >= CONFIDENCE_THRESHOLD * 100) {
+        predictionHistory.push(letter);
+        if (predictionHistory.length > HISTORY_LENGTH) predictionHistory.shift();
+    } else {
+        predictionHistory = [];
+    }
+
+    const fillPct = (predictionHistory.length / HISTORY_LENGTH) * 100;
+    const confirmFill = document.getElementById('confirmFill');
+    confirmFill.style.width = fillPct + '%';
+    confirmFill.className = 'confirm-fill' + (fillPct >= 100 ? ' ready' : '');
+
+    if (predictionHistory.length >= HISTORY_LENGTH && now - lastLetterTime > COOLDOWN_MS) {
+        const counts = {};
+        predictionHistory.forEach(l => counts[l] = (counts[l] || 0) + 1);
+        const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+        if (top[1] / HISTORY_LENGTH >= AGREEMENT_RATIO && top[0] !== lastLetter) {
+            addLetter(top[0]);
+            lastLetter = top[0];
+            lastLetterTime = now;
+            predictionHistory = [];
+            confirmFill.style.width = '0%';
+        }
+    }
+}
+
+function updateUI(letter, confidence) {
+    const letterEl = document.getElementById('letterDisplay');
+    const confBar = document.getElementById('confBar');
+    const confVal = document.getElementById('confValue');
+    if (letter) {
+        letterEl.textContent = letter;
+        letterEl.className = 'letter-display detected';
+        const pct = Math.round(confidence * 100);
+        confBar.style.width = pct + '%';
+        confBar.style.background = pct > 90 ? 'var(--accent)' : pct > 75 ? 'var(--warn)' : 'var(--danger)';
+        confVal.textContent = pct + '%';
+    }
+}
+
+function clearUI() {
+    document.getElementById('letterDisplay').textContent = '—';
+    document.getElementById('letterDisplay').className = 'letter-display empty';
+    document.getElementById('confBar').style.width = '0%';
+    document.getElementById('confValue').textContent = '0%';
+    document.getElementById('confirmFill').style.width = '0%';
+    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    predictionHistory = [];
+    lastLetter = null;
+}
+
+// ===== بناء الكلمة =====
+function addLetter(letter) {
+    currentWord.push(letter);
+    updateWordDisplay();
+    if (navigator.vibrate) navigator.vibrate(30);
+}
+function addSpace() { currentWord.push(' '); updateWordDisplay(); }
+function deleteLetter() { if (currentWord.length) { currentWord.pop(); updateWordDisplay(); lastLetter = null; } }
+function clearWord() { currentWord = []; lastLetter = null; predictionHistory = []; updateWordDisplay(); }
+
+function updateWordDisplay() {
+    const wordEl = document.getElementById('wordDisplay');
+    const word = currentWord.join('').trim();
+    if (!word) {
+        wordEl.textContent = 'ابدأ بالإشارة...';
+        wordEl.className = 'word-text word-placeholder';
+        document.getElementById('wordCount').textContent = '0';
+    } else {
+        wordEl.textContent = currentWord.join('');
+        wordEl.className = 'word-text';
+        document.getElementById('wordCount').textContent = word.length;
+    }
+}
+
+// ===== MediaPipe Setup =====
+function initMediaPipe() {
+    document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
+
+    const hands = new Hands({
+    locateFile: (file) => 
+        `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1646424915/${file}`
+      });
+
+    hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    let lastSend = 0;
+    const SEND_INTERVAL = 120; // ms بين كل إرسال
+
+    hands.onResults((results) => {
+        const w = overlayCanvas.width;
+        const h = overlayCanvas.height;
+
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            noHandCount = 0;
+            document.getElementById('statusDot').classList.add('active');
+
+            const landmarks = results.multiHandLandmarks[0];
+            drawHand(landmarks, w, h);
+
+            // إرسال للسيرفر كل SEND_INTERVAL ms فقط
+            const now = Date.now();
+            if (now - lastSend > SEND_INTERVAL) {
+                lastSend = now;
+                const raw = extractLandmarks(landmarks);
+                sendLandmarks(raw);
+            }
+        } else {
+            noHandCount++;
+            if (noHandCount > 3) clearUI();
+            document.getElementById('statusDot').classList.remove('active');
+        }
+    });
+
+    const camera = new Camera(video, {
+        onFrame: async () => {
+            overlayCanvas.width = video.videoWidth;
+            overlayCanvas.height = video.videoHeight;
+            await hands.send({ image: video });
+        },
+        width: 640,
+        height: 480
+    });
+
+    camera.start().then(() => {
+        document.getElementById('loadingScreen').classList.add('hidden');
+    }).catch(err => {
+        document.getElementById('loadingSub').textContent = '❌ تعذّر الوصول للكاميرا';
+    });
+}
+
+// ===== تشغيل =====
+window.addEventListener('load', initMediaPipe);
+</script>
+</body>
+</html>
