@@ -8,8 +8,12 @@ import csv
 import os
 import json
 import logging
+import threading
 
 from dotenv import load_dotenv
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from auth import (
     register_user, login_user, load_user,
@@ -28,6 +32,15 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://"
+)
+
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev_fallback_secret_change_me')
 
 # =============================================
@@ -37,7 +50,12 @@ def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not session.get('user_id'):
-            if request.path.startswith(('/predict', '/collect', '/history', '/sample_counts')):
+            wants_json = (
+                request.is_json or
+                request.headers.get('Accept', '').find('application/json') != -1 or
+                request.path.startswith('/api/')
+            )
+            if wants_json:
                 return jsonify({'error': 'Unauthorized'}), 401
             return redirect('/login')
         return f(*args, **kwargs)
@@ -77,6 +95,7 @@ def _save_global_settings():
 
 
 GLOBAL_SETTINGS = _load_global_settings()
+_settings_lock = threading.Lock()
 
 # =============================================
 # Model Setup
@@ -152,9 +171,10 @@ def pose_editor_page():
 # Auth APIs
 # =============================================
 @app.route('/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def auth_login():
     data = request.get_json(silent=True) or {}
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = request.remote_addr
     ua = request.headers.get('User-Agent', '')
     user_id, error = login_user(
         data.get('name', ''),
@@ -167,9 +187,10 @@ def auth_login():
     return jsonify({'success': True, 'name': load_user(user_id)['name']})
 
 @app.route('/auth/register', methods=['POST'])
+@limiter.limit("10 per minute")
 def auth_register():
     data = request.get_json(silent=True) or {}
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = request.remote_addr
     ua = request.headers.get('User-Agent', '')
     user_id, error = register_user(
         data.get('name', ''),
@@ -234,17 +255,24 @@ def collect_sample():
     raw = data.get('landmarks', [])
     label = int(data.get('label', -1))
 
+    if label not in range(len(labels_dict)):
+        return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
+
     if len(raw) != 42:
         return jsonify({'success': False, 'error': 'Invalid landmarks'})
 
     try:
         normalized = normalize_landmarks(raw)
 
-        if GLOBAL_SETTINGS['quality_filter']:
+        with _settings_lock:
+            quality_filter = GLOBAL_SETTINGS['quality_filter']
+            filter_threshold = GLOBAL_SETTINGS['filter_threshold']
+
+        if quality_filter:
             probs = predict_landmarks(normalized)
             idx = int(np.argmax(probs))
             confidence = float(probs[idx])
-            if idx != label and confidence > GLOBAL_SETTINGS['filter_threshold']:
+            if idx != label and confidence > filter_threshold:
                 if user_id:
                     record_rejected(user_id)
                 return jsonify({
@@ -264,7 +292,7 @@ def collect_sample():
 
     except Exception as exc:
         logger.error("Error in /collect: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)})
+        return jsonify({'success': False, 'error': 'حدث خطأ، يرجى المحاولة مجدداً'})
 
 @app.route('/sample_counts')
 @login_required
@@ -290,6 +318,8 @@ def history_save():
     text = str(data.get('text', '')).strip()
     if not text:
         return jsonify({'success': False, 'error': 'نص فاضي'})
+    if len(text) > 5000:
+        return jsonify({'success': False, 'error': 'النص طويل جداً (الحد 5000 حرف)'}), 400
     save_entry(session['user_id'], text)
     return jsonify({'success': True})
 
@@ -315,11 +345,14 @@ def admin_page():
     return render_template('admin.html')
 
 @app.route('/admin/verify', methods=['POST'])
+@limiter.limit("5 per minute")
 def admin_verify():
     data = request.get_json(silent=True) or {}
     ok = verify_admin(data.get('password', ''))
     if ok:
         session['is_admin'] = True
+    else:
+        logger.warning("Failed admin login attempt from %s", request.remote_addr)
     return jsonify({'ok': ok})
 
 @app.route('/admin/stats')
@@ -347,11 +380,12 @@ def admin_update_settings():
     if not session.get('is_admin'):
         return jsonify({'error': 'Unauthorized'}), 401
     data = request.get_json(silent=True) or {}
-    if 'quality_filter' in data:
-        GLOBAL_SETTINGS['quality_filter'] = bool(data['quality_filter'])
-    if 'filter_threshold' in data:
-        GLOBAL_SETTINGS['filter_threshold'] = max(0.5, min(1.0, float(data['filter_threshold'])))
-    _save_global_settings()
+    with _settings_lock:
+        if 'quality_filter' in data:
+            GLOBAL_SETTINGS['quality_filter'] = bool(data['quality_filter'])
+        if 'filter_threshold' in data:
+            GLOBAL_SETTINGS['filter_threshold'] = max(0.5, min(1.0, float(data['filter_threshold'])))
+        _save_global_settings()
     return jsonify({'ok': True, 'settings': GLOBAL_SETTINGS})
 
 @app.route('/admin/export')
@@ -365,14 +399,22 @@ def admin_export():
 @app.route('/pose-editor/save', methods=['POST'])
 @login_required
 def pose_editor_save():
-    """Update /static/poses.js with a new/updated pose for a letter."""
+    """Update /static/poses.js — admin only."""
+    if not session.get('is_admin'):
+        return jsonify({'success': False, 'error': 'غير مسموح'}), 403
+
     data = request.get_json(silent=True) or {}
     letter = data.get('letter')
     pose = data.get('pose')
+
     if not letter or not isinstance(pose, dict):
         return jsonify({'success': False, 'error': 'بيانات غير صالحة'}), 400
 
-    # تحميل poses الحالية إن وُجد الملف
+    # Whitelist: only allow valid Arabic letters (single char or لا)
+    ALLOWED_LETTERS = set('أبتثجحخدذرزسشصضطظعغفقكلمنهوي') | {'لا'}
+    if letter not in ALLOWED_LETTERS:
+        return jsonify({'success': False, 'error': 'حرف غير صالح'}), 400
+
     poses = {}
     if os.path.exists(POSES_PATH):
         try:
@@ -381,8 +423,7 @@ def pose_editor_save():
             start = text.find('{')
             end = text.rfind('}')
             if start != -1 and end != -1 and end > start:
-                json_str = text[start:end+1]
-                poses = json.loads(json_str)
+                poses = json.loads(text[start:end+1])
         except Exception as exc:
             logger.error("Failed to read existing poses.js: %s", exc)
 
