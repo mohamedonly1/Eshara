@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/static/pwa/manifest.json">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444; --purple:#7c3aed; --text:#f0f0f8; --text-dim:#6b7280; --radius:14px; }
         body { background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; min-height: 100vh; }
+        /* تعويض ارتفاع الـ navbar الثابت */
+        .page-content { padding-top: 52px !important; height: auto !important; }
 
         /* GATE */
         .gate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999; }
@@ -19,7 +22,7 @@
         .gate-err { color: var(--danger); font-size: 12px; margin-top: 8px; }
 
         /* DASHBOARD */
-        .dashboard { display: none; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .dashboard { display: none; padding: 20px; padding-top: 72px; max-width: 1000px; margin: 0 auto; }
         .dash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
         .dash-title { font-size: 20px; font-weight: 900; background: linear-gradient(135deg, var(--warn), #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
         .header-actions { display: flex; gap: 8px; }
@@ -98,6 +101,34 @@
         .export-icon { font-size: 24px; }
         .export-title { font-size: 14px; font-weight: 700; }
         .export-sub { font-size: 11px; color: var(--text-dim); }
+
+        /* FILTER CONTROL */
+        .filter-card { background: var(--surface); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 24px; border: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .filter-info { flex: 1; }
+        .filter-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+        .filter-desc { font-size: 11px; color: var(--text-dim); }
+        .filter-controls { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+
+        /* Toggle Switch */
+        .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+        .toggle-label { font-size: 12px; font-weight: 700; }
+        .toggle { position: relative; width: 48px; height: 26px; cursor: pointer; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-track { position: absolute; inset: 0; background: var(--surface2); border-radius: 13px; transition: 0.3s; border: 1px solid rgba(255,255,255,0.1); }
+        .toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+        .toggle-thumb { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: 0.3s; box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+        .toggle input:checked ~ .toggle-thumb { right: 27px; }
+
+        /* Threshold Slider */
+        .threshold-wrap { display: flex; align-items: center; gap: 8px; }
+        .threshold-label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+        .threshold-val { font-size: 13px; font-weight: 900; color: var(--warn); min-width: 38px; text-align: center; }
+        input[type=range].slider { -webkit-appearance: none; width: 100px; height: 4px; background: var(--surface2); border-radius: 2px; outline: none; }
+        input[type=range].slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--warn); cursor: pointer; }
+
+        .filter-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .filter-status.on { background: rgba(0,212,170,0.15); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
+        .filter-status.off { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
     </style>
 <script>
 // override initNavbar for admin page - no redirect needed, has its own gate
@@ -129,6 +160,30 @@ window._adminPage = true;
     </div>
 
     <div class="stats-grid" id="statsGrid"></div>
+
+    <!-- فلتر الجودة -->
+    <div class="filter-card">
+        <div class="filter-info">
+            <div class="filter-title">🔍 فلتر جودة العينات</div>
+            <div class="filter-desc">لما يكون مفعّل، الموديل بيرفض العينات الغلط. عطّله لو المستخدمين بيسجّلوا حروف جديدة.</div>
+        </div>
+        <div class="filter-controls">
+            <div class="threshold-wrap" id="thresholdWrap">
+                <span class="threshold-label">حساسية الرفض</span>
+                <input type="range" class="slider" id="thresholdSlider" min="50" max="99" value="95"
+                       oninput="updateThreshold(this.value)">
+                <span class="threshold-val" id="thresholdVal">95%</span>
+            </div>
+            <div class="toggle-wrap">
+                <span class="toggle-label" id="filterToggleLabel">مفعّل</span>
+                <label class="toggle">
+                    <input type="checkbox" id="filterToggle" checked onchange="toggleFilter(this.checked)">
+                    <div class="toggle-track"></div>
+                    <div class="toggle-thumb"></div>
+                </label>
+            </div>
+        </div>
+    </div>
 
     <div class="section">
         <div class="section-title">📊 عينات كل حرف (إجمالي الكل)</div>
@@ -185,6 +240,47 @@ window._adminPage = true;
 const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
 let allStats = [];
 
+// ===== فلتر الجودة =====
+async function loadFilterSettings() {
+    try {
+        const res = await fetch('/admin/settings');
+        const s = await res.json();
+        const isOn = s.quality_filter;
+        const threshold = Math.round(s.filter_threshold * 100);
+
+        document.getElementById('filterToggle').checked = isOn;
+        document.getElementById('thresholdSlider').value = threshold;
+        document.getElementById('thresholdVal').textContent = threshold + '%';
+        document.getElementById('filterToggleLabel').textContent = isOn ? 'مفعّل' : 'معطّل';
+        document.getElementById('thresholdWrap').style.opacity = isOn ? '1' : '0.4';
+        document.getElementById('thresholdWrap').style.pointerEvents = isOn ? 'auto' : 'none';
+    } catch(e) {}
+}
+
+async function toggleFilter(checked) {
+    document.getElementById('filterToggleLabel').textContent = checked ? 'مفعّل' : 'معطّل';
+    document.getElementById('thresholdWrap').style.opacity = checked ? '1' : '0.4';
+    document.getElementById('thresholdWrap').style.pointerEvents = checked ? 'auto' : 'none';
+    await fetch('/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quality_filter: checked })
+    });
+}
+
+let thresholdTimer = null;
+function updateThreshold(val) {
+    document.getElementById('thresholdVal').textContent = val + '%';
+    clearTimeout(thresholdTimer);
+    thresholdTimer = setTimeout(async () => {
+        await fetch('/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filter_threshold: val / 100 })
+        });
+    }, 500);
+}
+
 async function checkAdmin() {
     const pass = document.getElementById('adminPass').value;
     const res = await fetch('/admin/verify', {
@@ -197,6 +293,7 @@ async function checkAdmin() {
         document.getElementById('gate').style.display = 'none';
         document.getElementById('dashboard').style.display = 'block';
         loadDashboard();
+        loadFilterSettings();
     } else {
         document.getElementById('gateErr').textContent = 'كلمة المرور غلط';
     }

@@ -2,17 +2,21 @@
 # -*- coding: utf-8 -*-
 import json
 import os
-import hashlib
 from datetime import datetime
+
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+load_dotenv()
 
 USERS_DIR = 'arabic_data/users'
 USERS_INDEX = 'arabic_data/users/users.json'
-ADMIN_PASSWORD = hashlib.sha256('Mo@7200'.encode()).hexdigest()
+ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
 os.makedirs(USERS_DIR, exist_ok=True)
 
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+def hash_password(password: str) -> str:
+    return generate_password_hash(password)
 
 def load_users():
     if not os.path.exists(USERS_INDEX):
@@ -77,7 +81,7 @@ def login_user(name, password, ip=None, user_agent=None):
     user = load_user(user_id)
     if not user:
         return None, 'المستخدم غير موجود'
-    if user['password'] != hash_password(password):
+    if not check_password_hash(user.get('password', ''), password):
         return None, 'كلمة المرور غلط'
 
     # تحديث معلومات الجهاز وسجل الدخول
@@ -210,4 +214,6 @@ def delete_user(user_id):
         os.remove(path)
 
 def verify_admin(password):
-    return hash_password(password) == ADMIN_PASSWORD
+    if not ADMIN_PASSWORD:
+        return False
+    return password == ADMIN_PASSWORD

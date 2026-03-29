@@ -30,7 +30,6 @@
             background: var(--bg);
             color: var(--text);
             font-family: 'Cairo', sans-serif;
-            overflow: hidden;
             touch-action: manipulation;
         }
 
@@ -38,7 +37,8 @@
         .app {
             display: flex;
             flex-direction: column;
-            height: 100dvh;
+            min-height: 100%;
+            height: auto;
             max-width: 480px;
             margin: 0 auto;
             position: relative;

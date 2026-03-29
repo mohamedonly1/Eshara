@@ -26,15 +26,16 @@
             background: var(--bg);
             color: var(--text);
             font-family: 'Cairo', sans-serif;
-            overflow: hidden;
         }
 
         .app {
             display: flex;
             flex-direction: column;
-            height: 100dvh;
+            min-height: 100%;
+            height: auto;
             max-width: 480px;
             margin: 0 auto;
+            position: relative;
         }
 
         /* ===== HEADER ===== */
@@ -133,7 +134,6 @@
         .camera-wrap {
             flex: 1;
             position: relative;
-            overflow: hidden;
             background: #000;
             min-height: 0;
         }
@@ -215,7 +215,6 @@
             height: 6px;
             background: var(--surface2);
             border-radius: 3px;
-            overflow: hidden;
         }
 
         .progress-fill {
@@ -264,7 +263,6 @@
             height: 4px;
             background: var(--surface2);
             border-radius: 2px;
-            overflow: hidden;
             margin-bottom: 8px;
             display: none;
         }

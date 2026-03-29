@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>محرر وضعيات اليد</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:#020617; --surface:#0b1120; --surface2:#111827;
+            --accent:#00d4aa; --accent2:#7c3aed;
+            --text:#e5e7eb; --text-dim:#6b7280;
+            --danger:#0a15ad;
+        }
+        html, body {
+            min-height: 100%;
+            background: radial-gradient(circle at top, #1f2937 0%, #020617 50%, #020617 100%);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+        }
+        .page-content {
+            padding-top: 52px;
+            max-width: 1800px;
+            margin: 0 auto;
+            padding-bottom: 20px;
+        }
+        .inner {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.3fr);
+            gap: 16px;
+            padding: 16px;
+        }
+        @media (max-width: 960px) {
+            .inner {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+        .card {
+            background: rgba(15,23,42,0.97);
+            border-radius: 20px;
+            border: 1px solid rgba(148,163,184,0.35);
+            padding: 14px 14px 16px;
+        }
+        .three-wrap {
+            position: relative;
+            border-radius: 18px;
+            overflow: hidden;
+            background: radial-gradient(circle at top, #020617 0%, #020617 40%, #020617 100%);
+            border: 1px solid rgba(31,41,55,0.9);
+            box-shadow: 0 20px 50px rgba(15,23,42,0.9);
+        }
+        #threeContainer {
+            width: 100%;
+            height: 320px;
+            min-height: 260px;
+        }
+        canvas#threeCanvas {
+            display: block;
+        }
+        .three-label {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.9);
+            border: 1px solid rgba(55,65,81,0.9);
+            color: var(--text-dim);
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .title {
+            font-size: 15px;
+            font-weight: 800;
+        }
+        .subtitle {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .select-letter {
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148,163,184,0.45);
+            background: var(--surface2);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+        }
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .btn {
+            border: none;
+            border-radius: 999px;
+            padding: 7px 12px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn-reset {
+            background: rgba(15,23,42,0.9);
+            border: 1px solid rgba(148,163,184,0.55);
+            color: var(--text-dim);
+        }
+        .btn-copy {
+            background: rgba(56,189,248,0.15);
+            border: 1px solid rgba(56,189,248,0.6);
+            color: #bae6fd;
+        }
+        .btn-save {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #020617;
+            box-shadow: 0 0 18px rgba(16,185,129,0.55);
+        }
+        .bones-grid-header {
+            display: grid;
+            grid-template-columns: 0.9fr repeat(3, 1fr);
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+        }
+        .bones-scroll {
+            max-height: 520px;
+            overflow: auto;
+            padding-right: 6px;
+            margin-top: 8px;
+        }
+        .bone-row {
+            display: grid;
+            grid-template-columns: 1fr repeat(3, 1fr);
+            gap: 14px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(30,41,59,0.9);
+        }
+        .bone-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+        .slider-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        /* input[type=range].axis-slider {
+            
+            width: 100%;
+            height: 12px;
+            cursor: pointer;
+            border-radius: 999px;
+            background: rgba(31,41,55,0.9);
+            outline: none;
+        } */
+        /* تعديل هنا */
+        input[type=range].axis-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #f9fafb;
+            border: 3px solid var(--accent);
+            cursor: pointer;
+        }
+        .axis-value {
+            width: 70px;
+            font-size: 14px;
+            font-weight: 600;
+            background: rgba(31,41,55,1);
+            border: 1px solid rgba(55,65,81,1);
+            border-radius: 6px;
+            padding: 4px 6px;
+            color: var(--text);
+            direction: ltr;
+            text-align: center;
+        }
+        .axis-value:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: rgba(15,23,42,0.98);
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent);
+            border: 1px solid rgba(45,212,191,0.5);
+            box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s, transform 0.2s;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.error {
+            color: #fecaca;
+            border-color: rgba(11, 8, 214, 0.918);
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="page-content">
+    <div class="inner">
+        <!-- Left: 3D hand -->
+        <div class="card">
+            <div class="header-row">
+                <div>
+                    <div class="title">عارض اليد ثلاثية الأبعاد</div>
+                    <div class="subtitle">تحديث فوري مع تحريك السلايدر</div>
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--text-dim);margin-left:6px;">الحرف:</label>
+                    <select id="letterSelect" class="select-letter">
+                        {% set letters = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'] %}
+                        {% for letter in letters %}
+                        <option value="{{ letter }}">{{ letter }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="three-wrap">
+                <div class="three-label">🖐 معاينة الوضعية</div>
+                <div id="threeContainer">
+                    <canvas id="threeCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: bone controls -->
+        <div class="card">
+            <div class="controls-header">
+                <div>
+                    <div class="title" style="font-size:14px;">التحكم في العظام</div>
+                    <div class="subtitle">حرّك السلايدر لتعديل الدوران (راديان)</div>
+                </div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;">
+                    <div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap;">
+                        <label for="copyFromSelect" style="font-size:10px;color:var(--text-dim);">انسخ من حرف:</label>
+                        <select id="copyFromSelect" class="select-letter" style="padding:4px 8px;font-size:11px;">
+                            {% for letter in letters %}
+                            <option value="{{ letter }}">{{ letter }}</option>
+                            {% endfor %}
+                        </select>
+                        <button id="loadFromBtn" class="btn btn-reset" type="button" style="font-size:11px;padding-inline:8px;">تحميل</button>
+                    </div>
+                    <button id="resetBtn" class="btn btn-reset" type="button">إعادة تعيين</button>
+                    <button id="copyBtn" class="btn btn-copy" type="button">نسخ JSON</button>
+                    <button id="saveBtn" class="btn btn-save" type="button">حفظ الوضعية</button>
+                </div>
+            </div>
+            <div class="bones-grid-header">
+                <span>العظمة</span>
+                <span>X</span>
+                <span>Y</span>
+                <span>Z</span>
+            </div>
+            <div id="bonesControls" class="bones-scroll"></div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="{{ url_for('static', filename='poses.js') }}"></script>
+<script>
+// Toast
+let toastTimer = null;
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Three.js basic setup (مشابه لصفحة الترجمة لكن أبسط)
+const container = document.getElementById('threeContainer');
+const canvas = document.getElementById('threeCanvas');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020617);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+camera.position.set(0.3, 0.7, 4.3);
+camera.lookAt(0, 0.2, 0);
+
+const hemi = new THREE.HemisphereLight(0x38bdf8, 0x020617, 0.7);
+scene.add(hemi);
+const dir1 = new THREE.DirectionalLight(0xffffff, 0.9);
+dir1.position.set(2, 3, 4);
+scene.add(dir1);
+
+const groundGeo = new THREE.CircleGeometry(1.8, 48);
+const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x020617,
+    emissive: 0x020617,
+    roughness: 0.9,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.9
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(0, -0.6, -0.1);
+scene.add(ground);
+
+let handModel = null;
+let handBonesByName = {};
+let handBoneBindQuat = {};
+
+function fitModelToView(model) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const targetMaxDim = 2.2;
+    const s = targetMaxDim / maxDim;
+    model.scale.setScalar(s);
+    model.position.set(-center.x * s, -center.y * s + 0.5, -center.z * s);
+}
+
+function resizeRenderer() {
+    let w = container.clientWidth;
+    let h = container.clientHeight;
+    if (!w || !h) {
+        w = window.innerWidth || 400;
+        h = Math.min((window.innerHeight || 640) * 0.45, 360);
+        container.style.height = h + 'px';
+    }
+    renderer.setSize(w, h, true);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+resizeRenderer();
+window.addEventListener('resize', resizeRenderer);
+
+if (window.THREE && THREE.GLTFLoader) {
+
+    const loader = new THREE.GLTFLoader();
+
+    loader.load(
+        "{{ url_for('static', filename='models/hand.glb') }}",
+
+        (gltf) => {
+
+            handModel = gltf.scene;
+            handBonesByName = {};
+
+            handModel.traverse(obj => {
+
+                if (obj.isBone) {
+                    handBonesByName[obj.name] = obj;
+                }
+
+                if (obj.isMesh) {
+
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+
+                    // ===== إزالة اللمعان =====
+                    obj.material = new THREE.MeshStandardMaterial({
+                        color: obj.material.color,
+                        roughness: 1.0,   // سطح مطفي بالكامل
+                        metalness: 0.0    // بدون لمعان معدني
+                    });
+
+                    obj.material.envMapIntensity = 0;
+                }
+            });
+
+            // حفظ bind quaternions
+            Object.entries(handBonesByName).forEach(([name, bone]) => {
+                handBoneBindQuat[name] = bone.quaternion.clone();
+            });
+
+            fitModelToView(handModel);
+
+            handModel.rotation.set(0.15, -0.55, 0);
+
+            scene.add(handModel);
+
+            console.log('Pose editor hand loaded (matte lighting), bones:',
+                Object.keys(handBonesByName)
+            );
+        },
+
+        undefined,
+
+        (err) => {
+            console.error('Failed to load hand.glb for pose editor', err);
+            showToast('تعذّر تحميل موديل اليد للمحرر', 'error');
+        }
+    );
+
+} else {
+    console.warn('GLTFLoader غير متوفر في محرر الوضعيات');
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+let isDragging = false;
+let lastX = 0;
+let currentRotationY = -0.55; // نفس القيمة اللي بدأت بيها
+
+container.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    lastX = e.clientX;
+});
+
+window.addEventListener('mouseup', () => {
+    isDragging = false;
+});
+
+window.addEventListener('mousemove', (e) => {
+    if (!isDragging || !handModel) return;
+
+    const deltaX = e.clientX - lastX;
+    lastX = e.clientX;
+
+    currentRotationY += deltaX * 0.005; // سرعة الدوران
+    handModel.rotation.y = currentRotationY;
+});
+
+
+container.addEventListener('touchstart', (e) => {
+    isDragging = true;
+    lastX = e.touches[0].clientX;
+});
+
+window.addEventListener('touchend', () => {
+    isDragging = false;
+});
+
+window.addEventListener('touchmove', (e) => {
+    if (!isDragging || !handModel) return;
+
+    const deltaX = e.touches[0].clientX - lastX;
+    lastX = e.touches[0].clientX;
+
+    currentRotationY += deltaX * 0.005;
+    handModel.rotation.y = currentRotationY;
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Animation loop
+function renderLoop() {
+    renderer.render(scene, camera);
+    requestAnimationFrame(renderLoop);
+}
+requestAnimationFrame(renderLoop);
+
+// ==== Pose control logic ====
+const LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+const BONE_LIST = [
+    { id: 'thumb_meta',  label: 'الإبهام - قاعدة' },
+    { id: 'thumb_prox',  label: 'الإبهام - أول' },
+    { id: 'thumb_dist',  label: 'الإبهام - طرف' },
+    { id: 'index_prox',  label: 'السبابة - أول' },
+    { id: 'index_midd',  label: 'السبابة - وسط' },
+    { id: 'index_dist',  label: 'السبابة - طرف' },
+    { id: 'midd_prox',   label: 'الوسطى - أول' },
+    { id: 'midd_midd',   label: 'الوسطى - وسط' },
+    { id: 'midd_dist',   label: 'الوسطى - طرف' },
+    { id: 'ring_prox',   label: 'البنصر - أول' },
+    { id: 'ring_midd',   label: 'البنصر - وسط' },
+    { id: 'ring_dist',   label: 'البنصر - طرف' },
+    { id: 'pinky_prox',  label: 'الخنصر - أول' },
+    { id: 'pinky_midd',  label: 'الخنصر - وسط' },
+    { id: 'pinky_dist',  label: 'الخنصر - طرف' },
+];
+
+const letterSelect = document.getElementById('letterSelect');
+const bonesControls = document.getElementById('bonesControls');
+const resetBtn = document.getElementById('resetBtn');
+const copyBtn = document.getElementById('copyBtn');
+const saveBtn = document.getElementById('saveBtn');
+const copyFromSelect = document.getElementById('copyFromSelect');
+const loadFromBtn = document.getElementById('loadFromBtn');
+
+let currentLetter = letterSelect.value;
+// هيكل الوضعية الحالية في الواجهة (بالراديان)
+let currentPose = {};
+
+// تحميل أي POSE موجود من poses.js لو الملف موجود
+let ALL_POSES = {};
+try {
+    if (typeof POSES !== 'undefined') {
+        ALL_POSES = POSES;
+    }
+} catch (e) {
+    ALL_POSES = {};
+}
+
+function ensurePoseForLetter(letter) {
+    if (!ALL_POSES[letter]) ALL_POSES[letter] = {};
+    currentPose = JSON.parse(JSON.stringify(ALL_POSES[letter]));
+}
+
+function applyCurrentPoseToBones() {
+    if (!handModel || !handBonesByName) return;
+    BONE_LIST.forEach(b => {
+        const bone = handBonesByName[b.id];
+        if (!bone) return;
+        const baseQ = handBoneBindQuat[b.id] || bone.quaternion.clone();
+        const r = currentPose[b.id] || { x: 0, y: 0, z: 0 };
+        const e = new THREE.Euler(r.x, r.y, r.z, 'XYZ');
+        const offset = new THREE.Quaternion().setFromEuler(e);
+        bone.quaternion.copy(baseQ).multiply(offset);
+    });
+}
+
+// إنشاء عناصر التحكم ديناميكياً
+const slidersState = {}; // boneId -> {xInput,yInput,zInput,xVal,yVal,zVal}
+
+function buildControlsUI() {
+
+    bonesControls.innerHTML = '';
+
+    BONE_LIST.forEach(b => {
+
+        const row = document.createElement('div');
+        row.className = 'bone-row';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'bone-name';
+        nameSpan.textContent = b.label;
+        row.appendChild(nameSpan);
+
+        ['x', 'y', 'z'].forEach(axis => {
+
+            const wrap = document.createElement('div');
+            wrap.className = 'slider-wrap';
+
+            // ===== Slider =====
+            const slider = document.createElement('input');
+            slider.type = 'range';
+            slider.min = -2;
+            slider.max = 2;
+            slider.step = 0.005;
+            slider.value = 0;
+            slider.className = 'axis-slider';
+
+            // ===== Editable Number Input =====
+            const val = document.createElement('input');
+            val.type = 'number';
+            val.className = 'axis-value';
+            val.step = '0.01';
+            val.min = '-2';
+            val.max = '2';
+            val.value = '0.00';
+
+            wrap.appendChild(slider);
+            wrap.appendChild(val);
+            row.appendChild(wrap);
+
+            if (!slidersState[b.id]) slidersState[b.id] = {};
+            slidersState[b.id][axis] = { slider, val };
+
+            // ===== Slider → Update Pose =====
+            slider.addEventListener('input', () => {
+
+                const raw = parseFloat(slider.value);
+                const v = raw * 0.8; // تقليل الحساسية
+
+                val.value = v.toFixed(3);
+
+                if (!currentPose[b.id])
+                    currentPose[b.id] = { x:0, y:0, z:0 };
+
+                currentPose[b.id][axis] = v;
+
+                applyCurrentPoseToBones();
+            });
+
+            // ===== Number Input → Update Slider =====
+            val.addEventListener('input', () => {
+
+                let typed = parseFloat(val.value);
+                if (isNaN(typed)) return;
+
+                // Clamp
+                if (typed > 2) typed = 2;
+                if (typed < -2) typed = -2;
+
+                // عكس الحساسية
+                const raw = typed / 0.8;
+                slider.value = raw;
+
+                if (!currentPose[b.id])
+                    currentPose[b.id] = { x:0, y:0, z:0 };
+
+                currentPose[b.id][axis] = typed;
+
+                val.value = typed.toFixed(3);
+
+                applyCurrentPoseToBones();
+            });
+
+        });
+
+        bonesControls.appendChild(row);
+    });
+}
+
+buildControlsUI();
+
+function syncUIFromPose() {
+    BONE_LIST.forEach(b => {
+        const pose = currentPose[b.id] || { x:0,y:0,z:0 };
+        ['x','y','z'].forEach(axis => {
+            const st = slidersState[b.id][axis];
+            st.slider.value = pose[axis] || 0;
+            st.val.textContent = (pose[axis] || 0).toFixed(2);
+        });
+    });
+    applyCurrentPoseToBones();
+}
+
+letterSelect.addEventListener('change', () => {
+    currentLetter = letterSelect.value;
+    ensurePoseForLetter(currentLetter);
+    syncUIFromPose();
+});
+
+// أزرار
+resetBtn.addEventListener('click', () => {
+    currentPose = {};
+    ALL_POSES[currentLetter] = {};
+    syncUIFromPose();
+});
+
+copyBtn.addEventListener('click', async () => {
+    const payload = {};
+    BONE_LIST.forEach(b => {
+        if (currentPose[b.id]) {
+            payload[b.id] = currentPose[b.id];
+        }
+    });
+    const jsonSnippet = `\"${currentLetter}\": ${JSON.stringify(payload, null, 2)}`;
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(jsonSnippet);
+            showToast('تم نسخ JSON للوضعية', null);
+        } else {
+            // fallback
+            const ta = document.createElement('textarea');
+            ta.value = jsonSnippet;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            ta.remove();
+            showToast('تم نسخ JSON (fallback)', null);
+        }
+    } catch (e) {
+        showToast('تعذّر النسخ إلى الحافظة', 'error');
+    }
+});
+
+saveBtn.addEventListener('click', async () => {
+    const poseToSave = {};
+    BONE_LIST.forEach(b => {
+        if (currentPose[b.id]) {
+            poseToSave[b.id] = currentPose[b.id];
+        }
+    });
+    if (!Object.keys(poseToSave).length) {
+        showToast('لا توجد تغييرات لحفظها', 'error');
+        return;
+    }
+    try {
+        const res = await fetch('/pose-editor/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ letter: currentLetter, pose: poseToSave })
+        });
+        const data = await res.json();
+        if (data.success) {
+            ALL_POSES[currentLetter] = poseToSave;
+            showToast('تم حفظ الوضعية بنجاح', null);
+        } else {
+            showToast(data.error || 'فشل حفظ الوضعية', 'error');
+        }
+    } catch (e) {
+        showToast('خطأ في الاتصال أثناء الحفظ', 'error');
+    }
+});
+
+// تحميل شكل يد من حرف آخر كأساس للحرف الحالي
+loadFromBtn.addEventListener('click', () => {
+    const srcLetter = copyFromSelect.value;
+    if (!ALL_POSES[srcLetter]) {
+        showToast('لا توجد وضعية محفوظة لهذا الحرف لنسخها', 'error');
+        return;
+    }
+    currentPose = JSON.parse(JSON.stringify(ALL_POSES[srcLetter]));
+    ALL_POSES[currentLetter] = currentPose;
+    syncUIFromPose();
+    showToast('تم نسخ وضعية اليد من الحرف المحدد', null);
+});
+
+// تهيئة أولية
+ensurePoseForLetter(currentLetter);
+syncUIFromPose();
+</script>
+</body>
+</html>
+
