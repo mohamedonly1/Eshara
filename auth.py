@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import hmac
 import json
 import os
+import re
 from datetime import datetime
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -42,7 +44,12 @@ def save_user(user_data):
 
 def register_user(name, password, ip=None, user_agent=None):
     users = load_users()
-    user_id = name.strip().lower().replace(' ', '_')
+    user_id = name.strip().lower()
+    user_id = re.sub(r'\s+', '_', user_id)
+    # Remove any character that is not Arabic letter, Latin letter, digit, or underscore
+    user_id = re.sub(r'[^\u0600-\u06ff\w]', '', user_id)
+    if not user_id:
+        return None, 'اسم غير صالح'
     if user_id in users:
         return None, 'الاسم موجود بالفعل'
 
@@ -77,7 +84,11 @@ def register_user(name, password, ip=None, user_agent=None):
     return user_id, None
 
 def login_user(name, password, ip=None, user_agent=None):
-    user_id = name.strip().lower().replace(' ', '_')
+    user_id = name.strip().lower()
+    user_id = re.sub(r'\s+', '_', user_id)
+    user_id = re.sub(r'[^\u0600-\u06ff\w]', '', user_id)
+    if not user_id:
+        return None, 'اسم غير صالح'
     user = load_user(user_id)
     if not user:
         return None, 'المستخدم غير موجود'
@@ -216,4 +227,9 @@ def delete_user(user_id):
 def verify_admin(password):
     if not ADMIN_PASSWORD:
         return False
-    return password == ADMIN_PASSWORD
+    # Use constant-time comparison to prevent timing attacks
+    # (compare_digest raises ValueError if lengths differ)
+    try:
+        return hmac.compare_digest(password, ADMIN_PASSWORD)
+    except (TypeError, ValueError):
+        return False
