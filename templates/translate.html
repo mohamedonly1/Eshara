@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ترجمة إلى لغة الإشارة ثلاثية الأبعاد</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0a0f">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28;
+            --accent:#00d4aa; --accent2:#7c3aed; --warn:#f59e0b;
+            --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280;
+            --radius:18px;
+        }
+        html, body {
+            min-height: 100%;
+            background: radial-gradient(circle at top, #111827 0%, #020617 55%, #020617 100%);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+        }
+        .page-content {
+            padding-top: 52px;
+            max-width: 960px;
+            margin: 0 auto;
+            padding-bottom: 24px;
+        }
+        .inner {
+            padding: 18px 16px 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+            gap: 16px;
+        }
+        @media (max-width: 800px) {
+            .inner {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: rgba(19,19,26,0.96);
+            border-radius: 20px;
+            border: 1px solid rgba(148,163,184,0.15);
+            padding: 16px 16px 14px;
+        }
+
+        /* Left: text + controls */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .text-input {
+            width: 100%;
+            min-height: 120px;
+            max-height: 220px;
+            resize: vertical;
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,0.28);
+            padding: 10px 12px;
+            background: rgba(15,23,42,0.9);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            font-size: 15px;
+            outline: none;
+        }
+        .text-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(34,197,147,0.7);
+        }
+
+        .input-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .left-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            border-radius: 999px;
+            border: none;
+            padding: 8px 14px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-mic {
+            background: rgba(37,99,235,0.15);
+            color: #93c5fd;
+            border: 1px solid rgba(59,130,246,0.4);
+        }
+        .btn-mic.listening {
+            background: rgba(220,38,38,0.15);
+            color: #fecaca;
+            border-color: rgba(248,113,113,0.9);
+            box-shadow: 0 0 0 1px rgba(248,113,113,0.6);
+        }
+
+        .btn-translate {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #020617;
+            box-shadow: 0 0 20px rgba(16,185,129,0.4);
+        }
+        .btn-translate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .speed-control span.label {
+            white-space: nowrap;
+        }
+        .speed-control span.tag {
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.9);
+            border: 1px solid rgba(148,163,184,0.35);
+            font-size: 10px;
+        }
+
+        input[type=range].speed-slider {
+            -webkit-appearance: none;
+            width: 120px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(30,64,175,0.7);
+            outline: none;
+        }
+        input[type=range].speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #f9fafb;
+            border: 2px solid var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 0 2px rgba(34,197,147,0.5);
+        }
+
+        .hint {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Right: 3D scene */
+        .three-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .three-wrap {
+            position: relative;
+            background: radial-gradient(circle at top, #020617 0%, #020617 45%, #030712 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(15,23,42,0.9);
+            overflow: hidden;
+            box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+        }
+        #threeContainer {
+            width: 100%;
+            height: 260px;
+            min-height: 220px;
+            position: relative;
+        }
+        @media (max-width: 800px) {
+            #threeContainer {
+                height: 260px;
+            }
+        }
+        canvas#threeCanvas {
+            display: block;
+        }
+        .three-overlay-label {
+            position: absolute;
+            top: 10px;
+            left: 14px;
+            font-size: 11px;
+            color: #9ca3af;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.85);
+            border: 1px solid rgba(55,65,81,0.9);
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .current-letter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .letter-pill {
+            min-width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            background: radial-gradient(circle at top, rgba(16,185,129,0.25), rgba(6,78,59,0.3));
+            border: 1px solid rgba(16,185,129,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 900;
+            color: #a7f3d0;
+        }
+        .progress-text {
+            font-size: 12px;
+        }
+
+        .progress-bar-wrap {
+            flex: 1;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(31,41,55,0.9);
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            transition: width 0.2s ease-out;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: rgba(15,23,42,0.98);
+            border-radius: 999px;
+            padding: 7px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            border: 1px solid rgba(45,212,191,0.5);
+            box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s, transform 0.24s;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.error {
+            color: #fecaca;
+            border-color: rgba(248,113,113,0.6);
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="page-content">
+    <div class="inner">
+        <!-- Left: text / speech -->
+        <div class="card">
+            <div class="section-title">
+                <span>📝 النص العربي</span>
+            </div>
+            <textarea id="textInput" class="text-input" placeholder="اكتب جملة بالعربية لترجمتها إلى لغة الإشارة..."></textarea>
+
+            <div class="input-actions">
+                <div class="left-actions">
+                    <button id="micBtn" class="btn btn-mic" type="button">
+                        <span>🎙️</span><span>تسجيل صوت</span>
+                    </button>
+                    <div class="speed-control">
+                        <span class="label">السرعة:</span>
+                        <span>بطيئة</span>
+                        <input id="speedSlider" class="speed-slider" type="range" min="1" max="3" step="1" value="2">
+                        <span>سريعة</span>
+                        <span id="speedTag" class="tag">متوسطة</span>
+                    </div>
+                </div>
+                <button id="translateBtn" class="btn btn-translate" type="button">
+                    <span>ترجم</span><span>🔄</span>
+                </button>
+            </div>
+
+            <div class="hint">
+                يمكن للتطبيق عرض اليد لكل حرف من الحروف العربية المدعومة. الأحرف غير المدعومة سيتم تجاهلها تلقائيًا.
+            </div>
+        </div>
+
+        <!-- Right: 3D hand -->
+        <div class="three-card">
+            <div class="three-wrap">
+                <div class="three-overlay-label">🤟 يد ثلاثية الأبعاد (لغة الإشارة)</div>
+                <div id="threeContainer">
+                    <canvas id="threeCanvas"></canvas>
+                </div>
+            </div>
+            <div class="card" style="padding:10px 12px;">
+                <div class="status-row">
+                    <div class="current-letter">
+                        <span style="font-size:11px;color:var(--text-dim);">الحرف الحالي:</span>
+                        <div id="currentLetterPill" class="letter-pill">ـ</div>
+                    </div>
+                    <div style="flex:1;display:flex;align-items:center;gap:8px;">
+                        <div class="progress-bar-wrap">
+                            <div id="progressBar" class="progress-bar"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">0 / 0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="{{ url_for('static', filename='hand_landmarks.js') }}"></script>
+<!-- cdnjs لا يوفّر GLTFLoader.min.js لهذا الإصدار (كان 404)، نستخدم unpkg -->
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script>
+// ==== Toast ====
+let toastTimer = null;
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// تحقق من تحميل بيانات اليد
+if (typeof HAND_LANDMARKS !== 'undefined') {
+    console.log('landmarks loaded:', Object.keys(HAND_LANDMARKS).length);
+} else {
+    console.error('HAND_LANDMARKS غير متاح بعد تحميل السكربت');
+}
+
+// ==== Speed control ====
+const speedSlider = document.getElementById('speedSlider');
+const speedTag = document.getElementById('speedTag');
+function updateSpeedTag() {
+    const v = Number(speedSlider.value);
+    if (v === 1) speedTag.textContent = 'بطيئة';
+    else if (v === 2) speedTag.textContent = 'متوسطة';
+    else speedTag.textContent = 'سريعة';
+}
+speedSlider.addEventListener('input', updateSpeedTag);
+updateSpeedTag();
+
+function getLetterDelay() {
+    const v = Number(speedSlider.value);
+    if (v === 1) return 900;
+    if (v === 2) return 600;
+    return 300;
+}
+
+// ==== Three.js setup ====
+const container = document.getElementById('threeContainer');
+const canvas = document.getElementById('threeCanvas');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x020617);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+camera.position.set(0.2, 0.6, 4.3);
+camera.lookAt(0, 0.2, 0);
+
+// Lights
+const hemi = new THREE.HemisphereLight(0x38bdf8, 0x020617, 0.7);
+scene.add(hemi);
+const dir1 = new THREE.DirectionalLight(0xffffff, 0.8);
+dir1.position.set(2, 3, 4);
+scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0x38bdf8, 0.4);
+dir2.position.set(-2, -3, -2);
+scene.add(dir2);
+
+// Ground plane for depth reference
+const groundGeo = new THREE.CircleGeometry(1.8, 48);
+const groundMat = new THREE.MeshStandardMaterial({
+    color: 0x020617,
+    emissive: 0x020617,
+    roughness: 0.9,
+    metalness: 0.0,
+    transparent: true,
+    opacity: 0.9
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(0, -0.6, -0.1);
+scene.add(ground);
+
+// Materials
+const jointMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00d4aa,
+    emissive: 0x0f766e,
+    metalness: 0.35,
+    roughness: 0.2
+});
+const boneMaterial = new THREE.MeshStandardMaterial({
+    color: 0x00d4aa,
+    emissive: 0x0f766e,
+    metalness: 0.45,
+    roughness: 0.25
+});
+
+// MediaPipe hand connections (21 نقاط)
+const CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],
+    [0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20]
+];
+
+// Create joints and bones (تُستخدم دائماً كمرجع حسابي، وتظهر فقط كـ fallback لو موديل اليد الحقيقي ما اتحمّلش)
+const JOINT_COUNT = 21;
+const joints = [];
+const bones = [];
+
+const jointGeom = new THREE.SphereGeometry(0.05, 20, 20);
+for (let i = 0; i < JOINT_COUNT; i++) {
+    const m = new THREE.Mesh(jointGeom, jointMaterial);
+    scene.add(m);
+    joints.push(m);
+}
+
+const cylGeom = new THREE.CylinderGeometry(0.022, 0.016, 1, 14);
+for (const [a, b] of CONNECTIONS) {
+    const c = new THREE.Mesh(cylGeom, boneMaterial);
+    scene.add(c);
+    bones.push({ mesh: c, a, b });
+}
+
+// === تحميل موديل يد ثلاثية الأبعاد (GLB) ===
+let handModel = null;
+let handModelLoaded = false;
+let handBonesByName = {};
+let handBoneBindQuat = {};
+
+function fitModelToView(model) {
+    // Center + scale model to a reasonable size
+    const box = new THREE.Box3().setFromObject(model);
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    box.getSize(size);
+    box.getCenter(center);
+
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const targetMaxDim = 3.5; // أكبر قليلاً ليظهر أوضح في الإطار
+    const s = targetMaxDim / maxDim;
+    model.scale.setScalar(s);
+
+    // Center model at origin (important: position is NOT scaled automatically)
+    model.position.set(-center.x * s, -center.y * s, -center.z * s);
+
+    // ارفع اليد فوق الدائرة بحيث الكف بالكامل يكون ظاهر (إجمالي +1.1)
+    model.position.y += 1.1;
+}
+
+// ربط كل Bone بقطعة من MediaPipe landmarks (startIdx -> endIdx)
+const BONE_LANDMARK_SEGMENTS = [
+    // thumb
+    ['thumb_trapez', 0, 1],
+    ['thumb_meta', 1, 2],
+    ['thumb_prox', 2, 3],
+    ['thumb_dist', 3, 4],
+    // index
+    ['index_meta', 0, 5],
+    ['index_prox', 5, 6],
+    ['index_midd', 6, 7],
+    ['index_dist', 7, 8],
+    // middle
+    ['midd_meta', 0, 9],
+    ['midd_prox', 9, 10],
+    ['midd_midd', 10, 11],
+    ['midd_dist', 11, 12],
+    // ring
+    ['ring_meta', 0, 13],
+    ['ring_prox', 13, 14],
+    ['ring_midd', 14, 15],
+    ['ring_dist', 15, 16],
+    // pinky
+    ['pinky_meta', 0, 17],
+    ['pinky_prox', 17, 18],
+    ['pinky_midd', 18, 19],
+    ['pinky_dist', 19, 20],
+];
+
+// تفعيل ربط العظام بالـ landmarks (حركة تقريبية مؤقتاً)
+const ENABLE_FK_FROM_LANDMARKS = true;
+
+function loadHandModelIfPossible() {
+    if (loadHandModelIfPossible._attempted) return;
+    loadHandModelIfPossible._attempted = true;
+
+    if (!(window.THREE && THREE.GLTFLoader)) {
+        console.warn('GLTFLoader غير متوفر، سيتم استخدام اليد الهيكلية فقط.');
+        return;
+    }
+
+    const handLoader = new THREE.GLTFLoader();
+    handLoader.load(
+        "{{ url_for('static', filename='models/hand.glb') }}",
+        function (gltf) {
+            handModel = gltf.scene;
+
+            // اجمع العظام بالأسماء (للمرحلة القادمة: poses)
+            handBonesByName = {};
+            handModel.traverse(obj => {
+                if (obj.isBone) {
+                    handBonesByName[obj.name] = obj;
+                }
+            });
+            // حفظ وضعية الـ bind لكل Bone (عشان نضيف عليها rotations)
+            handBoneBindQuat = {};
+            Object.entries(handBonesByName).forEach(([name, bone]) => {
+                handBoneBindQuat[name] = bone.quaternion.clone();
+            });
+            console.log('🦴 bones:', Object.keys(handBonesByName).length);
+            // اطبع أسماء العظام في console
+            console.table(Object.keys(handBonesByName));
+
+            handModel.traverse(obj => {
+                if (obj.isMesh) {
+                    obj.castShadow = true;
+                    obj.receiveShadow = true;
+                    if (obj.material) {
+                        obj.material.metalness = 0.35;
+                        obj.material.roughness = 0.3;
+                    }
+                }
+            });
+            fitModelToView(handModel);
+            // زاوية بسيطة للعرض
+            handModel.rotation.set(0.15, -0.55, 0);
+            scene.add(handModel);
+
+            // بعد ما موديل اليد الحقيقي يتحمّل، نخفي المفاصل والعظام البسيطة
+            joints.forEach(j => j.visible = false);
+            bones.forEach(b => b.mesh.visible = false);
+
+            handModelLoaded = true;
+            console.log('3D hand model loaded');
+        },
+        undefined,
+        function (err) {
+            console.error('Failed to load hand.glb model', err);
+        }
+    );
+}
+
+// بعض المتصفحات قد تتأخر في تحميل سكربت loader — جرب مباشرة ثم بعد load
+loadHandModelIfPossible();
+window.addEventListener('load', () => setTimeout(loadHandModelIfPossible, 0));
+
+// Pose buffers
+let currentPose = new Float32Array(JOINT_COUNT * 3);
+let targetPose = new Float32Array(JOINT_COUNT * 3);
+let tweenStart = 0;
+const TWEEN_DURATION = 400; // ms
+let animating = false;
+
+function letterToPose(letter) {
+    if (typeof HAND_LANDMARKS === 'undefined' || !HAND_LANDMARKS[letter]) return null;
+    const vals = HAND_LANDMARKS[letter];
+    if (!vals || vals.length < 42) return null;
+    const pose = new Float32Array(JOINT_COUNT * 3);
+
+    // Normalization/scaling
+    let scale = 1.25;
+
+    // عمق تقريبي لكل إصبع ليعطي إحساس ثلاثي الأبعاد
+    const depthByIndex = [
+        0.00, // 0: wrist
+        0.18, 0.20, 0.22, 0.24, // 1-4 thumb
+        0.10, 0.12, 0.14, 0.16, // 5-8 index
+        0.00, 0.00, 0.02, 0.04, // 9-12 middle
+        -0.08, -0.10, -0.12, -0.14, // 13-16 ring
+        -0.16, -0.18, -0.20, -0.22  // 17-20 pinky
+    ];
+
+    for (let i = 0; i < JOINT_COUNT; i++) {
+        const x = vals[i*2];
+        const y = vals[i*2 + 1];
+        // Flip X so it matches camera mirror, invert Y to make up positive
+        const px = -x * scale;
+        const py = -y * scale;
+        const pz = depthByIndex[i] || 0;
+        pose[i*3] = px;
+        pose[i*3 + 1] = py;
+        pose[i*3 + 2] = pz;
+    }
+    return pose;
+}
+
+function applyPose(buf) {
+    for (let i = 0; i < JOINT_COUNT; i++) {
+        const x = buf[i*3];
+        const y = buf[i*3 + 1];
+        const z = buf[i*3 + 2];
+        joints[i].position.set(x, y, z);
+    }
+
+    // update bones (ما زالت تُستخدم كمرجع حسابي فقط)
+    for (let i = 0; i < bones.length; i++) {
+        const { mesh, a, b } = bones[i];
+        const pa = joints[a].position;
+        const pb = joints[b].position;
+        const mid = new THREE.Vector3().addVectors(pa, pb).multiplyScalar(0.5);
+        const dir = new THREE.Vector3().subVectors(pb, pa);
+        const len = dir.length();
+        if (len === 0) continue;
+
+        mesh.position.copy(mid);
+        mesh.scale.set(1, len, 1);
+
+        mesh.quaternion.setFromUnitVectors(
+            new THREE.Vector3(0, 1, 0),
+            dir.clone().normalize()
+        );
+    }
+
+    // ملاحظة: نخلي موديل اليد ثابت في المنتصف (لا نحركه بالـ landmarks)
+    // ونكتفي بتحريك الأصابع بعظام الموديل (FK) حتى ما يطلعش خارج الكادر.
+
+    // تحريك أصابع اليد (FK) باستخدام عظام الموديل + اتجاهات landmarks
+    // موقوف حالياً إلى أن نُعرّف poses صحيحة لكل حرف.
+    if (ENABLE_FK_FROM_LANDMARKS && handModelLoaded && handBonesByName && Object.keys(handBonesByName).length) {
+        const upAxis = new THREE.Vector3(0, 1, 0);
+        const tmpTargetDirWorld = new THREE.Vector3();
+        const tmpTargetDirParent = new THREE.Vector3();
+        const tmpRestDirParent = new THREE.Vector3();
+        const tmpInvParentQuat = new THREE.Quaternion();
+        const tmpDelta = new THREE.Quaternion();
+        const tmpDesired = new THREE.Quaternion();
+
+        for (const [boneName, startIdx, endIdx] of BONE_LANDMARK_SEGMENTS) {
+            const bone = handBonesByName[boneName];
+            const bindQ = handBoneBindQuat[boneName];
+            if (!bone || !bindQ) continue;
+
+            // target direction in world (من نقاط landmarks في المشهد)
+            tmpTargetDirWorld.subVectors(joints[endIdx].position, joints[startIdx].position);
+            if (tmpTargetDirWorld.lengthSq() < 1e-8) continue;
+            tmpTargetDirWorld.normalize();
+
+            // تحويل الاتجاه إلى parent-space
+            bone.parent.getWorldQuaternion(tmpInvParentQuat);
+            tmpInvParentQuat.invert();
+            tmpTargetDirParent.copy(tmpTargetDirWorld).applyQuaternion(tmpInvParentQuat).normalize();
+
+            // اتجاه الـ bone في وضع bind داخل parent-space (نفترض forward = local +Y)
+            tmpRestDirParent.copy(upAxis).applyQuaternion(bindQ).normalize();
+
+            // delta rotation: من restDir -> targetDir
+            tmpDelta.setFromUnitVectors(tmpRestDirParent, tmpTargetDirParent);
+            tmpDesired.copy(tmpDelta).multiply(bindQ);
+
+            // نعومة الحركة
+            bone.quaternion.slerp(tmpDesired, 0.35);
+        }
+    }
+}
+
+function startTweenTo(letterPose) {
+    if (!letterPose) return;
+    currentPose.set(targetPose); // start from last target
+    targetPose.set(letterPose);
+    tweenStart = performance.now();
+    animating = true;
+}
+
+function updateTween(now) {
+    if (!animating) return;
+    const t = (now - tweenStart) / TWEEN_DURATION;
+    if (t >= 1) {
+        animating = false;
+        applyPose(targetPose);
+        return;
+    }
+    const s = t * t * (3 - 2 * t); // smoothstep
+    const tmp = new Float32Array(JOINT_COUNT * 3);
+    for (let i = 0; i < tmp.length; i++) {
+        tmp[i] = currentPose[i] + (targetPose[i] - currentPose[i]) * s;
+    }
+    applyPose(tmp);
+}
+
+function resizeRenderer() {
+    let w = container.clientWidth;
+    let h = container.clientHeight;
+
+    // في بعض متصفحات الموبايل يكون العرض/الارتفاع = 0 في البداية
+    if (!w || !h) {
+        w = window.innerWidth || 400;
+        h = Math.min((window.innerHeight || 640) * 0.45, 360);
+        container.style.height = h + 'px';
+    }
+
+    renderer.setSize(w, h, true);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+resizeRenderer();
+window.addEventListener('resize', resizeRenderer);
+
+// Animation loop
+function renderLoop(now) {
+    updateTween(now);
+    renderer.render(scene, camera);
+    requestAnimationFrame(renderLoop);
+}
+requestAnimationFrame(renderLoop);
+
+// Init neutral pose (all zeros already) so we call once:
+applyPose(currentPose);
+
+// ==== Sequence playback ====
+const textInput = document.getElementById('textInput');
+const translateBtn = document.getElementById('translateBtn');
+const currentLetterPill = document.getElementById('currentLetterPill');
+const progressText = document.getElementById('progressText');
+const progressBar = document.getElementById('progressBar');
+
+let activeSequence = [];
+let currentIndex = 0;
+let playing = false;
+
+// تطبيع الحروف العربية لتتطابق مع المفاتيح الموجودة في HAND_LANDMARKS
+const LETTER_NORMALIZE_MAP = {
+    'ا': 'أ', 'إ': 'أ', 'آ': 'أ', // كل أشكال الألف إلى ألف همزة
+    'ة': 'ه',
+    'ى': 'ي',
+    'ؤ': 'و',
+    'ئ': 'ي'
+};
+
+// إزالة التشكيل وعلامات التطويل
+const ARABIC_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
+
+function normalizeLetterChar(ch) {
+    if (!ch) return '';
+    let c = ch.replace(ARABIC_DIACRITICS_RE, '');
+    if (LETTER_NORMALIZE_MAP[c]) {
+        c = LETTER_NORMALIZE_MAP[c];
+    }
+    return c;
+}
+
+function buildSequenceFromText(text) {
+    const seq = [];
+    const cleaned = text.replace(ARABIC_DIACRITICS_RE, '');
+    for (const raw of cleaned) {
+        if (raw === ' ' || raw === '\n' || raw === '\t') continue;
+        const ch = normalizeLetterChar(raw);
+        if (!ch) continue;
+        if (typeof HAND_LANDMARKS !== 'undefined' && HAND_LANDMARKS[ch]) {
+            seq.push(ch);
+        }
+    }
+    return seq;
+}
+
+function updateStatus() {
+    if (!activeSequence.length || !playing) {
+        currentLetterPill.textContent = 'ـ';
+        progressText.textContent = '0 / 0';
+        progressBar.style.width = '0%';
+        return;
+    }
+    const letter = activeSequence[currentIndex] || 'ـ';
+    currentLetterPill.textContent = letter;
+    progressText.textContent = (currentIndex + 1) + ' / ' + activeSequence.length;
+    const pct = ((currentIndex + 1) / activeSequence.length) * 100;
+    progressBar.style.width = pct + '%';
+}
+
+async function playSequenceOnce() {
+    if (!activeSequence.length) return;
+    playing = true;
+    translateBtn.disabled = true;
+
+    for (let i = 0; i < activeSequence.length; i++) {
+        currentIndex = i;
+        const letter = activeSequence[i];
+        const pose = letterToPose(letter);
+        if (!pose) continue;
+        startTweenTo(pose);
+        updateStatus();
+        // انتظر نهاية الـ tween + تأخير السرعة
+        const delay = TWEEN_DURATION + getLetterDelay();
+        await new Promise(res => setTimeout(res, delay));
+    }
+
+    playing = false;
+    translateBtn.disabled = false;
+    setTimeout(() => {
+        progressBar.style.width = '0%';
+        currentLetterPill.textContent = 'ـ';
+        progressText.textContent = '0 / 0';
+    }, 500);
+}
+
+translateBtn.addEventListener('click', () => {
+    const text = textInput.value.trim();
+    if (!text) {
+        showToast('اكتب نصاً بالعربية أولاً', 'error');
+        return;
+    }
+    if (typeof HAND_LANDMARKS === 'undefined') {
+        showToast('بيانات اليد غير محمّلة', 'error');
+        return;
+    }
+    activeSequence = buildSequenceFromText(text);
+    if (!activeSequence.length) {
+        showToast('لا يوجد حروف مدعومة في النص', 'error');
+        return;
+    }
+    currentIndex = 0;
+    playSequenceOnce();
+});
+
+// ==== Web Speech API (Mic) ====
+const micBtn = document.getElementById('micBtn');
+let recognition = null;
+let listening = false;
+
+function initSpeech() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        showToast('التعرّف على الصوت غير مدعوم في هذا المتصفح', 'error');
+        return null;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = 'ar-SA';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    return rec;
+}
+
+micBtn.addEventListener('click', () => {
+    if (!recognition) {
+        recognition = initSpeech();
+        if (!recognition) return;
+
+        recognition.onresult = (e) => {
+            const transcript = e.results[0][0].transcript || '';
+            if (transcript) {
+                if (textInput.value.trim()) {
+                    textInput.value = (textInput.value.trim() + ' ' + transcript).trim();
+                } else {
+                    textInput.value = transcript;
+                }
+            }
+        };
+        recognition.onerror = () => {
+            showToast('حدث خطأ في التعرف على الصوت', 'error');
+        };
+        recognition.onend = () => {
+            listening = false;
+            micBtn.classList.remove('listening');
+            micBtn.textContent = '';
+            micBtn.innerHTML = '<span>🎙️</span><span>تسجيل صوت</span>';
+        };
+    }
+
+    if (listening) {
+        recognition.stop();
+        return;
+    }
+    try {
+        recognition.start();
+        listening = true;
+        micBtn.classList.add('listening');
+        micBtn.textContent = '';
+        micBtn.innerHTML = '<span>⏹</span><span>إيقاف التسجيل</span>';
+    } catch (e) {
+        showToast('لا يمكن بدء التسجيل الآن', 'error');
+    }
+});
+</script>
+</body>
+</html>
+

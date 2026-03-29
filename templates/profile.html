@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>حسابي</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/static/pwa/manifest.json">
+    
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280; --radius:14px; }
@@ -43,6 +45,24 @@
         .letter-item.started .li-fill { background: var(--warn); }
         .li-count { font-size: 9px; color: var(--text-dim); }
         .letter-item.done .li-count { color: var(--accent); }
+
+        /* History Section */
+        .history-section { padding: 0 16px 30px; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .history-title { font-size: 13px; font-weight: 700; color: var(--text-dim); }
+        .history-count { font-size: 11px; color: var(--text-dim); background: var(--surface2); padding: 3px 10px; border-radius: 20px; }
+
+        .history-empty { background: var(--surface); border-radius: var(--radius); padding: 30px; text-align: center; color: var(--text-dim); font-size: 13px; border: 1px solid rgba(255,255,255,0.05); }
+
+        .history-item { background: var(--surface); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; gap: 12px; transition: background 0.15s; }
+        .history-item:active { background: var(--surface2); }
+        .history-text { flex: 1; font-size: 22px; font-weight: 700; word-break: break-all; line-height: 1.3; }
+        .history-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+        .history-time { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
+        .history-actions { display: flex; gap: 6px; }
+        .btn-speak-hist { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.2); color: var(--accent); padding: 4px 10px; border-radius: 20px; font-family: 'Cairo', sans-serif; font-size: 11px; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+        .btn-del-hist { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.15); color: var(--danger); padding: 4px 10px; border-radius: 20px; font-family: 'Cairo', sans-serif; font-size: 11px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+
     </style>
 </head>
 <body>
@@ -84,6 +104,15 @@
 
         <div class="section-title">تفاصيل كل حرف</div>
         <div class="letters-grid" id="lettersGrid"></div>
+    </div>
+    <div class="history-section">
+        <div class="history-header">
+            <div class="history-title">📜 سجل الجمل</div>
+            <div class="history-count" id="historyCount">0 جملة</div>
+        </div>
+        <div id="historyList"></div>
+    </div>
+    <div style="display:none">
     </div>
 </div>
 
@@ -127,6 +156,60 @@ async function loadProfile() {
 }
 
 loadProfile();
+
+// ===== سجل الجمل =====
+async function loadHistory() {
+    const res = await fetch('/history/list');
+    const data = await res.json();
+    const entries = data.entries || [];
+
+    document.getElementById('historyCount').textContent = entries.length + ' جملة';
+
+    const list = document.getElementById('historyList');
+    if (!entries.length) {
+        list.innerHTML = '<div class="history-empty">لا يوجد جمل محفوظة بعد<br><span style="font-size:11px;margin-top:4px;display:block">ابدأ بالإشارة في التطبيق واحفظ جملك</span></div>';
+        return;
+    }
+
+    list.innerHTML = entries.map(e => `
+        <div class="history-item" id="hitem_${e.id}">
+            <div class="history-text">${e.text}</div>
+            <div class="history-meta">
+                <div class="history-time">${e.time}</div>
+                <div class="history-actions">
+                    <button class="btn-speak-hist" onclick="speakText('${e.text}')">🔊</button>
+                    <button class="btn-del-hist" onclick="deleteEntry('${e.id}')">🗑</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function speakText(text) {
+    if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ar-SA';
+    u.rate = 0.85;
+    const voices = window.speechSynthesis.getVoices();
+    const ar = voices.find(v => v.lang.startsWith('ar'));
+    if (ar) u.voice = ar;
+    window.speechSynthesis.speak(u);
+}
+
+async function deleteEntry(id) {
+    await fetch('/history/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    document.getElementById('hitem_' + id)?.remove();
+    const remaining = document.querySelectorAll('[id^="hitem_"]').length;
+    document.getElementById('historyCount').textContent = remaining + ' جملة';
+    if (!remaining) loadHistory();
+}
+
+loadHistory();
+
 </script>
 </body>
 </html>

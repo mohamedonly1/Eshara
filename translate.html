@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ترجمة إلى لغة الإشارة ثلاثية الأبعاد</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0a0a0f">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28;
+            --accent:#00d4aa; --accent2:#7c3aed; --warn:#f59e0b;
+            --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280;
+            --radius:18px;
+        }
+        html, body {
+            min-height: 100%;
+            background: radial-gradient(circle at top, #111827 0%, #020617 55%, #020617 100%);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+        }
+        .page-content {
+            padding-top: 52px;
+            max-width: 960px;
+            margin: 0 auto;
+            padding-bottom: 24px;
+        }
+        .inner {
+            padding: 18px 16px 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.2fr);
+            gap: 16px;
+        }
+        @media (max-width: 800px) {
+            .inner {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: rgba(19,19,26,0.96);
+            border-radius: 20px;
+            border: 1px solid rgba(148,163,184,0.15);
+            padding: 16px 16px 14px;
+        }
+
+        /* Left: text + controls */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-dim);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .text-input {
+            width: 100%;
+            min-height: 120px;
+            max-height: 220px;
+            resize: vertical;
+            border-radius: 16px;
+            border: 1px solid rgba(148,163,184,0.28);
+            padding: 10px 12px;
+            background: rgba(15,23,42,0.9);
+            color: var(--text);
+            font-family: 'Cairo', sans-serif;
+            font-size: 15px;
+            outline: none;
+        }
+        .text-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 1px rgba(34,197,147,0.7);
+        }
+
+        .input-actions {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .left-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn {
+            border-radius: 999px;
+            border: none;
+            padding: 8px 14px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-mic {
+            background: rgba(37,99,235,0.15);
+            color: #93c5fd;
+            border: 1px solid rgba(59,130,246,0.4);
+        }
+        .btn-mic.listening {
+            background: rgba(220,38,38,0.15);
+            color: #fecaca;
+            border-color: rgba(248,113,113,0.9);
+            box-shadow: 0 0 0 1px rgba(248,113,113,0.6);
+        }
+
+        .btn-translate {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            color: #020617;
+            box-shadow: 0 0 20px rgba(16,185,129,0.4);
+        }
+        .btn-translate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .speed-control span.label {
+            white-space: nowrap;
+        }
+        .speed-control span.tag {
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.9);
+            border: 1px solid rgba(148,163,184,0.35);
+            font-size: 10px;
+        }
+
+        input[type=range].speed-slider {
+            -webkit-appearance: none;
+            width: 120px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(30,64,175,0.7);
+            outline: none;
+        }
+        input[type=range].speed-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #f9fafb;
+            border: 2px solid var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 0 2px rgba(34,197,147,0.5);
+        }
+
+        .hint {
+            font-size: 11px;
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Right: 3D scene */
+        .three-card {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .three-wrap {
+            position: relative;
+            background: radial-gradient(circle at top, #020617 0%, #020617 45%, #030712 100%);
+            border-radius: 20px;
+            border: 1px solid rgba(15,23,42,0.9);
+            overflow: hidden;
+            box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+        }
+        #threeContainer {
+            width: 100%;
+            height: 260px;
+            min-height: 220px;
+            position: relative;
+        }
+        @media (max-width: 800px) {
+            #threeContainer {
+                height: 260px;
+            }
+        }
+        canvas#threeCanvas {
+            display: block;
+        }
+        .three-overlay-label {
+            position: absolute;
+            top: 10px;
+            left: 14px;
+            font-size: 11px;
+            color: #9ca3af;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(15,23,42,0.85);
+            border: 1px solid rgba(55,65,81,0.9);
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-dim);
+        }
+        .current-letter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .letter-pill {
+            min-width: 36px;
+            height: 36px;
+            border-radius: 999px;
+            background: radial-gradient(circle at top, rgba(16,185,129,0.25), rgba(6,78,59,0.3));
+            border: 1px solid rgba(16,185,129,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 900;
+            color: #a7f3d0;
+        }
+        .progress-text {
+            font-size: 12px;
+        }
+
+        .progress-bar-wrap {
+            flex: 1;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(31,41,55,0.9);
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            transition: width 0.2s ease-out;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: rgba(15,23,42,0.98);
+            border-radius: 999px;
+            padding: 7px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            border: 1px solid rgba(45,212,191,0.5);
+            box-shadow: 0 18px 40px rgba(15,23,42,0.9);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.24s, transform 0.24s;
+            z-index: 999;
+            white-space: nowrap;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.error {
+            color: #fecaca;
+            border-color: rgba(248,113,113,0.6);
+        }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="page-content">
+    <div class="inner">
+        <!-- Left: text / speech -->
+        <div class="card">
+            <div class="section-title">
+                <span>📝 النص العربي</span>
+            </div>
+            <textarea id="textInput" class="text-input" placeholder="اكتب جملة بالعربية لترجمتها إلى لغة الإشارة..."></textarea>
+
+            <div class="input-actions">
+                <div class="left-actions">
+                    <button id="micBtn" class="btn btn-mic" type="button">
+                        <span>🎙️</span><span>تسجيل صوت</span>
+                    </button>
+                    <div class="speed-control">
+                        <span class="label">السرعة:</span>
+                        <span>بطيئة</span>
+                        <input id="speedSlider" class="speed-slider" type="range" min="1" max="3" step="1" value="2">
+                        <span>سريعة</span>
+                        <span id="speedTag" class="tag">متوسطة</span>
+                    </div>
+                </div>
+                <button id="translateBtn" class="btn btn-translate" type="button">
+                    <span>ترجم</span><span>🔄</span>
+                </button>
+            </div>
+
+            <div class="hint">
+                يمكن للتطبيق عرض اليد لكل حرف من الحروف العربية المدعومة. الأحرف غير المدعومة سيتم تجاهلها تلقائيًا.
+            </div>
+        </div>
+
+        <!-- Right: 3D hand -->
+        <div class="three-card">
+            <div class="three-wrap">
+                <div class="three-overlay-label">🤟 يد ثلاثية الأبعاد (لغة الإشارة)</div>
+                <div id="threeContainer">
+                    <canvas id="threeCanvas"></canvas>
+                </div>
+            </div>
+            <div class="card" style="padding:10px 12px;">
+                <div class="status-row">
+                    <div class="current-letter">
+                        <span style="font-size:11px;color:var(--text-dim);">الحرف الحالي:</span>
+                        <div id="currentLetterPill" class="letter-pill">ـ</div>
+                    </div>
+                    <div style="flex:1;display:flex;align-items:center;gap:8px;">
+                        <div class="progress-bar-wrap">
+                            <div id="progressBar" class="progress-bar"></div>
+                        </div>
+                        <div id="progressText" class="progress-text">0 / 0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<!-- Three.js + GLTFLoader -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<!-- بيانات اليد (fallback) + وضعيات العظام المسجّلة -->
+<script src="{{ url_for('static', filename='hand_landmarks.js') }}"></script>
+<script src="{{ url_for('static', filename='poses.js') }}" onerror="console.warn('poses.js not found — run record_poses.py first')"></script>
+<script>
+// ── Merge POSES into window ──────────────────────────
+let ALL_POSES = {};
+try { if (typeof POSES !== 'undefined') ALL_POSES = POSES; } catch(e) {}
+
+// ── Toast ────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Speed control ────────────────────────────────────
+const speedSlider = document.getElementById('speedSlider');
+const speedTag    = document.getElementById('speedTag');
+function updateSpeedTag() {
+    const v = Number(speedSlider.value);
+    speedTag.textContent = v === 1 ? 'بطيئة' : v === 2 ? 'متوسطة' : 'سريعة';
+}
+speedSlider.addEventListener('input', updateSpeedTag);
+updateSpeedTag();
+function getLetterDelay() {
+    const v = Number(speedSlider.value);
+    return v === 1 ? 900 : v === 2 ? 600 : 300;
+}
+
+// ── Three.js scene ───────────────────────────────────
+const container = document.getElementById('threeContainer');
+const canvas    = document.getElementById('threeCanvas');
+
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.shadowMap.enabled = true;
+
+const scene  = new THREE.Scene();
+scene.background = new THREE.Color(0x020617);
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.01, 100);
+camera.position.set(0, 6, 16);
+camera.lookAt(0, 4, 0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+const dir1 = new THREE.DirectionalLight(0xffffff, 0.9);
+dir1.position.set(4, 10, 8); dir1.castShadow = true;
+scene.add(dir1);
+const dir2 = new THREE.DirectionalLight(0x38bdf8, 0.35);
+dir2.position.set(-4, -4, -4);
+scene.add(dir2);
+// Accent rim light
+const rim = new THREE.DirectionalLight(0x00d4aa, 0.4);
+rim.position.set(0, 2, -8);
+scene.add(rim);
+
+function resizeRenderer() {
+    const w = container.clientWidth  || 400;
+    const h = container.clientHeight || 260;
+    renderer.setSize(w, h, true);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+}
+resizeRenderer();
+window.addEventListener('resize', resizeRenderer);
+
+// ── Load GLB hand model ──────────────────────────────
+let handModel   = null;
+let bonesByName = {};     // { name: THREE.Bone }
+let restQuats   = {};     // { name: THREE.Quaternion }  — bind pose
+let modelReady  = false;
+
+// Fallback: Canvas 2D skeleton (shown while GLB loads or if no poses.js)
+const canvas2d = document.createElement('canvas');
+const ctx2d    = canvas2d.getContext('2d');
+canvas2d.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+container.style.position = 'relative';
+container.appendChild(canvas2d);
+
+const CONNECTIONS_2D = [
+    [0,1],[1,2],[2,3],[3,4],
+    [0,5],[5,6],[6,7],[7,8],
+    [0,9],[9,10],[10,11],[11,12],
+    [0,13],[13,14],[14,15],[15,16],
+    [0,17],[17,18],[18,19],[19,20],
+    [5,9],[9,13],[13,17]
+];
+const FCOL = ['#00d4aa','#00d4aa','#00d4aa','#00d4aa','#38bdf8','#38bdf8','#38bdf8','#38bdf8',
+              '#a78bfa','#a78bfa','#a78bfa','#a78bfa','#f472b6','#f472b6','#f472b6','#f472b6',
+              '#fb923c','#fb923c','#fb923c','#fb923c','#fb923c'];
+let show2d = true;
+
+function draw2dFallback(pts) {
+    const W = canvas2d.clientWidth  || 400;
+    const H = canvas2d.clientHeight || 260;
+    canvas2d.width  = W * (window.devicePixelRatio||1);
+    canvas2d.height = H * (window.devicePixelRatio||1);
+    canvas2d.style.width  = W + 'px';
+    canvas2d.style.height = H + 'px';
+    ctx2d.scale(window.devicePixelRatio||1, window.devicePixelRatio||1);
+    ctx2d.clearRect(0, 0, W, H);
+    if (!pts || !show2d) return;
+
+    function tc(x, y) {
+        return [(x + 0.5) * W, (-y + 0.08) * H * 0.88 + H * 0.12];
+    }
+    for (const [a,b] of CONNECTIONS_2D) {
+        const [ax,ay] = tc(pts[a*2], pts[a*2+1]);
+        const [bx,by] = tc(pts[b*2], pts[b*2+1]);
+        const col = FCOL[Math.max(a,b)] || '#00d4aa';
+        ctx2d.beginPath(); ctx2d.moveTo(ax,ay); ctx2d.lineTo(bx,by);
+        ctx2d.shadowColor = col; ctx2d.shadowBlur = 8;
+        ctx2d.strokeStyle = col; ctx2d.lineWidth = 2.5; ctx2d.lineCap = 'round';
+        ctx2d.stroke(); ctx2d.shadowBlur = 0;
+    }
+    for (let i = 0; i < 21; i++) {
+        const [jx,jy] = tc(pts[i*2], pts[i*2+1]);
+        const col = i===0 ? '#ffffff' : (FCOL[i]||'#00d4aa');
+        ctx2d.beginPath(); ctx2d.arc(jx,jy,i===0?6:4,0,Math.PI*2);
+        ctx2d.shadowColor = col; ctx2d.shadowBlur = 7;
+        ctx2d.fillStyle = col; ctx2d.fill(); ctx2d.shadowBlur = 0;
+    }
+}
+
+// ── Quaternion helpers ───────────────────────────────
+function quatMul(a, b) {
+    return new THREE.Quaternion(
+        a.w*b.x + a.x*b.w + a.y*b.z - a.z*b.y,
+        a.w*b.y - a.x*b.z + a.y*b.w + a.z*b.x,
+        a.w*b.z + a.x*b.y - a.y*b.x + a.z*b.w,
+        a.w*b.w - a.x*b.x - a.y*b.y - a.z*b.z
+    );
+}
+
+// تطبيق pose على عظام الموديل
+function applyPoseToModel(poseData) {
+    if (!modelReady || !poseData) return;
+    Object.entries(poseData).forEach(([boneName, q]) => {
+        const bone = bonesByName[boneName];
+        if (!bone) return;
+        // q هو quaternion مطلق (world-space) من record_poses.py
+        // نحوّله لـ local عن طريق: local = parent_world_inv * q
+        bone.quaternion.set(q[0], q[1], q[2], q[3]);
+    });
+}
+
+// Slerp بين وضعيتين على مستوى العظام
+function slerpPoses(poseA, poseB, t) {
+    if (!modelReady) return;
+    const allBones = new Set([...Object.keys(poseA||{}), ...Object.keys(poseB||{})]);
+    allBones.forEach(boneName => {
+        const bone = bonesByName[boneName];
+        if (!bone) return;
+        const rest = restQuats[boneName] || new THREE.Quaternion();
+        const qa = poseA && poseA[boneName]
+            ? new THREE.Quaternion(...poseA[boneName])
+            : rest.clone();
+        const qb = poseB && poseB[boneName]
+            ? new THREE.Quaternion(...poseB[boneName])
+            : rest.clone();
+        bone.quaternion.copy(qa).slerp(qb, t);
+    });
+}
+
+const loader = new THREE.GLTFLoader();
+loader.load(
+    "{{ url_for('static', filename='models/hand.glb') }}",
+    (gltf) => {
+        handModel = gltf.scene;
+
+        // جمع العظام وحفظ rest quaternions
+        handModel.traverse(obj => {
+            if (obj.isBone || obj.type === 'Bone') {
+                bonesByName[obj.name] = obj;
+                restQuats[obj.name]   = obj.quaternion.clone();
+            }
+        });
+
+        // ضبط المواد
+        handModel.traverse(obj => {
+            if (obj.isMesh && obj.material) {
+                obj.material.metalness  = 0.25;
+                obj.material.roughness  = 0.45;
+                obj.castShadow    = true;
+                obj.receiveShadow = true;
+            }
+        });
+
+        // تمركز وتحجيم الموديل
+        const box    = new THREE.Box3().setFromObject(handModel);
+        const size   = new THREE.Vector3();
+        const center = new THREE.Vector3();
+        box.getSize(size); box.getCenter(center);
+        const s = 10 / Math.max(size.x, size.y, size.z);
+        handModel.scale.setScalar(s);
+        handModel.position.set(-center.x*s, -center.y*s + 3, -center.z*s);
+        handModel.rotation.set(0, -0.4, 0);
+
+        scene.add(handModel);
+        modelReady = true;
+        show2d     = false;
+        canvas2d.style.display = 'none';
+
+        console.log(`✅ GLB loaded | bones: ${Object.keys(bonesByName).length} | poses: ${Object.keys(ALL_POSES).length}`);
+
+        // طبّق الـ neutral pose
+        if (currentTargetPose) applyPoseToModel(currentTargetPose);
+    },
+    undefined,
+    (err) => {
+        console.error('GLB load error:', err);
+        // يستمر بالـ 2D fallback
+    }
+);
+
+// ── Pose tween ───────────────────────────────────────
+const TWEEN_DURATION = 420;
+let tweenStart       = 0;
+let animating        = false;
+let currentTargetPose = null;
+let prevPose          = null;
+
+// 2D fallback tween
+let currentPts2d = new Float32Array(42);
+let targetPts2d  = new Float32Array(42);
+
+const NEUTRAL_2D = [
+     0.00, 0.00, -0.10,-0.17, -0.19,-0.33, -0.27,-0.47, -0.33,-0.59,
+    -0.10,-0.50, -0.10,-0.68, -0.10,-0.82, -0.10,-0.94,
+    -0.01,-0.52, -0.01,-0.71, -0.01,-0.86, -0.01,-0.99,
+     0.08,-0.50,  0.08,-0.68,  0.08,-0.82,  0.08,-0.94,
+     0.17,-0.46,  0.17,-0.61,  0.17,-0.73,  0.17,-0.83
+];
+currentPts2d.set(NEUTRAL_2D); targetPts2d.set(NEUTRAL_2D);
+
+function startTweenTo(letter) {
+    prevPose = currentTargetPose ? JSON.parse(JSON.stringify(currentTargetPose)) : null;
+
+    // ── GLB mode ──
+    if (ALL_POSES[letter]) {
+        currentTargetPose = ALL_POSES[letter];
+    } else {
+        currentTargetPose = null;
+    }
+
+    // ── 2D fallback mode ──
+    if (!modelReady || !currentTargetPose) {
+        const lm = (typeof HAND_LANDMARKS !== 'undefined') ? HAND_LANDMARKS[letter] : null;
+        if (lm && lm.length >= 42) {
+            currentPts2d.set(targetPts2d);
+            targetPts2d.set(lm.slice(0, 42));
+        }
+    }
+
+    tweenStart = performance.now();
+    animating  = true;
+}
+
+// ── Render loop ──────────────────────────────────────
+function renderLoop(now) {
+    if (animating) {
+        const raw = (now - tweenStart) / TWEEN_DURATION;
+        const t   = Math.min(raw, 1);
+        const s   = t * t * (3 - 2 * t);  // smoothstep
+
+        if (modelReady && currentTargetPose) {
+            slerpPoses(prevPose, currentTargetPose, s);
+        } else {
+            // 2D fallback interpolation
+            const tmp = new Float32Array(42);
+            for (let i = 0; i < 42; i++) tmp[i] = currentPts2d[i] + (targetPts2d[i] - currentPts2d[i]) * s;
+            draw2dFallback(tmp);
+        }
+
+        if (t >= 1) {
+            animating = false;
+            if (!modelReady) draw2dFallback(targetPts2d);
+        }
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(renderLoop);
+}
+
+draw2dFallback(currentPts2d);
+requestAnimationFrame(renderLoop);
+
+// ==== Sequence playback ====
+const textInput = document.getElementById('textInput');
+const translateBtn = document.getElementById('translateBtn');
+const currentLetterPill = document.getElementById('currentLetterPill');
+const progressText = document.getElementById('progressText');
+const progressBar = document.getElementById('progressBar');
+
+let activeSequence = [];
+let currentIndex = 0;
+let playing = false;
+
+// تطبيع الحروف العربية لتتطابق مع المفاتيح الموجودة في HAND_LANDMARKS
+const LETTER_NORMALIZE_MAP = {
+    'ا': 'أ', 'إ': 'أ', 'آ': 'أ', // كل أشكال الألف إلى ألف همزة
+    'ة': 'ه',
+    'ى': 'ي',
+    'ؤ': 'و',
+    'ئ': 'ي'
+};
+
+// إزالة التشكيل وعلامات التطويل
+const ARABIC_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
+
+function normalizeLetterChar(ch) {
+    if (!ch) return '';
+    let c = ch.replace(ARABIC_DIACRITICS_RE, '');
+    if (LETTER_NORMALIZE_MAP[c]) {
+        c = LETTER_NORMALIZE_MAP[c];
+    }
+    return c;
+}
+
+function buildSequenceFromText(text) {
+    const seq = [];
+    const cleaned = text.replace(ARABIC_DIACRITICS_RE, '');
+    for (const raw of cleaned) {
+        if (raw === ' ' || raw === '\n' || raw === '\t') continue;
+        const ch = normalizeLetterChar(raw);
+        if (!ch) continue;
+        // قبل: يدعم GLB poses أو 2D landmarks
+        const inPoses = ALL_POSES[ch];
+        const inLM    = (typeof HAND_LANDMARKS !== 'undefined') && HAND_LANDMARKS[ch];
+        if (inPoses || inLM) seq.push(ch);
+    }
+    return seq;
+}
+
+function updateStatus() {
+    if (!activeSequence.length || !playing) {
+        currentLetterPill.textContent = 'ـ';
+        progressText.textContent = '0 / 0';
+        progressBar.style.width = '0%';
+        return;
+    }
+    const letter = activeSequence[currentIndex] || 'ـ';
+    currentLetterPill.textContent = letter;
+    progressText.textContent = (currentIndex + 1) + ' / ' + activeSequence.length;
+    progressBar.style.width = ((currentIndex + 1) / activeSequence.length * 100) + '%';
+}
+
+async function playSequenceOnce() {
+    if (!activeSequence.length) return;
+    playing = true;
+    translateBtn.disabled = true;
+
+    for (let i = 0; i < activeSequence.length; i++) {
+        currentIndex = i;
+        startTweenTo(activeSequence[i]);
+        updateStatus();
+        await new Promise(res => setTimeout(res, TWEEN_DURATION + getLetterDelay()));
+    }
+
+    playing = false;
+    translateBtn.disabled = false;
+    setTimeout(() => {
+        progressBar.style.width = '0%';
+        currentLetterPill.textContent = 'ـ';
+        progressText.textContent = '0 / 0';
+    }, 500);
+}
+
+translateBtn.addEventListener('click', () => {
+    const text = textInput.value.trim();
+    if (!text) { showToast('اكتب نصاً بالعربية أولاً', 'error'); return; }
+    const hasPoses = Object.keys(ALL_POSES).length > 0;
+    const hasLM    = typeof HAND_LANDMARKS !== 'undefined';
+    if (!hasPoses && !hasLM) { showToast('بيانات اليد غير محمّلة', 'error'); return; }
+    activeSequence = buildSequenceFromText(text);
+    if (!activeSequence.length) { showToast('لا يوجد حروف مدعومة في النص', 'error'); return; }
+    if (!hasPoses) showToast('⚠ poses.js غير موجود — يعمل بوضع 2D', 'error');
+    currentIndex = 0;
+    playSequenceOnce();
+});
+
+// ==== Web Speech API (Mic) ====
+const micBtn = document.getElementById('micBtn');
+let recognition = null;
+let listening = false;
+
+function initSpeech() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        showToast('التعرّف على الصوت غير مدعوم في هذا المتصفح', 'error');
+        return null;
+    }
+    const rec = new SpeechRecognition();
+    rec.lang = 'ar-SA';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    return rec;
+}
+
+micBtn.addEventListener('click', () => {
+    if (!recognition) {
+        recognition = initSpeech();
+        if (!recognition) return;
+
+        recognition.onresult = (e) => {
+            const transcript = e.results[0][0].transcript || '';
+            if (transcript) {
+                if (textInput.value.trim()) {
+                    textInput.value = (textInput.value.trim() + ' ' + transcript).trim();
+                } else {
+                    textInput.value = transcript;
+                }
+            }
+        };
+        recognition.onerror = () => {
+            showToast('حدث خطأ في التعرف على الصوت', 'error');
+        };
+        recognition.onend = () => {
+            listening = false;
+            micBtn.classList.remove('listening');
+            micBtn.textContent = '';
+            micBtn.innerHTML = '<span>🎙️</span><span>تسجيل صوت</span>';
+        };
+    }
+
+    if (listening) {
+        recognition.stop();
+        return;
+    }
+    try {
+        recognition.start();
+        listening = true;
+        micBtn.classList.add('listening');
+        micBtn.textContent = '';
+        micBtn.innerHTML = '<span>⏹</span><span>إيقاف التسجيل</span>';
+    } catch (e) {
+        showToast('لا يمكن بدء التسجيل الآن', 'error');
+    }
+});
+</script>
+</body>
+</html>
+

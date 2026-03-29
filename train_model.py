@@ -10,6 +10,8 @@
 import csv
 import numpy as np
 import os
+import shutil
+from datetime import datetime
 
 # =============================================
 # 1. تحميل البيانات
@@ -211,21 +213,44 @@ print(f"✅ تم حفظ منحنيات التدريب")
 # =============================================
 print("\n💾 حفظ الموديل...")
 
-# حفظ H5
-model.save(os.path.join(MODEL_SAVE_PATH, 'arabic_sign_model.h5'))
+# تحديد مسارات ملفات H5
+best_h5_path = os.path.join(MODEL_SAVE_PATH, 'best_model.h5')
+final_h5_path = os.path.join(MODEL_SAVE_PATH, 'arabic_sign_model.h5')
 
-# تحويل لـ TFLite
-converter = tf.lite.TFLiteConverter.from_keras_model(model)
+# تحميل أفضل موديل تم حفظه أثناء التدريب، أو استخدام الموديل الحالي كاحتياطي
+if os.path.exists(best_h5_path):
+    print("📌 تحميل أفضل موديل من best_model.h5 للتحويل إلى TFLite")
+    best_model = keras.models.load_model(best_h5_path)
+    # نسخ أفضل موديل إلى الاسم الثابت ليستخدمه السيرفر
+    shutil.copy2(best_h5_path, final_h5_path)
+else:
+    print("⚠️ best_model.h5 غير موجود، سيتم استخدام الموديل الحالي")
+    best_model = model
+    best_model.save(final_h5_path)
+
+# تحويل أفضل موديل لـ TFLite
+converter = tf.lite.TFLiteConverter.from_keras_model(best_model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
+# اسم ملف ثابت لتحميله من السيرفر
 tflite_path = os.path.join(MODEL_SAVE_PATH, 'arabic_sign_model.tflite')
 with open(tflite_path, 'wb') as f:
+    f.write(tflite_model)
+
+# اسم ملف مـرقّم يحتوي التاريخ والدقة
+date_str = datetime.now().strftime('%Y-%m-%d')
+acc_pct = test_acc * 100.0
+versioned_name = f"arabic_sign_model_{date_str}_{acc_pct:.2f}.tflite"
+versioned_tflite_path = os.path.join(MODEL_SAVE_PATH, versioned_name)
+with open(versioned_tflite_path, 'wb') as f:
     f.write(tflite_model)
 
 print(f"✅ تم الحفظ:")
 print(f"   - {MODEL_SAVE_PATH}/arabic_sign_model.h5")
 print(f"   - {MODEL_SAVE_PATH}/arabic_sign_model.tflite")
+print(f"   - {MODEL_SAVE_PATH}/{versioned_name}")
 print(f"   - {MODEL_SAVE_PATH}/confusion_matrix.png")
 print(f"   - {MODEL_SAVE_PATH}/training_curves.png")
+print(f"📦 نسخة TFLite المرقمة: {versioned_name}")
 print(f"\n🎉 انتهى التدريب! الدقة النهائية: {test_acc * 100:.2f}%")

@@ -321,7 +321,7 @@ Windows 10/11
 
 ### تثبيت المكتبات
 ```bash
-python -m venv venv310
+python -m venv
 venv310\Scripts\activate
 
 pip install mediapipe==0.10.11
@@ -330,9 +330,38 @@ pip install numpy==1.26.4
 pip install opencv-contrib-python
 pip install Pillow arabic-reshaper python-bidi
 pip install scikit-learn matplotlib seaborn
+pip install python-dotenv
+pip install flask
+pip install flask-limiter
 ```
 
+
+
+# Web
+flask==3.0.2
+
+# Core AI stack (لازم الإصدارات دي بالظبط)
+tensorflow==2.10.1
+numpy==1.26.4
+mediapipe==0.10.11
+
+# Computer Vision (نسخة متوافقة مع numpy 1.x)
+opencv-contrib-python==4.8.0.76
+
+# Image & Arabic text
+Pillow==10.3.0
+arabic-reshaper==3.0.0
+python-bidi==0.4.2
+
+# ML & Visualization
+scikit-learn==1.3.2
+matplotlib==3.7.5
+seaborn==0.13.2
 ---
+
+
+
+
 
 ## 🚀 تشغيل المشروع
 

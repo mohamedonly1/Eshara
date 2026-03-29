@@ -16,8 +16,15 @@
             --accent: #00d4aa; --accent2: #7c3aed; --warn: #f59e0b;
             --danger: #ef4444; --text: #f0f0f8; --text-dim: #6b7280;
             --radius: 20px; --glow: 0 0 30px rgba(0,212,170,0.3);
-        .page-content { padding-top: 52px; display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; position: relative; }
-
+        }
+        .page-content {
+            padding-top: 52px;
+            display: flex;
+            flex-direction: column;
+            height: 100dvh;
+            max-width: 480px;
+            margin: 0 auto;
+            position: relative;
         }
         html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; overflow: hidden; touch-action: manipulation; }
 
@@ -26,9 +33,9 @@
         .status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); transition: all 0.3s; box-shadow: 0 0 8px currentColor; }
         .status-dot.active { background: var(--accent); }
 
-        .camera-wrap { position: relative; flex: 1; overflow: hidden; background: #000; }
-        #video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
-        #overlay { position: absolute; inset: 0; transform: scaleX(-1); }
+        .camera-wrap { position: relative; flex: 1; overflow: hidden; background: #000; display: flex; align-items: center; justify-content: center; }
+        #video { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); display: block; }
+        #overlay { position: absolute; inset: 0; transform: scaleX(-1); pointer-events: none; }
 
         .scan-overlay { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(transparent 49%, rgba(0,212,170,0.03) 50%, transparent 51%); background-size: 100% 4px; }
         .brackets { position: absolute; inset: 0; pointer-events: none; }
@@ -69,6 +76,21 @@
         .btn-delete { background: rgba(245,158,11,0.15); color: var(--warn); border: 1px solid rgba(245,158,11,0.2); }
         .btn-clear { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
 
+
+        /* TTS + Save */
+        .controls { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .controls-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .btn-speak { background: linear-gradient(135deg, rgba(0,212,170,0.2), rgba(124,58,237,0.2)); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
+        .btn-speak.speaking { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #000; animation: pulse 0.8s ease infinite; }
+        .btn-save { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+        .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+        /* Toast */
+        .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(16px); background: var(--surface2); padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(0,212,170,0.3); color: var(--accent); transition: all 0.3s; z-index: 200; white-space: nowrap; opacity: 0; pointer-events: none; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.error { border-color: rgba(239,68,68,0.3); color: var(--danger); }
+
         .collect-link { position: absolute; top: 12px; left: 16px; background: rgba(124,58,237,0.2); border: 1px solid rgba(124,58,237,0.3); color: #a78bfa; padding: 5px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-decoration: none; }
 
         .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; transition: opacity 0.5s; }
@@ -79,6 +101,13 @@
         .loading-sub { font-size: 13px; color: var(--text-dim); margin-bottom: 30px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#00d4aa">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="إشارة">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
 </head>
 <body>
 {% include 'navbar.html' %}
@@ -90,6 +119,7 @@
     <div class="spinner"></div>
 </div>
 
+<div class="toast" id="toast"></div>
 <div class="page-content">
     <div class="header">
         <div class="header-title">🤟 لغة الإشارة العربية</div>
@@ -133,6 +163,10 @@
                 <button class="btn btn-delete" onclick="deleteLetter()">حذف ←</button>
                 <button class="btn btn-clear" onclick="clearWord()">مسح كل</button>
             </div>
+            <div class="controls-row2">
+                <button class="btn btn-speak" id="speakBtn" onclick="speakWord()">🔊 نطق</button>
+                <button class="btn btn-save" id="saveBtn" onclick="saveToHistory()" disabled>💾 حفظ</button>
+            </div>
         </div>
     </div>
 </div>
@@ -152,6 +186,7 @@ let noHandCount = 0;
 const video = document.getElementById('video');
 const overlayCanvas = document.getElementById('overlay');
 const overlayCtx = overlayCanvas.getContext('2d');
+const cameraWrap = document.querySelector('.camera-wrap');
 
 // ===== استخراج landmarks من MediaPipe =====
 function extractLandmarks(landmarks) {
@@ -164,8 +199,31 @@ function extractLandmarks(landmarks) {
 }
 
 // ===== رسم نقاط اليد =====
-function drawHand(landmarks, w, h) {
-    overlayCtx.clearRect(0, 0, w, h);
+function drawHand(landmarks, videoW, videoH) {
+    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+    // حساب الـ letterbox offset بسبب object-fit: contain
+    const canvasW = overlayCanvas.width;
+    const canvasH = overlayCanvas.height;
+    const videoAspect = videoW / videoH;
+    const canvasAspect = canvasW / canvasH;
+
+    let renderW, renderH, offsetX = 0, offsetY = 0;
+    if (videoAspect > canvasAspect) {
+        // فيه مسافة فوق وتحت (letterbox)
+        renderW = canvasW;
+        renderH = canvasW / videoAspect;
+        offsetY = (canvasH - renderH) / 2;
+    } else {
+        // فيه مسافة يمين وشمال (pillarbox)
+        renderH = canvasH;
+        renderW = canvasH * videoAspect;
+        offsetX = (canvasW - renderW) / 2;
+    }
+
+    const px = lm => lm.x * renderW + offsetX;
+    const py = lm => lm.y * renderH + offsetY;
+
     const connections = [
         [0,1],[1,2],[2,3],[3,4],
         [0,5],[5,6],[6,7],[7,8],
@@ -179,15 +237,15 @@ function drawHand(landmarks, w, h) {
     overlayCtx.lineWidth = 2;
     connections.forEach(([a, b]) => {
         overlayCtx.beginPath();
-        overlayCtx.moveTo(landmarks[a].x * w, landmarks[a].y * h);
-        overlayCtx.lineTo(landmarks[b].x * w, landmarks[b].y * h);
+        overlayCtx.moveTo(px(landmarks[a]), py(landmarks[a]));
+        overlayCtx.lineTo(px(landmarks[b]), py(landmarks[b]));
         overlayCtx.stroke();
     });
 
     overlayCtx.fillStyle = '#00d4aa';
     landmarks.forEach(lm => {
         overlayCtx.beginPath();
-        overlayCtx.arc(lm.x * w, lm.y * h, 4, 0, Math.PI * 2);
+        overlayCtx.arc(px(lm), py(lm), 4, 0, Math.PI * 2);
         overlayCtx.fill();
     });
 }
@@ -289,6 +347,7 @@ function updateWordDisplay() {
         wordEl.className = 'word-text';
         document.getElementById('wordCount').textContent = word.length;
     }
+    checkSaveBtn();
 }
 
 // ===== MediaPipe Setup =====
@@ -310,8 +369,8 @@ function initMediaPipe() {
     const SEND_INTERVAL = 120; // ms بين كل إرسال
 
     hands.onResults((results) => {
-        const w = overlayCanvas.width;
-        const h = overlayCanvas.height;
+        const w = video.videoWidth || overlayCanvas.width;
+        const h = video.videoHeight || overlayCanvas.height;
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             noHandCount = 0;
@@ -336,8 +395,13 @@ function initMediaPipe() {
 
     const camera = new Camera(video, {
         onFrame: async () => {
-            overlayCanvas.width = video.videoWidth;
-            overlayCanvas.height = video.videoHeight;
+            if (cameraWrap) {
+                overlayCanvas.width = cameraWrap.clientWidth || (video.videoWidth || 640);
+                overlayCanvas.height = cameraWrap.clientHeight || (video.videoHeight || 480);
+            } else {
+                overlayCanvas.width = video.videoWidth || 640;
+                overlayCanvas.height = video.videoHeight || 480;
+            }
             await hands.send({ image: video });
         },
         width: 640,
@@ -349,6 +413,96 @@ function initMediaPipe() {
     }).catch(err => {
         document.getElementById('loadingSub').textContent = '❌ تعذّر الوصول للكاميرا';
     });
+}
+
+
+// ===== Toast =====
+let toastTimer = null;
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== Text-to-Speech =====
+let isSpeaking = false;
+function speakWord() {
+    const word = currentWord.join('').trim();
+    if (!word) { showToast('اكتب كلمة الأول', 'error'); return; }
+    if (isSpeaking) { window.speechSynthesis.cancel(); return; }
+
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = 'ar-SA';
+    utterance.rate = 0.85;
+    utterance.pitch = 1;
+
+    // اختيار صوت عربي لو موجود
+    const voices = window.speechSynthesis.getVoices();
+    const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
+    if (arabicVoice) utterance.voice = arabicVoice;
+
+    const btn = document.getElementById('speakBtn');
+    isSpeaking = true;
+    btn.textContent = '⏹ إيقاف';
+    btn.classList.add('speaking');
+
+    utterance.onend = () => {
+        isSpeaking = false;
+        btn.textContent = '🔊 نطق';
+        btn.classList.remove('speaking');
+    };
+    utterance.onerror = () => {
+        isSpeaking = false;
+        btn.textContent = '🔊 نطق';
+        btn.classList.remove('speaking');
+        showToast('TTS مش متاح على هذا الجهاز', 'error');
+    };
+
+    window.speechSynthesis.speak(utterance);
+}
+
+// ===== حفظ في السجل =====
+async function saveToHistory() {
+    const word = currentWord.join('').trim();
+    if (!word) return;
+
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    try {
+        const res = await fetch('/history/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: word })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('✅ تم الحفظ في سجلك');
+            btn.textContent = '✅ محفوظ';
+            setTimeout(() => {
+                btn.textContent = '💾 حفظ';
+                btn.disabled = false;
+            }, 2000);
+        } else {
+            showToast(data.error || 'فشل الحفظ', 'error');
+            btn.textContent = '💾 حفظ';
+            btn.disabled = false;
+        }
+    } catch(e) {
+        showToast('خطأ في الاتصال', 'error');
+        btn.textContent = '💾 حفظ';
+        btn.disabled = false;
+    }
+}
+
+// تفعيل زر الحفظ لما يكون فيه نص
+function checkSaveBtn() {
+    const word = currentWord.join('').trim();
+    document.getElementById('saveBtn').disabled = !word;
 }
 
 // ===== تشغيل =====
