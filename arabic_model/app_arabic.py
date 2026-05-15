@@ -53,7 +53,7 @@ fonts_list = load_fonts_list()
 current_font_idx = 0
 FONT_PATH = fonts_list[current_font_idx]
 
-print(f"🔤 الخطوط المتاحة ({len(fonts_list)}):")
+print(f"Available fonts ({len(fonts_list)}):")
 for i, f in enumerate(fonts_list):
     print(f"  [{i+1}] {os.path.basename(f) if f else 'No font'}")
 
@@ -146,7 +146,7 @@ def main():
     COOLDOWN_FRAMES = 40
     show_font_menu = False  # إظهار قائمة الخطوط
 
-    print("✅ التطبيق جاهز!")
+    print("Application ready!")
     print("  SPACE: مسافة | BACKSPACE: حذف | C: مسح | F: قائمة الخطوط | ESC: خروج")
 
     while True:
@@ -291,7 +291,7 @@ def main():
         elif key == ord('f') or key == ord('F'):
             show_font_menu = not show_font_menu
             if show_font_menu:
-                print("\n🔤 قائمة الخطوط مفتوحة — اضغط رقم لاختيار الخط")
+                print("\nFont menu open -- press a number to select")
         # اختيار خط برقم (1-9)
         elif ord('1') <= key <= ord('9'):
             if show_font_menu:
@@ -300,7 +300,7 @@ def main():
                     current_font_idx = idx
                     FONT_PATH = fonts_list[current_font_idx]
                     fname = os.path.basename(FONT_PATH) if FONT_PATH else 'No font'
-                    print(f"✅ تم اختيار الخط: {fname}")
+                    print(f"Font selected: {fname}")
                     show_font_menu = False
 
     cap.release()
@@ -309,7 +309,7 @@ def main():
 
     if current_word:
         final_word = ''.join(current_word).strip()
-        print(f"\n📝 آخر كلمة: {final_word}")
+        print(f"\nLast word: {final_word}")
 
 if __name__ == '__main__':
     main()

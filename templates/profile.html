@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>حسابي</title>
+    <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/static/pwa/manifest.json">
     
@@ -12,7 +13,7 @@
         :root { --bg:#0a0a0f; --surface:#13131a; --surface2:#1c1c28; --accent:#00d4aa; --warn:#f59e0b; --danger:#ef4444; --text:#f0f0f8; --text-dim:#6b7280; --radius:14px; }
         html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: 'Cairo', sans-serif; }
 
-        .page-content { padding-top: 52px; max-width: 480px; margin: 0 auto; padding-bottom: 30px; }
+        .page-content { padding-top: 52px; max-width: 480px; margin: 0 auto; padding-bottom: 30px; display: block; overflow-y: auto; min-height: calc(100dvh - 52px); }
         .inner { padding: 20px 16px; }
 
         /* Header Card */
@@ -68,7 +69,7 @@
 <body>
 {% include 'navbar.html' %}
 
-<div class="page-content">
+<div class="page-content layout-scroll">
     <div class="inner">
         <div class="profile-header" id="profileHeader">
             <div class="profile-avatar" id="profileAvatar">؟</div>
@@ -107,7 +108,7 @@
     </div>
     <div class="history-section">
         <div class="history-header">
-            <div class="history-title">📜 سجل الجمل</div>
+            <div class="history-title">سجل الجمل</div>
             <div class="history-count" id="historyCount">0 جملة</div>
         </div>
         <div id="historyList"></div>
@@ -166,23 +167,48 @@ async function loadHistory() {
     document.getElementById('historyCount').textContent = entries.length + ' جملة';
 
     const list = document.getElementById('historyList');
+    list.replaceChildren();
     if (!entries.length) {
         list.innerHTML = '<div class="history-empty">لا يوجد جمل محفوظة بعد<br><span style="font-size:11px;margin-top:4px;display:block">ابدأ بالإشارة في التطبيق واحفظ جملك</span></div>';
         return;
     }
 
-    list.innerHTML = entries.map(e => `
-        <div class="history-item" id="hitem_${e.id}">
-            <div class="history-text">${e.text}</div>
-            <div class="history-meta">
-                <div class="history-time">${e.time}</div>
-                <div class="history-actions">
-                    <button class="btn-speak-hist" onclick="speakText('${e.text}')">🔊</button>
-                    <button class="btn-del-hist" onclick="deleteEntry('${e.id}')">🗑</button>
-                </div>
-            </div>
-        </div>
-    `).join('');
+    entries.forEach(e => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.id = 'hitem_' + e.id;
+
+        const text = document.createElement('div');
+        text.className = 'history-text';
+        text.textContent = e.text || '';
+
+        const meta = document.createElement('div');
+        meta.className = 'history-meta';
+
+        const time = document.createElement('div');
+        time.className = 'history-time';
+        time.textContent = e.time || '';
+
+        const actions = document.createElement('div');
+        actions.className = 'history-actions';
+
+        const speakBtn = document.createElement('button');
+        speakBtn.className = 'btn-speak-hist';
+        speakBtn.type = 'button';
+        speakBtn.textContent = 'نطق';
+        speakBtn.addEventListener('click', () => speakText(e.text || ''));
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-del-hist';
+        delBtn.type = 'button';
+        delBtn.textContent = 'حذف';
+        delBtn.addEventListener('click', () => deleteEntry(e.id));
+
+        actions.append(speakBtn, delBtn);
+        meta.append(time, actions);
+        item.append(text, meta);
+        list.appendChild(item);
+    });
 }
 
 function speakText(text) {

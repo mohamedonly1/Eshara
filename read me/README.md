@@ -1,101 +1,45 @@
-# مشروع لغة الإشارة العربية الموحدة
-## Arabic Sign Language Recognition
+# مشروع لغة الإشارة العربية الموحدة - إشارة
+## Arabic Sign Language Recognition (Ishara)
+
+نظام متكامل يضم ذكاء اصطناعي، تطبيق ويب تفاعلي ثلاثي الأبعاد، وتطبيق أندرويد لترجمة لغة الإشارة الفورية.
 
 ---
 
-## هيكل المشروع
-```
-arabic-sign-language/
-│
-├── collect_data.py        ← جمع البيانات
-├── train_model.py         ← تدريب الموديل
-├── app_arabic.py          ← التطبيق النهائي
-├── Cairo-Regular.ttf      ← فونت عربي (حمّله)
-│
-├── arabic_data/           ← 
-│   ├── arabic_keypoints.csv
-│   └── arabic_labels.csv
-│
-└── arabic_model/          ← 
-    ├── arabic_sign_model.h5
-    ├── arabic_sign_model.tflite
-    ├── confusion_matrix.png
-    └── training_curves.png
-```
+## 📂 المكونات الرئيسية
+
+1. **مجلد `Ishara/`**: تطبيق الأندرويد للترجمة الفورية يعمل بـ CameraX و TFLite.
+2. **ملفات البايثون (`collect_data.py`, `train_model.py`)**: نظام جمع البيانات وتدريب الشبكة العصبية للتعرف على الإشارات.
+3. **ملفات الويب (`app.py`, `server.py`, `static/`, `templates/`)**: منصة ويب تضم لوحة تحكم، نظام ترجمة صوتي ونصي، وعرض الحركات باستخدام نموذج يد ثلاثي الأبعاد (3D Hand Model) مدعوم بحركيات عكسية (Inverse Kinematics).
 
 ---
 
-## خطوات التشغيل
+## 🚀 تشغيل النظام المباشر (Web Dashboard)
 
-### 1. تثبيت المكتبات
+1. قم بتفعيل بيئة بايثون الافتراضية.
+2. ثبت المكتبات المطلوبة:
 ```bash
-venv310\Scripts\activate
-pip install mediapipe==0.10.11
-pip install numpy==1.26.4
-pip install tensorflow==2.10.1
-pip install opencv-contrib-python
-pip install Pillow arabic-reshaper python-bidi
-pip install scikit-learn matplotlib seaborn
+pip install Flask mediapipe==0.10.11 tensorflow==2.10.1 numpy==1.26.4 opencv-contrib-python
 ```
-
-### 3. جمع البيانات
+3. شغل الخادم:
 ```bash
-python collect_data.py
+python server.py
 ```
-**الهدف:** 200 عينة لكل حرف (5800 عينة إجمالاً)
-
-**مفاتيح الحروف:**| مفتاح | حرف |
-|-------|------|
-|   1   |  أ   |
-|   2   |  ب   |
-|   3   |  ت   |
-|   4   |  ث   |
-|   5   |  ج   |
-|   6   |  ح   |
-|   7   |  خ   |
-|   8   |  د   |
-|   9   |  ذ   |
-|   0   |  ر   | 
-|   q   |  ز   |
-|   w   |  س   |
-|   e   |  ش   |
-|   r   |  ص   |
-|   t   |  ض   |
-|   y   |  ط   |
-|   u   |  ظ   |
-|   i   |  ع   |
-|   o   |  غ   |
-|   p   |  ف   |
-|   a   |  ق   |
-|   s   |  ك   |
-|   d   |  ل   |
-|   f   |  م   |
-|   g   |  ن   |
-|   h   |  ه   |
-|   j   |  و   |
-|   k   |  ي   |
-|   l   |  لا   |
----
-**SPACE** = تسجيل إيماءة
-
-### 4. تدريب الموديل
-```bash
-python train_model.py
-```
-
-### 5. تشغيل التطبيق
-```bash
-python app_arabic.py
-```
+4. افتح المتصفح على العنوان `http://127.0.0.1:5000`.
 
 ---
 
-## نصائح لجمع بيانات جيدة
-- ✅ إضاءة كويسة وثابتة
-- ✅ خلفية سادة (أبيض أو رمادي أفضل)
-- ✅ يد واحدة في الإطار
-- ✅ جرّب زوايا مختلفة قليلاً لكل حرف
-- ✅ لو معاك ناس تانية، اجمع منهم كمان (بيحسّن الدقة)
-- ❌ متسجلش في إضاءة ضعيفة أو ضد الضوء
+## 📱 تشغيل تطبيق الأندرويد
+
+1. قم بفتح مجلد `Ishara/` باستخدام **Android Studio**.
+2. دع البرنامج يحمّل أدوات Gradle آلياً.
+3. صل هاتفك الأندرويد (أو استخدم المحاكي).
+4. اضغط على زر التشغيل (Run) لتثبيت وتجربة التطبيق واستخدام كاميرا الهاتف للترجمة الفورية.
 
 ---
+
+## 🧠 تدريب نموذج جديد (اختياري)
+
+إذا أردت إضافة إشارات جديدة أو تحسين المودل:
+1. لتسجيل عينات جديدة: `python collect_data.py` (اضغط مسطرة للتسجيل).
+2. لتدريب النموذج: `python train_model.py`.
+3. انسخ الملف الجديد `arabic_sign_model.tflite` الناتج إلى داخل مجلد الـ assets بتطبيق الأندرويد لتحديثه.
