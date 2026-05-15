@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>ترجمة إلى لغة الإشارة ثلاثية الأبعاد</title>
+    <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0a0a0f">
@@ -34,19 +35,14 @@
             gap: 16px;
         }
         @media (max-width: 800px) {
-            .inner {
-                grid-template-columns: minmax(0, 1fr);
-            }
+            .inner { grid-template-columns: minmax(0, 1fr); }
         }
-
         .card {
             background: rgba(19,19,26,0.96);
             border-radius: 20px;
             border: 1px solid rgba(148,163,184,0.15);
             padding: 16px 16px 14px;
         }
-
-        /* Left: text + controls */
         .section-title {
             font-size: 14px;
             font-weight: 700;
@@ -56,7 +52,6 @@
             align-items: center;
             gap: 6px;
         }
-
         .text-input {
             width: 100%;
             min-height: 120px;
@@ -75,7 +70,6 @@
             border-color: var(--accent);
             box-shadow: 0 0 0 1px rgba(34,197,147,0.7);
         }
-
         .input-actions {
             margin-top: 10px;
             display: flex;
@@ -84,13 +78,7 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-
-        .left-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
+        .left-actions { display: flex; gap: 8px; align-items: center; }
         .btn {
             border-radius: 999px;
             border: none;
@@ -105,10 +93,7 @@
             gap: 6px;
             transition: transform 0.12s, box-shadow 0.12s, background 0.12s;
         }
-        .btn:active {
-            transform: scale(0.96);
-        }
-
+        .btn:active { transform: scale(0.96); }
         .btn-mic {
             background: rgba(37,99,235,0.15);
             color: #93c5fd;
@@ -120,7 +105,6 @@
             border-color: rgba(248,113,113,0.9);
             box-shadow: 0 0 0 1px rgba(248,113,113,0.6);
         }
-
         .btn-translate {
             background: linear-gradient(135deg, var(--accent), var(--accent2));
             color: #020617;
@@ -131,7 +115,6 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-
         .speed-control {
             display: flex;
             align-items: center;
@@ -139,9 +122,7 @@
             font-size: 11px;
             color: var(--text-dim);
         }
-        .speed-control span.label {
-            white-space: nowrap;
-        }
+        .speed-control span.label { white-space: nowrap; }
         .speed-control span.tag {
             padding: 2px 8px;
             border-radius: 999px;
@@ -149,7 +130,6 @@
             border: 1px solid rgba(148,163,184,0.35);
             font-size: 10px;
         }
-
         input[type=range].speed-slider {
             -webkit-appearance: none;
             width: 120px;
@@ -168,19 +148,8 @@
             cursor: pointer;
             box-shadow: 0 0 0 2px rgba(34,197,147,0.5);
         }
-
-        .hint {
-            font-size: 11px;
-            color: var(--text-dim);
-            margin-top: 8px;
-        }
-
-        /* Right: 3D scene */
-        .three-card {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+        .hint { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+        .three-card { display: flex; flex-direction: column; gap: 10px; }
         .three-wrap {
             position: relative;
             background: radial-gradient(circle at top, #020617 0%, #020617 45%, #030712 100%);
@@ -195,13 +164,11 @@
             min-height: 220px;
             position: relative;
         }
-        @media (max-width: 800px) {
-            #threeContainer {
-                height: 260px;
-            }
-        }
+        @media (max-width: 800px) { #threeContainer { height: 260px; } }
         canvas#threeCanvas {
             display: block;
+            width: 100% !important;
+            height: 100% !important;
         }
         .three-overlay-label {
             position: absolute;
@@ -214,7 +181,6 @@
             background: rgba(15,23,42,0.85);
             border: 1px solid rgba(55,65,81,0.9);
         }
-
         .status-row {
             display: flex;
             justify-content: space-between;
@@ -223,11 +189,7 @@
             font-size: 13px;
             color: var(--text-dim);
         }
-        .current-letter {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .current-letter { display: flex; align-items: center; gap: 8px; }
         .letter-pill {
             min-width: 36px;
             height: 36px;
@@ -241,10 +203,7 @@
             font-weight: 900;
             color: #a7f3d0;
         }
-        .progress-text {
-            font-size: 12px;
-        }
-
+        .progress-text { font-size: 12px; }
         .progress-bar-wrap {
             flex: 1;
             height: 4px;
@@ -259,8 +218,6 @@
             background: linear-gradient(90deg, var(--accent), var(--accent2));
             transition: width 0.2s ease-out;
         }
-
-        /* Toast */
         .toast {
             position: fixed;
             bottom: 90px;
@@ -280,14 +237,8 @@
             z-index: 999;
             white-space: nowrap;
         }
-        .toast.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-        }
-        .toast.error {
-            color: #fecaca;
-            border-color: rgba(248,113,113,0.6);
-        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.error { color: #fecaca; border-color: rgba(248,113,113,0.6); }
     </style>
 </head>
 <body>
@@ -295,17 +246,13 @@
 
 <div class="page-content">
     <div class="inner">
-        <!-- Left: text / speech -->
         <div class="card">
-            <div class="section-title">
-                <span>📝 النص العربي</span>
-            </div>
+            <div class="section-title"><span>النص العربي</span></div>
             <textarea id="textInput" class="text-input" placeholder="اكتب جملة بالعربية لترجمتها إلى لغة الإشارة..."></textarea>
-
             <div class="input-actions">
                 <div class="left-actions">
                     <button id="micBtn" class="btn btn-mic" type="button">
-                        <span>🎙️</span><span>تسجيل صوت</span>
+                        <span>تسجيل صوت</span>
                     </button>
                     <div class="speed-control">
                         <span class="label">السرعة:</span>
@@ -316,19 +263,17 @@
                     </div>
                 </div>
                 <button id="translateBtn" class="btn btn-translate" type="button">
-                    <span>ترجم</span><span>🔄</span>
+                    <span>ترجم</span>
                 </button>
             </div>
-
             <div class="hint">
                 يمكن للتطبيق عرض اليد لكل حرف من الحروف العربية المدعومة. الأحرف غير المدعومة سيتم تجاهلها تلقائيًا.
             </div>
         </div>
 
-        <!-- Right: 3D hand -->
         <div class="three-card">
             <div class="three-wrap">
-                <div class="three-overlay-label">🤟 يد ثلاثية الأبعاد (لغة الإشارة)</div>
+                <div class="three-overlay-label">يد ثلاثية الأبعاد - لغة الإشارة</div>
                 <div id="threeContainer">
                     <canvas id="threeCanvas"></canvas>
                 </div>
@@ -354,9 +299,9 @@
 <div id="toast" class="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="{{ url_for('static', filename='hand_landmarks.js') }}"></script>
-<!-- cdnjs لا يوفّر GLTFLoader.min.js لهذا الإصدار (كان 404)، نستخدم unpkg -->
+<script src="/static/poses.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
 <script>
 // ==== Toast ====
 let toastTimer = null;
@@ -368,561 +313,403 @@ function showToast(msg, type) {
     toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// تحقق من تحميل بيانات اليد
-if (typeof HAND_LANDMARKS !== 'undefined') {
-    console.log('landmarks loaded:', Object.keys(HAND_LANDMARKS).length);
-} else {
-    console.error('HAND_LANDMARKS غير متاح بعد تحميل السكربت');
-}
-
-// ==== Speed control ====
+// ==== Speed ====
 const speedSlider = document.getElementById('speedSlider');
-const speedTag = document.getElementById('speedTag');
+const speedTag    = document.getElementById('speedTag');
 function updateSpeedTag() {
     const v = Number(speedSlider.value);
-    if (v === 1) speedTag.textContent = 'بطيئة';
-    else if (v === 2) speedTag.textContent = 'متوسطة';
-    else speedTag.textContent = 'سريعة';
+    speedTag.textContent = v === 1 ? 'بطيئة' : v === 2 ? 'متوسطة' : 'سريعة';
 }
 speedSlider.addEventListener('input', updateSpeedTag);
 updateSpeedTag();
-
 function getLetterDelay() {
     const v = Number(speedSlider.value);
-    if (v === 1) return 900;
-    if (v === 2) return 600;
-    return 300;
+    return v === 1 ? 900 : v === 2 ? 600 : 300;
 }
 
 // ==== Three.js setup ====
 const container = document.getElementById('threeContainer');
-const canvas = document.getElementById('threeCanvas');
+const canvas    = document.getElementById('threeCanvas');
 
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio || 1);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x020617);
 
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-camera.position.set(0.2, 0.6, 4.3);
-camera.lookAt(0, 0.2, 0);
+// ضبطنا الكاميرا زي المحرر بالظبط
+camera.position.set(0, 0.5, 6.5);
+camera.lookAt(0, 0, 0);
 
-// Lights
-const hemi = new THREE.HemisphereLight(0x38bdf8, 0x020617, 0.7);
-scene.add(hemi);
-const dir1 = new THREE.DirectionalLight(0xffffff, 0.8);
-dir1.position.set(2, 3, 4);
-scene.add(dir1);
-const dir2 = new THREE.DirectionalLight(0x38bdf8, 0.4);
-dir2.position.set(-2, -3, -2);
-scene.add(dir2);
+scene.add(new THREE.HemisphereLight(0x38bdf8, 0x020617, 0.7));
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(2, 3, 4);
+scene.add(dirLight);
 
-// Ground plane for depth reference
-const groundGeo = new THREE.CircleGeometry(1.8, 48);
-const groundMat = new THREE.MeshStandardMaterial({
-    color: 0x020617,
-    emissive: 0x020617,
-    roughness: 0.9,
-    metalness: 0.0,
-    transparent: true,
-    opacity: 0.9
-});
-const ground = new THREE.Mesh(groundGeo, groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.set(0, -0.6, -0.1);
-scene.add(ground);
-
-// Materials
-const jointMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00d4aa,
-    emissive: 0x0f766e,
-    metalness: 0.35,
-    roughness: 0.2
-});
-const boneMaterial = new THREE.MeshStandardMaterial({
-    color: 0x00d4aa,
-    emissive: 0x0f766e,
-    metalness: 0.45,
-    roughness: 0.25
-});
-
-// MediaPipe hand connections (21 نقاط)
-const CONNECTIONS = [
-    [0,1],[1,2],[2,3],[3,4],
-    [0,5],[5,6],[6,7],[7,8],
-    [0,9],[9,10],[10,11],[11,12],
-    [0,13],[13,14],[14,15],[15,16],
-    [0,17],[17,18],[18,19],[19,20]
-];
-
-// Create joints and bones (تُستخدم دائماً كمرجع حسابي، وتظهر فقط كـ fallback لو موديل اليد الحقيقي ما اتحمّلش)
-const JOINT_COUNT = 21;
-const joints = [];
-const bones = [];
-
-const jointGeom = new THREE.SphereGeometry(0.05, 20, 20);
-for (let i = 0; i < JOINT_COUNT; i++) {
-    const m = new THREE.Mesh(jointGeom, jointMaterial);
-    scene.add(m);
-    joints.push(m);
-}
-
-const cylGeom = new THREE.CylinderGeometry(0.022, 0.016, 1, 14);
-for (const [a, b] of CONNECTIONS) {
-    const c = new THREE.Mesh(cylGeom, boneMaterial);
-    scene.add(c);
-    bones.push({ mesh: c, a, b });
-}
-
-// === تحميل موديل يد ثلاثية الأبعاد (GLB) ===
-let handModel = null;
-let handModelLoaded = false;
-let handBonesByName = {};
-let handBoneBindQuat = {};
-
-function fitModelToView(model) {
-    // Center + scale model to a reasonable size
-    const box = new THREE.Box3().setFromObject(model);
-    const size = new THREE.Vector3();
-    const center = new THREE.Vector3();
-    box.getSize(size);
-    box.getCenter(center);
-
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    const targetMaxDim = 3.5; // أكبر قليلاً ليظهر أوضح في الإطار
-    const s = targetMaxDim / maxDim;
-    model.scale.setScalar(s);
-
-    // Center model at origin (important: position is NOT scaled automatically)
-    model.position.set(-center.x * s, -center.y * s, -center.z * s);
-
-    // ارفع اليد فوق الدائرة بحيث الكف بالكامل يكون ظاهر (إجمالي +1.1)
-    model.position.y += 1.1;
-}
-
-// ربط كل Bone بقطعة من MediaPipe landmarks (startIdx -> endIdx)
-const BONE_LANDMARK_SEGMENTS = [
-    // thumb
-    ['thumb_trapez', 0, 1],
-    ['thumb_meta', 1, 2],
-    ['thumb_prox', 2, 3],
-    ['thumb_dist', 3, 4],
-    // index
-    ['index_meta', 0, 5],
-    ['index_prox', 5, 6],
-    ['index_midd', 6, 7],
-    ['index_dist', 7, 8],
-    // middle
-    ['midd_meta', 0, 9],
-    ['midd_prox', 9, 10],
-    ['midd_midd', 10, 11],
-    ['midd_dist', 11, 12],
-    // ring
-    ['ring_meta', 0, 13],
-    ['ring_prox', 13, 14],
-    ['ring_midd', 14, 15],
-    ['ring_dist', 15, 16],
-    // pinky
-    ['pinky_meta', 0, 17],
-    ['pinky_prox', 17, 18],
-    ['pinky_midd', 18, 19],
-    ['pinky_dist', 19, 20],
-];
-
-// تفعيل ربط العظام بالـ landmarks (حركة تقريبية مؤقتاً)
-const ENABLE_FK_FROM_LANDMARKS = true;
-
-function loadHandModelIfPossible() {
-    if (loadHandModelIfPossible._attempted) return;
-    loadHandModelIfPossible._attempted = true;
-
-    if (!(window.THREE && THREE.GLTFLoader)) {
-        console.warn('GLTFLoader غير متوفر، سيتم استخدام اليد الهيكلية فقط.');
-        return;
-    }
-
-    const handLoader = new THREE.GLTFLoader();
-    handLoader.load(
-        "{{ url_for('static', filename='models/hand.glb') }}",
-        function (gltf) {
-            handModel = gltf.scene;
-
-            // اجمع العظام بالأسماء (للمرحلة القادمة: poses)
-            handBonesByName = {};
-            handModel.traverse(obj => {
-                if (obj.isBone) {
-                    handBonesByName[obj.name] = obj;
-                }
-            });
-            // حفظ وضعية الـ bind لكل Bone (عشان نضيف عليها rotations)
-            handBoneBindQuat = {};
-            Object.entries(handBonesByName).forEach(([name, bone]) => {
-                handBoneBindQuat[name] = bone.quaternion.clone();
-            });
-            console.log('🦴 bones:', Object.keys(handBonesByName).length);
-            // اطبع أسماء العظام في console
-            console.table(Object.keys(handBonesByName));
-
-            handModel.traverse(obj => {
-                if (obj.isMesh) {
-                    obj.castShadow = true;
-                    obj.receiveShadow = true;
-                    if (obj.material) {
-                        obj.material.metalness = 0.35;
-                        obj.material.roughness = 0.3;
-                    }
-                }
-            });
-            fitModelToView(handModel);
-            // زاوية بسيطة للعرض
-            handModel.rotation.set(0.15, -0.55, 0);
-            scene.add(handModel);
-
-            // بعد ما موديل اليد الحقيقي يتحمّل، نخفي المفاصل والعظام البسيطة
-            joints.forEach(j => j.visible = false);
-            bones.forEach(b => b.mesh.visible = false);
-
-            handModelLoaded = true;
-            console.log('3D hand model loaded');
-        },
-        undefined,
-        function (err) {
-            console.error('Failed to load hand.glb model', err);
-        }
-    );
-}
-
-// بعض المتصفحات قد تتأخر في تحميل سكربت loader — جرب مباشرة ثم بعد load
-loadHandModelIfPossible();
-window.addEventListener('load', () => setTimeout(loadHandModelIfPossible, 0));
-
-// Pose buffers
-let currentPose = new Float32Array(JOINT_COUNT * 3);
-let targetPose = new Float32Array(JOINT_COUNT * 3);
-let tweenStart = 0;
-const TWEEN_DURATION = 400; // ms
-let animating = false;
-
-function letterToPose(letter) {
-    if (typeof HAND_LANDMARKS === 'undefined' || !HAND_LANDMARKS[letter]) return null;
-    const vals = HAND_LANDMARKS[letter];
-    if (!vals || vals.length < 42) return null;
-    const pose = new Float32Array(JOINT_COUNT * 3);
-
-    // Normalization/scaling
-    let scale = 1.25;
-
-    // عمق تقريبي لكل إصبع ليعطي إحساس ثلاثي الأبعاد
-    const depthByIndex = [
-        0.00, // 0: wrist
-        0.18, 0.20, 0.22, 0.24, // 1-4 thumb
-        0.10, 0.12, 0.14, 0.16, // 5-8 index
-        0.00, 0.00, 0.02, 0.04, // 9-12 middle
-        -0.08, -0.10, -0.12, -0.14, // 13-16 ring
-        -0.16, -0.18, -0.20, -0.22  // 17-20 pinky
-    ];
-
-    for (let i = 0; i < JOINT_COUNT; i++) {
-        const x = vals[i*2];
-        const y = vals[i*2 + 1];
-        // Flip X so it matches camera mirror, invert Y to make up positive
-        const px = -x * scale;
-        const py = -y * scale;
-        const pz = depthByIndex[i] || 0;
-        pose[i*3] = px;
-        pose[i*3 + 1] = py;
-        pose[i*3 + 2] = pz;
-    }
-    return pose;
-}
-
-function applyPose(buf) {
-    for (let i = 0; i < JOINT_COUNT; i++) {
-        const x = buf[i*3];
-        const y = buf[i*3 + 1];
-        const z = buf[i*3 + 2];
-        joints[i].position.set(x, y, z);
-    }
-
-    // update bones (ما زالت تُستخدم كمرجع حسابي فقط)
-    for (let i = 0; i < bones.length; i++) {
-        const { mesh, a, b } = bones[i];
-        const pa = joints[a].position;
-        const pb = joints[b].position;
-        const mid = new THREE.Vector3().addVectors(pa, pb).multiplyScalar(0.5);
-        const dir = new THREE.Vector3().subVectors(pb, pa);
-        const len = dir.length();
-        if (len === 0) continue;
-
-        mesh.position.copy(mid);
-        mesh.scale.set(1, len, 1);
-
-        mesh.quaternion.setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0),
-            dir.clone().normalize()
-        );
-    }
-
-    // ملاحظة: نخلي موديل اليد ثابت في المنتصف (لا نحركه بالـ landmarks)
-    // ونكتفي بتحريك الأصابع بعظام الموديل (FK) حتى ما يطلعش خارج الكادر.
-
-    // تحريك أصابع اليد (FK) باستخدام عظام الموديل + اتجاهات landmarks
-    // موقوف حالياً إلى أن نُعرّف poses صحيحة لكل حرف.
-    if (ENABLE_FK_FROM_LANDMARKS && handModelLoaded && handBonesByName && Object.keys(handBonesByName).length) {
-        const upAxis = new THREE.Vector3(0, 1, 0);
-        const tmpTargetDirWorld = new THREE.Vector3();
-        const tmpTargetDirParent = new THREE.Vector3();
-        const tmpRestDirParent = new THREE.Vector3();
-        const tmpInvParentQuat = new THREE.Quaternion();
-        const tmpDelta = new THREE.Quaternion();
-        const tmpDesired = new THREE.Quaternion();
-
-        for (const [boneName, startIdx, endIdx] of BONE_LANDMARK_SEGMENTS) {
-            const bone = handBonesByName[boneName];
-            const bindQ = handBoneBindQuat[boneName];
-            if (!bone || !bindQ) continue;
-
-            // target direction in world (من نقاط landmarks في المشهد)
-            tmpTargetDirWorld.subVectors(joints[endIdx].position, joints[startIdx].position);
-            if (tmpTargetDirWorld.lengthSq() < 1e-8) continue;
-            tmpTargetDirWorld.normalize();
-
-            // تحويل الاتجاه إلى parent-space
-            bone.parent.getWorldQuaternion(tmpInvParentQuat);
-            tmpInvParentQuat.invert();
-            tmpTargetDirParent.copy(tmpTargetDirWorld).applyQuaternion(tmpInvParentQuat).normalize();
-
-            // اتجاه الـ bone في وضع bind داخل parent-space (نفترض forward = local +Y)
-            tmpRestDirParent.copy(upAxis).applyQuaternion(bindQ).normalize();
-
-            // delta rotation: من restDir -> targetDir
-            tmpDelta.setFromUnitVectors(tmpRestDirParent, tmpTargetDirParent);
-            tmpDesired.copy(tmpDelta).multiply(bindQ);
-
-            // نعومة الحركة
-            bone.quaternion.slerp(tmpDesired, 0.35);
-        }
-    }
-}
-
-function startTweenTo(letterPose) {
-    if (!letterPose) return;
-    currentPose.set(targetPose); // start from last target
-    targetPose.set(letterPose);
-    tweenStart = performance.now();
-    animating = true;
-}
-
-function updateTween(now) {
-    if (!animating) return;
-    const t = (now - tweenStart) / TWEEN_DURATION;
-    if (t >= 1) {
-        animating = false;
-        applyPose(targetPose);
-        return;
-    }
-    const s = t * t * (3 - 2 * t); // smoothstep
-    const tmp = new Float32Array(JOINT_COUNT * 3);
-    for (let i = 0; i < tmp.length; i++) {
-        tmp[i] = currentPose[i] + (targetPose[i] - currentPose[i]) * s;
-    }
-    applyPose(tmp);
-}
-
-function resizeRenderer() {
-    let w = container.clientWidth;
-    let h = container.clientHeight;
-
-    // في بعض متصفحات الموبايل يكون العرض/الارتفاع = 0 في البداية
-    if (!w || !h) {
-        w = window.innerWidth || 400;
-        h = Math.min((window.innerHeight || 640) * 0.45, 360);
-        container.style.height = h + 'px';
-    }
-
-    renderer.setSize(w, h, true);
+// ==== Resize ====
+function onResize() {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
 }
-resizeRenderer();
-window.addEventListener('resize', resizeRenderer);
+onResize();
+window.addEventListener('resize', onResize);
 
-// Animation loop
-function renderLoop(now) {
-    updateTween(now);
+// ==== Render loop ====
+function loop() {
     renderer.render(scene, camera);
-    requestAnimationFrame(renderLoop);
+    requestAnimationFrame(loop);
 }
-requestAnimationFrame(renderLoop);
+loop();
 
-// Init neutral pose (all zeros already) so we call once:
-applyPose(currentPose);
+// ==== Load model ====
+let handBonesByName = {};
+let handBoneBindQuat = {}; // لحفظ وضع الراحة
+let handModelLoaded = false;
+let handModel = null; // مرجع عام للموديل
 
-// ==== Sequence playback ====
-const textInput = document.getElementById('textInput');
-const translateBtn = document.getElementById('translateBtn');
+// القيم الافتراضية لاتجاه الموديل
+const DEFAULT_PITCH = 0.15;
+const DEFAULT_YAW   = -0.55;
+
+new THREE.GLTFLoader().load(
+    "{{ url_for('static', filename='models/hand.glb') }}",
+    (gltf) => {
+        const model = gltf.scene;
+        handModel = model;
+        // ضبطنا الموديل ليكون مطابقاً للمحرر
+        model.scale.setScalar(0.12);
+        model.position.set(0, -0.8, 0);
+        model.rotation.set(DEFAULT_PITCH, DEFAULT_YAW, 0);
+
+        model.traverse(o => {
+            if (o.isBone) {
+                handBonesByName[o.name] = o;
+                handBoneBindQuat[o.name] = o.quaternion.clone();
+            }
+        });
+
+        scene.add(model);
+        handModelLoaded = true;
+    },
+    null,
+    (err) => {
+        console.error('فشل تحميل الموديل:', err);
+        showToast('فشل تحميل موديل اليد', 'error');
+    }
+);
+
+// ==== تحويل بيانات الإحداثيات (3D Points) إلى دوران محلي للعظام باستخدام Inverse Kinematics ====
+function getTargetLocalRotations(poseData) {
+    const targets = {};
+    const backupState = {};
+    
+    // 1. حفظ الوضع الحالي للموديل والعظام
+    for (const b in handBonesByName) {
+        backupState[b] = handBonesByName[b].quaternion.clone();
+    }
+    const backupGlobal = handModel.quaternion.clone(); // الاحتفاظ بالاتجاه العالمي الحالي
+
+    // ملء كل العظام بوضع الراحة الافتراضي لضمان عدم تراكم التشوهات من الحروف السابقة
+    for (const b in handBonesByName) {
+        targets[b] = handBoneBindQuat[b].clone();
+    }
+
+    // هل البيانات بصيغة إحداثيات (Points) المكونة من 63 قيمة (21 نقطة × 3)؟
+    if (!Array.isArray(poseData) || poseData.length !== 63) {
+        if (typeof poseData === 'object' && !Array.isArray(poseData)) {
+            for (const boneName in poseData) {
+                if (boneName === 'global_rotation') continue;
+                const r = poseData[boneName];
+                const e = new THREE.Euler(r.x || 0, r.y || 0, r.z || 0, 'XYZ');
+                const q = new THREE.Quaternion().setFromEuler(e);
+                if (handBoneBindQuat[boneName]) {
+                    targets[boneName] = handBoneBindQuat[boneName].clone().multiply(q);
+                }
+            }
+            targets['_global_rotation'] = poseData['global_rotation'] || { x: 0.15, y: -0.55, z: 0 };
+            return targets;
+        }
+        console.warn("تجاهل الوضعية: البيانات غير متوافقة مع نظام النقاط الجديد (63 قيمة).");
+        return backupState;
+    }
+
+    // 2. إعادة المجسم بالكامل والعظام لوضع الراحة الفعلي (0,0,0) لتكون حسابات الـ IK مستقلة عن أي دوران حالي
+    handModel.rotation.set(0, 0, 0);
+    handModel.updateMatrixWorld(true);
+
+    for (const b in handBonesByName) {
+        handBonesByName[b].quaternion.copy(handBoneBindQuat[b]);
+    }
+    if (handBonesByName['radius_ulna']) {
+        handBonesByName['radius_ulna'].updateMatrixWorld(true);
+    }
+    
+    // حفظ الاتجاه العالمي للعظام في وضع الراحة (Bind Pose)
+    const bindWorldQuats = {};
+    for (const b in handBonesByName) {
+        bindWorldQuats[b] = handBonesByName[b].getWorldQuaternion(new THREE.Quaternion());
+    }
+
+    // 3. تحويل النقاط من MediaPipe إلى Three.js
+    // MediaPipe: X يمين, Y أسفل, Z عمق بعيد
+    // Three.js: X يمين, Y أعلى, Z عمق قريب
+    const lms = [];
+    for(let i=0; i<21; i++) {
+        lms.push(new THREE.Vector3(poseData[i*3], -poseData[i*3+1], -poseData[i*3+2]));
+    }
+
+    const BONE_SEGMENTS = [
+        ['thumb_trapez',  0,  1], ['thumb_meta',    1,  2], ['thumb_prox',    2,  3], ['thumb_dist',    3,  4],
+        // ['index_meta',    0,  5], 
+        ['index_prox',    5,  6], ['index_midd',    6,  7], ['index_dist',    7,  8],
+        // ['midd_meta',     0,  9], 
+        ['midd_prox',     9, 10], ['midd_midd',    10, 11], ['midd_dist',    11, 12],
+        // ['ring_meta',     0, 13], 
+        ['ring_prox',    13, 14], ['ring_midd',    14, 15], ['ring_dist',    15, 16],
+        // ['pinky_meta',    0, 17], 
+        ['pinky_prox',   17, 18], ['pinky_midd',   18, 19], ['pinky_dist',   19, 20]
+    ];
+
+    // 4. توجيه جذر اليد (radius_ulna)
+    const rootBone = handBonesByName['radius_ulna'];
+    if (rootBone) {
+        // Step 1: Align Y axis (Wrist to Middle MCP)
+        const targetPalmY = lms[9].clone().sub(lms[0]).normalize();
+        const currentRootY = new THREE.Vector3(0, 1, 0).applyQuaternion(rootBone.getWorldQuaternion(new THREE.Quaternion()));
+        const deltaRootY = new THREE.Quaternion().setFromUnitVectors(currentRootY, targetPalmY);
+        
+        let rootWorldQ = rootBone.getWorldQuaternion(new THREE.Quaternion());
+        rootWorldQ.premultiply(deltaRootY);
+        
+        const rootParentWorldQ = rootBone.parent.getWorldQuaternion(new THREE.Quaternion());
+        rootBone.quaternion.copy(rootParentWorldQ.clone().invert().multiply(rootWorldQ));
+        rootBone.updateMatrixWorld(true);
+
+        // Step 2: Align X axis (Roll correction)
+        let targetPalmX = lms[5].clone().sub(lms[17]).normalize();
+        targetPalmX.projectOnPlane(targetPalmY).normalize();
+
+        if (handBonesByName['index_prox'] && handBonesByName['pinky_prox']) {
+            const currentIdx = new THREE.Vector3();
+            handBonesByName['index_prox'].getWorldPosition(currentIdx);
+            const currentPinky = new THREE.Vector3();
+            handBonesByName['pinky_prox'].getWorldPosition(currentPinky);
+            
+            let currentPalmX = currentIdx.clone().sub(currentPinky).normalize();
+            currentPalmX.projectOnPlane(targetPalmY).normalize();
+
+            const deltaRootX = new THREE.Quaternion().setFromUnitVectors(currentPalmX, targetPalmX);
+            
+            rootWorldQ = rootBone.getWorldQuaternion(new THREE.Quaternion());
+            rootWorldQ.premultiply(deltaRootX);
+            rootBone.quaternion.copy(rootParentWorldQ.clone().invert().multiply(rootWorldQ));
+            rootBone.updateMatrixWorld(true);
+        }
+
+        targets['radius_ulna'] = rootBone.quaternion.clone();
+    }
+
+    // 5. توجيه مفاصل الأصابع
+    for(const seg of BONE_SEGMENTS) {
+        const boneName = seg[0];
+        const startIdx = seg[1];
+        const endIdx = seg[2];
+        const bone = handBonesByName[boneName];
+        if(!bone) continue;
+
+        const isThumb = boneName.startsWith('thumb');
+
+        const targetDir = lms[endIdx].clone().sub(lms[startIdx]).normalize();
+        if(targetDir.lengthSq() < 0.1) continue;
+
+        const currentDir = new THREE.Vector3(0, 1, 0).applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()));
+        const deltaQ = new THREE.Quaternion().setFromUnitVectors(currentDir, targetDir);
+
+        let worldQ = bone.getWorldQuaternion(new THREE.Quaternion());
+        worldQ.premultiply(deltaQ);
+        const parentWorldQ = bone.parent.getWorldQuaternion(new THREE.Quaternion());
+        bone.quaternion.copy(parentWorldQ.clone().invert().multiply(worldQ));
+        bone.updateMatrixWorld(true);
+
+        // منع الالتواء (Corkscrew) للأصابع الأربعة عن طريق الحفاظ على محور الدوران الأصلي
+        if (!isThumb && rootBone && bindWorldQuats[boneName] && bindWorldQuats['radius_ulna']) {
+            // حساب الدوران الكلي للجذر مقارنة بوضع الراحة
+            const rootDeltaQ = bindWorldQuats['radius_ulna'].clone().invert().multiply(rootBone.getWorldQuaternion(new THREE.Quaternion()));
+            
+            // المحور المرجعي للعظمة بناءً على وضع الراحة ملفوفاً بدوران الجذر
+            const referenceX = new THREE.Vector3(1, 0, 0).applyQuaternion(bindWorldQuats[boneName]).applyQuaternion(rootDeltaQ);
+            referenceX.projectOnPlane(targetDir).normalize();
+            
+            const boneX = new THREE.Vector3(1, 0, 0).applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()));
+            boneX.projectOnPlane(targetDir).normalize();
+
+            const rollQ = new THREE.Quaternion().setFromUnitVectors(boneX, referenceX);
+            worldQ = bone.getWorldQuaternion(new THREE.Quaternion());
+            worldQ.premultiply(rollQ);
+            bone.quaternion.copy(parentWorldQ.clone().invert().multiply(worldQ));
+            bone.updateMatrixWorld(true);
+        }
+
+        targets[boneName] = bone.quaternion.clone();
+    }
+
+    // 6. استرجاع الوضع الأصلي لتبدأ منه الحركة بنعومة
+    for (const b in backupState) {
+        handBonesByName[b].quaternion.copy(backupState[b]);
+    }
+    handModel.quaternion.copy(backupGlobal); // استرجاع الاتجاه العالمي القديم
+    handModel.updateMatrixWorld(true);
+
+    targets['_global_rotation'] = { x: 0.15, y: -0.55, z: 0 };
+    return targets;
+}
+
+// ==== دالة الانتقال الناعم (Smooth Transition) ====
+function transitionToPose(letter, durationMs) {
+    return new Promise((resolve) => {
+        if (!handModelLoaded || typeof POSES === 'undefined' || !POSES[letter]) {
+            resolve();
+            return;
+        }
+
+        const poseData = POSES[letter];
+        // الحصول على الزوايا المحلية الصحيحة بغض النظر عن مصدر الداتا
+        const targetLocals = getTargetLocalRotations(poseData);
+        
+        const startTime = performance.now();
+        const transitions = [];
+
+        for (const boneName in targetLocals) {
+            if (boneName === '_global_rotation') continue;
+            const bone = handBonesByName[boneName];
+            if (!bone) continue;
+            transitions.push({ 
+                bone: bone, 
+                startQ: bone.quaternion.clone(), 
+                targetQ: targetLocals[boneName] 
+            });
+        }
+
+        const startGlobalQ = handModel.quaternion.clone();
+        const tge = targetLocals['_global_rotation'] || { x: 0.15, y: -0.55, z: 0 };
+        const targetGlobalQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(tge.x, tge.y, tge.z, 'XYZ'));
+
+        // Animation Loop
+        function animateFrame(currentTime) {
+            const elapsed = currentTime - startTime;
+            let t = elapsed / durationMs;
+            if (t >= 1) t = 1;
+
+            // Ease-in-out لحركة واقعية أكثر
+            const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+            transitions.forEach(trans => {
+                trans.bone.quaternion.slerpQuaternions(trans.startQ, trans.targetQ, easeT);
+            });
+            
+            handModel.quaternion.slerpQuaternions(startGlobalQ, targetGlobalQ, easeT);
+
+            // تحديث جذري مرة واحدة
+            if (handBonesByName['radius_ulna']) {
+                handBonesByName['radius_ulna'].updateMatrixWorld(true);
+            }
+
+            if (t < 1) {
+                requestAnimationFrame(animateFrame);
+            } else {
+                resolve();
+            }
+        }
+        requestAnimationFrame(animateFrame);
+    });
+}
+
+// ==== UI refs ====
+const textInput         = document.getElementById('textInput');
+const translateBtn      = document.getElementById('translateBtn');
 const currentLetterPill = document.getElementById('currentLetterPill');
-const progressText = document.getElementById('progressText');
-const progressBar = document.getElementById('progressBar');
+const progressText      = document.getElementById('progressText');
+const progressBar       = document.getElementById('progressBar');
 
 let activeSequence = [];
-let currentIndex = 0;
-let playing = false;
+let currentIndex   = 0;
+let playing        = false;
 
-// تطبيع الحروف العربية لتتطابق مع المفاتيح الموجودة في HAND_LANDMARKS
-const LETTER_NORMALIZE_MAP = {
-    'ا': 'أ', 'إ': 'أ', 'آ': 'أ', // كل أشكال الألف إلى ألف همزة
-    'ة': 'ه',
-    'ى': 'ي',
-    'ؤ': 'و',
-    'ئ': 'ي'
-};
+const MAP = { 'ا':'أ', 'إ':'أ', 'آ':'أ', 'ة':'ه', 'ى':'ي', 'ؤ':'و', 'ئ':'ي' };
+function normalize(ch) { return MAP[ch] || ch; }
 
-// إزالة التشكيل وعلامات التطويل
-const ARABIC_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g;
-
-function normalizeLetterChar(ch) {
-    if (!ch) return '';
-    let c = ch.replace(ARABIC_DIACRITICS_RE, '');
-    if (LETTER_NORMALIZE_MAP[c]) {
-        c = LETTER_NORMALIZE_MAP[c];
-    }
-    return c;
-}
-
-function buildSequenceFromText(text) {
+function buildSequence(text) {
     const seq = [];
-    const cleaned = text.replace(ARABIC_DIACRITICS_RE, '');
-    for (const raw of cleaned) {
-        if (raw === ' ' || raw === '\n' || raw === '\t') continue;
-        const ch = normalizeLetterChar(raw);
-        if (!ch) continue;
-        if (typeof HAND_LANDMARKS !== 'undefined' && HAND_LANDMARKS[ch]) {
-            seq.push(ch);
+    for (const ch of text) {
+        if (ch === ' ') {
+            if (seq.length > 0) seq.push(' ');
+            continue;
         }
+        const c = normalize(ch);
+        if (typeof POSES !== 'undefined' && POSES[c]) seq.push(c);
+    }
+    while (seq.length > 0 && seq[seq.length - 1] === ' ') {
+        seq.pop();
     }
     return seq;
 }
 
 function updateStatus() {
-    if (!activeSequence.length || !playing) {
+    if (!activeSequence.length) {
         currentLetterPill.textContent = 'ـ';
-        progressText.textContent = '0 / 0';
-        progressBar.style.width = '0%';
+        progressText.textContent      = '0 / 0';
+        progressBar.style.width       = '0%';
         return;
     }
-    const letter = activeSequence[currentIndex] || 'ـ';
-    currentLetterPill.textContent = letter;
-    progressText.textContent = (currentIndex + 1) + ' / ' + activeSequence.length;
-    const pct = ((currentIndex + 1) / activeSequence.length) * 100;
-    progressBar.style.width = pct + '%';
+    currentLetterPill.textContent = activeSequence[currentIndex];
+    progressText.textContent      = (currentIndex + 1) + ' / ' + activeSequence.length;
+    progressBar.style.width       = ((currentIndex + 1) / activeSequence.length * 100) + '%';
 }
 
-async function playSequenceOnce() {
-    if (!activeSequence.length) return;
+// ==== Play sequence ====
+async function play() {
     playing = true;
     translateBtn.disabled = true;
 
     for (let i = 0; i < activeSequence.length; i++) {
         currentIndex = i;
-        const letter = activeSequence[i];
-        const pose = letterToPose(letter);
-        if (!pose) continue;
-        startTweenTo(pose);
         updateStatus();
-        // انتظر نهاية الـ tween + تأخير السرعة
-        const delay = TWEEN_DURATION + getLetterDelay();
-        await new Promise(res => setTimeout(res, delay));
+
+        if (activeSequence[i] === ' ') {
+            currentLetterPill.textContent = '␣';
+            await new Promise(r => setTimeout(r, getLetterDelay()));
+            continue;
+        }
+
+        const totalDelay = getLetterDelay(); 
+        const animDuration = totalDelay * 0.7; 
+        const holdDuration = totalDelay * 0.3; 
+
+        // تحريك ناعم للحرف
+        await transitionToPose(activeSequence[i], animDuration);
+        
+        // ثبات بسيط لتمكين المستخدم من رؤية الحرف
+        await new Promise(r => setTimeout(r, holdDuration));
     }
 
     playing = false;
     translateBtn.disabled = false;
-    setTimeout(() => {
-        progressBar.style.width = '0%';
-        currentLetterPill.textContent = 'ـ';
-        progressText.textContent = '0 / 0';
-    }, 500);
 }
 
 translateBtn.addEventListener('click', () => {
+    if(playing) return;
     const text = textInput.value.trim();
-    if (!text) {
-        showToast('اكتب نصاً بالعربية أولاً', 'error');
-        return;
-    }
-    if (typeof HAND_LANDMARKS === 'undefined') {
-        showToast('بيانات اليد غير محمّلة', 'error');
-        return;
-    }
-    activeSequence = buildSequenceFromText(text);
-    if (!activeSequence.length) {
-        showToast('لا يوجد حروف مدعومة في النص', 'error');
-        return;
-    }
-    currentIndex = 0;
-    playSequenceOnce();
-});
+    if (!text) { showToast('اكتب نص', 'error'); return; }
 
-// ==== Web Speech API (Mic) ====
-const micBtn = document.getElementById('micBtn');
-let recognition = null;
-let listening = false;
+    activeSequence = buildSequence(text);
+    if (!activeSequence.length) { showToast('لا يوجد حروف مدعومة', 'error'); return; }
 
-function initSpeech() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-        showToast('التعرّف على الصوت غير مدعوم في هذا المتصفح', 'error');
-        return null;
-    }
-    const rec = new SpeechRecognition();
-    rec.lang = 'ar-SA';
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
-    return rec;
-}
-
-micBtn.addEventListener('click', () => {
-    if (!recognition) {
-        recognition = initSpeech();
-        if (!recognition) return;
-
-        recognition.onresult = (e) => {
-            const transcript = e.results[0][0].transcript || '';
-            if (transcript) {
-                if (textInput.value.trim()) {
-                    textInput.value = (textInput.value.trim() + ' ' + transcript).trim();
-                } else {
-                    textInput.value = transcript;
-                }
-            }
-        };
-        recognition.onerror = () => {
-            showToast('حدث خطأ في التعرف على الصوت', 'error');
-        };
-        recognition.onend = () => {
-            listening = false;
-            micBtn.classList.remove('listening');
-            micBtn.textContent = '';
-            micBtn.innerHTML = '<span>🎙️</span><span>تسجيل صوت</span>';
-        };
-    }
-
-    if (listening) {
-        recognition.stop();
-        return;
-    }
-    try {
-        recognition.start();
-        listening = true;
-        micBtn.classList.add('listening');
-        micBtn.textContent = '';
-        micBtn.innerHTML = '<span>⏹</span><span>إيقاف التسجيل</span>';
-    } catch (e) {
-        showToast('لا يمكن بدء التسجيل الآن', 'error');
-    }
+    play();
 });
 </script>
 </body>
 </html>
-

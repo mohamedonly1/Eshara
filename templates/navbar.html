@@ -1,49 +1,86 @@
-<!-- NAVBAR COMPONENT - يتضمن في كل صفحة -->
+<link rel="stylesheet" href="/static/ishara-theme.css">
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#1D9E75">
+
 <nav class="navbar" id="navbar">
-    <div class="nav-logo">🤟 إشارة</div>
+    <a href="/" style="text-decoration:none;flex-shrink:0;display:flex;align-items:center;gap:8px;">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
+            <rect width="28" height="28" rx="7" fill="#1D9E75"/>
+            <path d="M8 17 C5.5 15.5 5 11 7 9.5 C8.5 8.5 10 10 10 13" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M11 14 L11 7.5 C11 6.2 13 6.2 13 7.5 L13 14" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M14 14 L14 6.5 C14 5.2 16 5.2 16 6.5 L16 14" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M17 14 L17 7.5 C17 6.2 19 6.2 19 7.5 L19 14" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M20 14 L20 10 C20 8.7 22 8.7 22 10 L22 14" stroke="white" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+            <path d="M8 18.5 C8 21 20 21 20 18.5" stroke="white" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+            <circle cx="12" cy="7.5" r="1.2" fill="white"/>
+            <circle cx="15" cy="6.5" r="1.2" fill="white"/>
+            <circle cx="18" cy="7.5" r="1.2" fill="white"/>
+            <circle cx="21" cy="10" r="1.2" fill="white"/>
+        </svg>
+        <span class="nav-logo">إشارة</span>
+    </a>
 
-    <div class="nav-links" id="navLinks">
-        <!-- يتحدث بـ JS حسب الصلاحيات -->
-    </div>
+    <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" width="28" height="28">
+            <path fill="currentColor" d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/>
+        </svg>
+    </button>
 
-    <div class="nav-user" id="navUser">
-        <a href="/profile" style="display:flex;align-items:center;gap:6px;text-decoration:none;-webkit-tap-highlight-color:transparent;">
-            <div class="nav-avatar" id="navAvatar">؟</div>
-            <div class="nav-name" id="navName">...</div>
-        </a>
-        <button class="nav-logout" onclick="doLogout()">خروج</button>
+    <div class="nav-menu-wrapper" id="navMenuWrapper">
+        <div class="nav-links" id="navLinks"></div>
+
+        <div class="nav-user" id="navUser">
+            
+            <button id="themeToggle" class="theme-toggle-btn" aria-label="تبديل المظهر">
+                <span class="icon-moon">&#9790;</span>
+                <span class="icon-sun" style="display:none;">&#9788;</span>
+            </button>
+
+            <a href="/profile" style="display:flex;align-items:center;gap:6px;text-decoration:none;-webkit-tap-highlight-color:transparent;">
+                <div class="nav-avatar" id="navAvatar">؟</div>
+                <div class="nav-name" id="navName">...</div>
+            </a>
+            <button class="nav-logout" onclick="doLogout()">خروج</button>
+        </div>
     </div>
 </nav>
-<link rel="manifest" href="/manifest.json">
 <style>
 .navbar {
     position: fixed;
     top: 0; left: 0; right: 0;
-    height: 52px;
-    background: rgba(10,10,15,0.95);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255,255,255,0.07);
+    height: 56px;
+    background: var(--surface) !important; /* استخدام المتغير بدلاً من الأبيض الثابت */
+    border-bottom: 1px solid var(--border) !important;
     display: flex;
+    justify-content: space-between;
     align-items: center;
     padding: 0 16px;
-    gap: 12px;
     z-index: 500;
     font-family: 'Cairo', sans-serif;
+    box-shadow: var(--shadow-sm);
+    transition: background 0.3s, border-color 0.3s;
 }
 
 .nav-logo {
-    font-size: 15px;
+    font-size: 16px;
     font-weight: 900;
-    background: linear-gradient(135deg, #00d4aa, #7c3aed);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--accent);
     white-space: nowrap;
     flex-shrink: 0;
 }
 
+.nav-menu-wrapper {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-right: 12px;
+}
+
 .nav-links {
     display: flex;
-    gap: 4px;
+    gap: 2px;
     flex: 1;
     overflow-x: auto;
     scrollbar-width: none;
@@ -54,13 +91,13 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    padding: 6px 12px;
-    border-radius: 20px;
+    padding: 6px 11px;
+    border-radius: 8px;
     font-family: 'Cairo', sans-serif;
-    font-size: 12px;
-    font-weight: 700;
+    font-size: 13px;
+    font-weight: 600;
     text-decoration: none;
-    color: #6b7280;
+    color: var(--text-dim);
     border: none;
     background: transparent;
     cursor: pointer;
@@ -68,11 +105,8 @@
     transition: all 0.15s;
     -webkit-tap-highlight-color: transparent;
 }
-.nav-link:hover { color: #f0f0f8; background: rgba(255,255,255,0.06); }
-.nav-link.active { color: #00d4aa; background: rgba(0,212,170,0.12); }
-.nav-link.admin-link { color: #f59e0b; }
-.nav-link.admin-link:hover { background: rgba(245,158,11,0.1); }
-.nav-link.admin-link.active { background: rgba(245,158,11,0.12); }
+.nav-link:hover  { color: var(--accent); background: var(--accent-lt); }
+.nav-link.active { color: var(--accent); background: var(--accent-lt); font-weight: 700; }
 
 .nav-user {
     display: flex;
@@ -82,20 +116,20 @@
 }
 
 .nav-avatar {
-    width: 30px; height: 30px;
+    width: 32px; height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #00d4aa, #7c3aed);
+    background: var(--accent);
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 900;
     color: #fff;
     flex-shrink: 0;
 }
 
 .nav-name {
-    font-size: 12px;
-    font-weight: 700;
-    color: #f0f0f8;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -103,60 +137,135 @@
 }
 
 .nav-logout {
-    background: rgba(239,68,68,0.1);
-    border: 1px solid rgba(239,68,68,0.2);
-    color: #ef4444;
-    padding: 4px 10px;
+    background: var(--danger-lt);
+    border: 1px solid var(--border);
+    color: var(--danger);
+    padding: 5px 11px;
     border-radius: 20px;
     font-family: 'Cairo', sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.15s;
 }
-.nav-logout:hover { background: rgba(239,68,68,0.2); }
 
-/* محتوى الصفحة يبدأ تحت الـ navbar */
-.page-content { padding-top: 52px; height: 100dvh; display: flex; flex-direction: column; }
+.hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    padding: 4px;
+}
+
+@media (max-width: 800px) {
+    .hamburger { display: block; }
+    .nav-menu-wrapper {
+        position: absolute;
+        top: 56px;
+        left: 0; right: 0;
+        background: var(--surface);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        box-shadow: var(--shadow-md);
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-15px);
+        transition: all 0.3s ease-in-out;
+        z-index: 499;
+    }
+    .nav-menu-wrapper.active {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    .nav-links { flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .nav-link { padding: 12px 16px; background: var(--surface2); border-radius: 10px; }
+    .nav-user { justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--border); }
+}
 </style>
 
 <script>
-// ===== تحديث الـ Navbar حسب الصفحة والصلاحيات =====
+    // نظام الوضع الليلي (Dark Mode)
+// 1. فحص التفضيلات المحفوظة فوراً قبل تحميل الصفحة
+const savedTheme = localStorage.getItem('ishara-theme');
+if (savedTheme === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+}
+
+// 2. تشغيل الزرار بعد تحميل الـ DOM
+document.addEventListener('DOMContentLoaded', () => {
+    const themeBtn = document.getElementById('themeToggle');
+    const iconMoon = document.querySelector('.icon-moon');
+    const iconSun = document.querySelector('.icon-sun');
+
+    if (themeBtn) {
+        // ظبط شكل الأيقونة أول ما الصفحة تفتح
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        if (isDark) {
+            iconMoon.style.display = 'none';
+            iconSun.style.display = 'block';
+        }
+
+        // تفاعل الزرار عند الضغط
+        themeBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+                localStorage.setItem('ishara-theme', 'light');
+                iconMoon.style.display = 'block';
+                iconSun.style.display = 'none';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('ishara-theme', 'dark');
+                iconMoon.style.display = 'none';
+                iconSun.style.display = 'block';
+            }
+        });
+    }
+});
+
+// تشغيل زرار البرجر
+document.addEventListener('DOMContentLoaded', () => {
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const navMenuWrapper = document.getElementById('navMenuWrapper');
+    
+    if (hamburgerBtn && navMenuWrapper) {
+        hamburgerBtn.addEventListener('click', () => {
+            navMenuWrapper.classList.toggle('active');
+        });
+    }
+});
+
 async function initNavbar() {
     const res = await fetch('/auth/me');
     const user = await res.json();
-
     if (!user.logged_in) {
         if (!window._adminPage) window.location.href = '/login';
         return;
     }
-
-    // اسم المستخدم
     document.getElementById('navName').textContent = user.name;
     document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
-
-    // الصفحة الحالية
     const path = window.location.pathname;
-
-    // روابط الـ navbar حسب الصلاحيات
-    const links = [
-        { href: '/',             icon: '🤟', label: 'التعرف',        roles: ['user', 'admin'] },
-        { href: '/translate',    icon: '🔄', label: 'ترجمة',         roles: ['user', 'admin'] },
-        { href: '/collect-data', icon: '📝', label: 'تسجيل بيانات',  roles: ['user', 'admin'] },
-        { href: '/profile',      icon: '👤', label: 'حسابي',         roles: ['user', 'admin'] },
-        { href: '/admin',        icon: '🛡️', label: 'الأدمن',        roles: ['admin'], cls: 'admin-link' },
+const links = [
+        { href: '/recognize',    icon: '', label: 'التعرف',       roles: ['user','admin'] },
+        { href: '/translate',    icon: '', label: 'ترجمة',        roles: ['user','admin'] },
+        { href: '/collect-data', icon: '', label: 'تسجيل بيانات', roles: ['user','admin'] },
+        { href: '/profile',      icon: '', label: 'حسابي',        roles: ['user','admin'] },
+        { href: '/pose-editor',  icon: '', label: 'المحرر',       roles: ['admin'] },
+        { href: '/debug',        icon: '', label: 'فحص اليد',      roles: ['admin'] },
+        { href: '/admin',        icon: '', label: 'الأدمن',       roles: ['admin'], cls: 'admin-link' },
     ];
-
     const role = user.is_admin ? 'admin' : 'user';
-
     document.getElementById('navLinks').innerHTML = links
         .filter(l => l.roles.includes(role))
         .map(l => `
-            <a href="${l.href}" class="nav-link ${l.cls || ''} ${path === l.href ? 'active' : ''}">
+            <a href="${l.href}" class="nav-link ${l.cls||''} ${(path===l.href || (path==='/' && l.href==='/recognize'))?'active':''}">
                 <span>${l.icon}</span><span>${l.label}</span>
-            </a>
-        `).join('');
+            </a>`).join('');
 }
 
 async function doLogout() {
@@ -164,14 +273,11 @@ async function doLogout() {
     window.location.href = '/login';
 }
 
-// تشغيل تلقائي
 initNavbar();
 
-// ===== تسجيل Service Worker =====
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/pwa/sw.js')
-            .catch(() => {});
+        navigator.serviceWorker.register('/static/pwa/sw.js').catch(()=>{});
     });
 }
 </script>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">إشارة</string>
+    <string name="tab_translate">نص لإشارة</string>
+    <string name="tab_recognize">إشارة لنص</string>
+    <string name="clear">مسح</string>
+    <string name="confidence_label">الثقة:</string>
+    <string name="confirmed_text_hint">النص المترجم سيظهر هنا…</string>
+    <string name="camera_permission_denied">يجب منح إذن الكاميرا لاستخدام هذه الميزة</string>
+    <string name="no_hand_detected">لم يتم كشف يد</string>
+</resources>

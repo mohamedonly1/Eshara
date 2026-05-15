@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#1D9E75">
+    <title>التعرف الفوري — إشارة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/ishara-theme.css">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="إشارة">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body { height: 100%; overflow: hidden; background: #F8FAF9; font-family: 'Cairo', sans-serif; color: #2C2C2A; }
+
+        /* ══ Layout ══ */
+        .page-content {
+            padding-top: 56px;
+            height: 100dvh;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+        }
+
+        /* ══ Sidebar ══ */
+        .sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid rgba(0,0,0,0.08);
+            background: #FFFFFF;
+            overflow-y: auto;
+        }
+
+        .block-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6B7B74;
+            letter-spacing: 0.05em;
+            margin-bottom: 10px;
+        }
+
+        /* بلوك الحرف */
+        .letter-block {
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid rgba(0,0,0,0.07);
+        }
+
+        .letter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+
+        .letter-big {
+            font-size: 76px;
+            font-weight: 900;
+            color: #1D9E75;
+            line-height: 1;
+            min-width: 78px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .letter-big.empty { color: #C8D6D0; font-size: 44px; }
+
+        .letter-meta { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+        .conf-label  { font-size: 11px; color: #6B7B74; }
+        .conf-track  { height: 5px; background: #F1F5F3; border-radius: 3px; overflow: hidden; }
+        .conf-fill   { height: 100%; border-radius: 3px; background: #1D9E75; transition: width 0.15s; width: 0%; }
+        .conf-value  { font-size: 14px; font-weight: 700; color: #1D9E75; }
+
+        .confirm-row   { display: flex; align-items: center; gap: 8px; }
+        .confirm-label { font-size: 11px; color: #6B7B74; white-space: nowrap; }
+        .confirm-track { flex: 1; height: 4px; background: #F1F5F3; border-radius: 2px; overflow: hidden; }
+        .confirm-fill  { height: 100%; border-radius: 2px; background: #BA7517; transition: width 0.1s; }
+        .confirm-fill.ready { background: #1D9E75; }
+
+        .status-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #A32D2D; transition: all 0.3s; flex-shrink: 0; }
+        .status-dot.active { background: #1D9E75; }
+
+        /* بلوك النص */
+        .text-block {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(0,0,0,0.07);
+        }
+
+        .word-box {
+            background: #F8FAF9;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            padding: 12px 14px;
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .word-text { font-size: 24px; font-weight: 700; color: #2C2C2A; flex: 1; word-break: break-all; line-height: 1.3; }
+        .word-placeholder { color: #A8BBB4; font-size: 13px; font-weight: 400; }
+        .word-count { font-size: 11px; color: #6B7B74; white-space: nowrap; padding-right: 6px; }
+
+        .btn-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 7px; }
+
+        .btn {
+            padding: 10px 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(0,0,0,0.1);
+            font-family: 'Cairo', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+            -webkit-tap-highlight-color: transparent;
+            background: #F1F5F3;
+            color: #2C2C2A;
+        }
+        .btn:active { transform: scale(0.96); }
+
+        .btn-space  { background: #1D9E75; color: #fff; border-color: #1D9E75; }
+        .btn-space:hover { background: #0F6E56; }
+        .btn-delete { background: #FAEEDA; color: #BA7517; border-color: rgba(186,117,23,0.2); }
+        .btn-clear  { background: #FCEBEB; color: #A32D2D; border-color: rgba(163,45,45,0.2); }
+        .btn-speak  { background: #E1F5EE; color: #1D9E75; border-color: rgba(29,158,117,0.25); }
+        .btn-speak.speaking { background: #1D9E75; color: #fff; }
+        .btn-save   { background: #EEEDFE; color: #534AB7; border-color: rgba(83,74,183,0.2); }
+        .btn-save:disabled  { opacity: 0.4; cursor: not-allowed; }
+        .btn-full   { width: 100%; }
+
+        /* بلوك السجل */
+        .history-block { padding: 14px 18px; flex: 1; }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .history-title { font-size: 12px; font-weight: 700; color: #6B7B74; }
+        .history-badge { font-size: 11px; color: #6B7B74; background: #F1F5F3; padding: 2px 10px; border-radius: 20px; }
+
+        .history-item {
+            background: #F8FAF9;
+            border: 1px solid rgba(0,0,0,0.07);
+            border-radius: 10px;
+            padding: 9px 12px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .history-item:hover { background: #E1F5EE; }
+        .h-text { font-size: 17px; font-weight: 700; color: #2C2C2A; }
+        .h-time { font-size: 10px; color: #6B7B74; white-space: nowrap; }
+        .history-empty { text-align: center; padding: 20px; color: #A8BBB4; font-size: 13px; }
+
+        /* ══ Camera ══ */
+        .camera-wrap {
+            flex: 1;
+            position: relative;
+            background: #111;
+            overflow: hidden;
+        }
+        #video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+            display: block;
+        }
+        #overlay {
+            position: absolute; inset: 0;
+            transform: scaleX(-1);
+            pointer-events: none;
+        }
+
+        .tracking-badge {
+            position: absolute;
+            bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 999px;
+            padding: 8px 18px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 12px; font-weight: 700; color: #2C2C2A;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        }
+        .t-dot { width: 8px; height: 8px; border-radius: 50%; background: #A32D2D; transition: background 0.3s; }
+        .t-dot.active { background: #1D9E75; }
+
+        .collect-btn {
+            position: absolute; top: 14px; right: 16px;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 999px;
+            padding: 7px 14px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px; font-weight: 700; color: #2C2C2A;
+            text-decoration: none;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+            transition: all 0.15s;
+        }
+        .collect-btn:hover { background: #E1F5EE; color: #1D9E75; }
+
+        /* ══ Mobile ══ */
+        @media (max-width: 700px) {
+            .page-content { flex-direction: column; }
+            .sidebar { width: 100%; border-left: none; border-top: 1px solid rgba(0,0,0,0.08); order: 2; max-height: 56dvh; }
+            .camera-wrap { order: 1; height: 44dvh; flex: none; }
+            .letter-big { font-size: 54px; }
+            .history-block { display: none; }
+        }
+
+        /* ══ Loading ══ */
+        .loading-screen {
+            position: fixed; inset: 0; background: #F8FAF9;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 999; transition: opacity 0.4s;
+        }
+        .loading-screen.hidden { opacity: 0; pointer-events: none; }
+        .loading-logo { width: 60px; height: 60px; border-radius: 16px; background: #1D9E75; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+        .loading-title { font-size: 20px; font-weight: 900; color: #1D9E75; margin-bottom: 6px; }
+        .loading-sub   { font-size: 13px; color: #6B7B74; margin-bottom: 22px; }
+        .spinner { width: 28px; height: 28px; border: 3px solid #E1F5EE; border-top-color: #1D9E75; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ══ Toast ══ */
+        .toast {
+            position: fixed; bottom: 24px; left: 50%;
+            transform: translateX(-50%) translateY(16px);
+            background: #fff; border: 1px solid rgba(29,158,117,0.3);
+            border-radius: 999px; padding: 8px 18px;
+            font-size: 12px; font-weight: 600; color: #1D9E75;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            opacity: 0; pointer-events: none; transition: all 0.25s; z-index: 999; white-space: nowrap;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .toast.error { border-color: rgba(163,45,45,0.3); color: #A32D2D; }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+
+<div class="loading-screen" id="loadingScreen">
+    <div class="loading-logo">
+        <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
+            <path d="M8 17 C5.5 15.5 5 11 7 9.5 C8.5 8.5 10 10 10 13" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <path d="M11 14 L11 7.5 C11 6.2 13 6.2 13 7.5 L13 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <path d="M14 14 L14 6.5 C14 5.2 16 5.2 16 6.5 L16 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <path d="M17 14 L17 7.5 C17 6.2 19 6.2 19 7.5 L19 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <path d="M20 14 L20 10 C20 8.7 22 8.7 22 10 L22 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+            <circle cx="12" cy="7.5" r="1.3" fill="white"/>
+            <circle cx="15" cy="6.5" r="1.3" fill="white"/>
+            <circle cx="18" cy="7.5" r="1.3" fill="white"/>
+            <circle cx="21" cy="10"  r="1.3" fill="white"/>
+        </svg>
+    </div>
+    <div class="loading-title">إشارة</div>
+    <div class="loading-sub" id="loadingSub">جاري تحميل MediaPipe...</div>
+    <div class="spinner"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="page-content">
+
+    <!-- ═══ Sidebar ═══ -->
+    <aside class="sidebar">
+
+        <!-- الحرف الحالي -->
+        <div class="letter-block">
+            <div class="status-row-top">
+                <div class="block-label" style="margin-bottom:0">الحرف الحالي</div>
+                <div class="status-dot" id="statusDot"></div>
+            </div>
+            <div class="letter-row">
+                <div class="letter-big empty" id="letterDisplay">—</div>
+                <div class="letter-meta">
+                    <div class="conf-label">مستوى الثقة</div>
+                    <div class="conf-track"><div class="conf-fill" id="confBar"></div></div>
+                    <div class="conf-value" id="confValue">0%</div>
+                </div>
+            </div>
+            <div class="confirm-row">
+                <div class="confirm-label">تأكيد الحرف</div>
+                <div class="confirm-track"><div class="confirm-fill" id="confirmFill" style="width:0%"></div></div>
+            </div>
+        </div>
+
+        <!-- النص المجمع -->
+        <div class="text-block">
+            <div class="block-label">النص المجمع</div>
+            <div class="word-box">
+                <div class="word-count" id="wordCount">0</div>
+                <div id="wordDisplay" class="word-text word-placeholder">ابدأ بالإشارة...</div>
+            </div>
+            <div class="btn-grid-2">
+                <button class="btn btn-space"  onclick="addSpace()">⎵ مسافة</button>
+                <button class="btn btn-clear"  onclick="clearWord()">مسح الكل</button>
+            </div>
+            <div class="btn-grid-2" style="margin-bottom:7px">
+                <button class="btn btn-speak" id="speakBtn" onclick="speakWord()">نطق</button>
+                <button class="btn btn-save"  id="saveBtn"  onclick="saveToHistory()" disabled>حفظ</button>
+            </div>
+            <button class="btn btn-delete btn-full" onclick="deleteLetter()">← حذف آخر حرف</button>
+        </div>
+
+        <!-- السجل -->
+        <div class="history-block">
+            <div class="history-header">
+                <div class="history-title">السجل الأخير</div>
+                <div class="history-badge" id="historyBadge">0</div>
+            </div>
+            <div id="historyList">
+                <div class="history-empty">لا يوجد جمل محفوظة بعد</div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ═══ Camera ═══ -->
+    <div class="camera-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <a href="/collect-data" class="collect-btn">تسجيل بيانات</a>
+        <div class="tracking-badge">
+            <div class="t-dot" id="trackingDot"></div>
+            <span id="trackingLabel">في انتظار اليد</span>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const CONFIDENCE_THRESHOLD = 0.75;
+const HISTORY_LENGTH = 10;
+const AGREEMENT_RATIO = 0.75;
+const COOLDOWN_MS = 800;
+
+let currentWord = [], predictionHistory = [], lastLetter = null, lastLetterTime = 0, noHandCount = 0;
+
+const video         = document.getElementById('video');
+const overlayCanvas = document.getElementById('overlay');
+const overlayCtx    = overlayCanvas.getContext('2d');
+const cameraWrap    = document.querySelector('.camera-wrap');
+
+function extractLandmarks(landmarks) {
+    const raw = [];
+    landmarks.forEach(lm => raw.push(lm.x, lm.y));
+    return raw;
+}
+
+function drawHand(landmarks, videoW, videoH) {
+    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    const cW = overlayCanvas.width, cH = overlayCanvas.height;
+    const vA = videoW / videoH, cA = cW / cH;
+    let rW, rH, ox = 0, oy = 0;
+    if (vA > cA) { rW = cW; rH = cW / vA; oy = (cH - rH) / 2; }
+    else         { rH = cH; rW = cH * vA; ox = (cW - rW) / 2; }
+    const px = lm => lm.x * rW + ox;
+    const py = lm => lm.y * rH + oy;
+    const connections = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
+    overlayCtx.strokeStyle = 'rgba(29,158,117,0.75)';
+    overlayCtx.lineWidth = 2;
+    connections.forEach(([a,b]) => {
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(px(landmarks[a]), py(landmarks[a]));
+        overlayCtx.lineTo(px(landmarks[b]), py(landmarks[b]));
+        overlayCtx.stroke();
+    });
+    const tips = [4,8,12,16,20];
+    landmarks.forEach((lm, i) => {
+        overlayCtx.beginPath();
+        overlayCtx.arc(px(lm), py(lm), tips.includes(i) ? 5 : 3.5, 0, Math.PI*2);
+        overlayCtx.fillStyle = tips.includes(i) ? '#534AB7' : '#1D9E75';
+        overlayCtx.fill();
+    });
+}
+
+async function sendLandmarks(raw) {
+    try {
+        const res = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({landmarks: raw}) });
+        handlePrediction(await res.json());
+    } catch(e) {}
+}
+
+function handlePrediction(data) {
+    const { letter, confidence, status } = data;
+    const now = Date.now();
+    if (status !== 'ok' || !letter) return;
+    updateUI(letter, confidence / 100);
+    if (confidence >= CONFIDENCE_THRESHOLD * 100) {
+        predictionHistory.push(letter);
+        if (predictionHistory.length > HISTORY_LENGTH) predictionHistory.shift();
+    } else { predictionHistory = []; }
+    const fillPct = (predictionHistory.length / HISTORY_LENGTH) * 100;
+    const cf = document.getElementById('confirmFill');
+    cf.style.width = fillPct + '%';
+    cf.className = 'confirm-fill' + (fillPct >= 100 ? ' ready' : '');
+    if (predictionHistory.length >= HISTORY_LENGTH && now - lastLetterTime > COOLDOWN_MS) {
+        const counts = {};
+        predictionHistory.forEach(l => counts[l] = (counts[l]||0)+1);
+        const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+        if (top[1]/HISTORY_LENGTH >= AGREEMENT_RATIO && top[0] !== lastLetter) {
+            addLetter(top[0]); lastLetter = top[0]; lastLetterTime = now;
+            predictionHistory = []; cf.style.width = '0%';
+        }
+    }
+}
+
+function updateUI(letter, confidence) {
+    const el = document.getElementById('letterDisplay');
+    el.textContent = letter; el.className = 'letter-big';
+    const pct = Math.round(confidence * 100);
+    document.getElementById('confBar').style.width = pct + '%';
+    document.getElementById('confBar').style.background = pct > 90 ? '#1D9E75' : pct > 75 ? '#BA7517' : '#A32D2D';
+    document.getElementById('confValue').textContent = pct + '%';
+}
+
+function clearUI() {
+    document.getElementById('letterDisplay').textContent = '—';
+    document.getElementById('letterDisplay').className = 'letter-big empty';
+    document.getElementById('confBar').style.width = '0%';
+    document.getElementById('confValue').textContent = '0%';
+    document.getElementById('confirmFill').style.width = '0%';
+    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+    predictionHistory = []; lastLetter = null;
+}
+
+function addLetter(letter)  { currentWord.push(letter); updateWordDisplay(); if (navigator.vibrate) navigator.vibrate(30); }
+function addSpace()         { currentWord.push(' '); updateWordDisplay(); }
+function deleteLetter()     { if (currentWord.length) { currentWord.pop(); updateWordDisplay(); lastLetter = null; } }
+function clearWord()        { currentWord = []; lastLetter = null; predictionHistory = []; updateWordDisplay(); }
+
+function updateWordDisplay() {
+    const wordEl = document.getElementById('wordDisplay');
+    const word   = currentWord.join('').trim();
+    if (!word) { wordEl.textContent = 'ابدأ بالإشارة...'; wordEl.className = 'word-text word-placeholder'; document.getElementById('wordCount').textContent = '0'; }
+    else       { wordEl.textContent = currentWord.join(''); wordEl.className = 'word-text'; document.getElementById('wordCount').textContent = word.length; }
+    checkSaveBtn();
+}
+
+function initMediaPipe() {
+    document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
+    const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+    hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.5 });
+    let lastSend = 0;
+    hands.onResults(results => {
+        const w = video.videoWidth || overlayCanvas.width;
+        const h = video.videoHeight || overlayCanvas.height;
+        const tDot = document.getElementById('trackingDot');
+        const tLbl = document.getElementById('trackingLabel');
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            noHandCount = 0;
+            document.getElementById('statusDot').classList.add('active');
+            tDot.classList.add('active'); tLbl.textContent = 'TRACKING ACTIVE';
+            const lm = results.multiHandLandmarks[0];
+            drawHand(lm, w, h);
+            const now = Date.now();
+            if (now - lastSend > 120) { lastSend = now; sendLandmarks(extractLandmarks(lm)); }
+        } else {
+            noHandCount++;
+            if (noHandCount > 3) { clearUI(); tDot.classList.remove('active'); tLbl.textContent = 'في انتظار اليد'; }
+            document.getElementById('statusDot').classList.remove('active');
+        }
+    });
+    const cam = new Camera(video, {
+        onFrame: async () => {
+            overlayCanvas.width  = cameraWrap.clientWidth  || 640;
+            overlayCanvas.height = cameraWrap.clientHeight || 480;
+            await hands.send({ image: video });
+        }, width: 640, height: 480
+    });
+    cam.start()
+       .then(() => document.getElementById('loadingScreen').classList.add('hidden'))
+       .catch(() => { document.getElementById('loadingSub').textContent = 'تعذّر الوصول للكاميرا'; });
+}
+
+let toastTimer = null;
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show' + (type === 'error' ? ' error' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+let isSpeaking = false;
+function speakWord() {
+    const word = currentWord.join('').trim();
+    if (!word) { showToast('اكتب كلمة الأول', 'error'); return; }
+    if (isSpeaking) { window.speechSynthesis.cancel(); return; }
+    const u = new SpeechSynthesisUtterance(word);
+    u.lang = 'ar-SA'; u.rate = 0.85;
+    const ar = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
+    if (ar) u.voice = ar;
+    const btn = document.getElementById('speakBtn');
+    isSpeaking = true; btn.textContent = 'إيقاف'; btn.classList.add('speaking');
+    u.onend = u.onerror = () => { isSpeaking = false; btn.textContent = 'نطق'; btn.classList.remove('speaking'); };
+    window.speechSynthesis.speak(u);
+}
+
+async function saveToHistory() {
+    const word = currentWord.join('').trim();
+    if (!word) return;
+    const btn = document.getElementById('saveBtn');
+    btn.disabled = true; btn.textContent = '...';
+    try {
+        const res  = await fetch('/history/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text: word}) });
+        const data = await res.json();
+        if (data.success) {
+            showToast('تم الحفظ في سجلك'); btn.textContent = 'تم الحفظ';
+            loadHistory();
+            setTimeout(() => { btn.textContent = 'حفظ'; btn.disabled = false; checkSaveBtn(); }, 2000);
+        } else {
+            showToast(data.error || 'فشل الحفظ', 'error'); btn.textContent = 'حفظ'; btn.disabled = false;
+        }
+    } catch(e) { showToast('خطأ في الاتصال', 'error'); btn.textContent = 'حفظ'; btn.disabled = false; }
+}
+
+function checkSaveBtn() {
+    document.getElementById('saveBtn').disabled = !currentWord.join('').trim();
+}
+
+async function loadHistory() {
+    try {
+        const res  = await fetch('/history/list');
+        const data = await res.json();
+        const entries = (data.entries || []).slice(0, 6);
+        document.getElementById('historyBadge').textContent = data.entries?.length || 0;
+        const list = document.getElementById('historyList');
+        if (!entries.length) { list.innerHTML = '<div class="history-empty">لا يوجد جمل محفوظة بعد</div>'; return; }
+        list.innerHTML = entries.map(e => `
+            <div class="history-item" onclick="speakHistItem('${e.text.replace(/'/g,"\\'")}')">
+                <div class="h-text">${e.text}</div>
+                <div class="h-time">${e.time}</div>
+            </div>`).join('');
+    } catch(e) {}
+}
+
+function speakHistItem(text) {
+    if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ar-SA'; u.rate = 0.85;
+    const ar = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
+    if (ar) u.voice = ar;
+    window.speechSynthesis.speak(u);
+}
+
+window.addEventListener('load', () => { initMediaPipe(); loadHistory(); });
+</script>
+</body>
+</html>

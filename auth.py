@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import hmac
 import json
 import os
+import re
 from datetime import datetime
 
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -12,6 +14,7 @@ load_dotenv()
 USERS_DIR = 'arabic_data/users'
 USERS_INDEX = 'arabic_data/users/users.json'
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
+VALID_ROLES = {'user', 'admin'}
 
 os.makedirs(USERS_DIR, exist_ok=True)
 
@@ -42,7 +45,12 @@ def save_user(user_data):
 
 def register_user(name, password, ip=None, user_agent=None):
     users = load_users()
-    user_id = name.strip().lower().replace(' ', '_')
+    user_id = name.strip().lower()
+    user_id = re.sub(r'\s+', '_', user_id)
+    # Remove any character that is not Arabic letter, Latin letter, digit, or underscore
+    user_id = re.sub(r'[^\u0600-\u06ff\w]', '', user_id)
+    if not user_id:
+        return None, 'اسم غير صالح'
     if user_id in users:
         return None, 'الاسم موجود بالفعل'
 
@@ -52,6 +60,7 @@ def register_user(name, password, ip=None, user_agent=None):
         'name': name.strip(),
         'password': hash_password(password),
         'created': now,
+        'role': 'user',
         'samples': {},
         'rejected': 0,
         'total_accepted': 0,
@@ -71,13 +80,17 @@ def register_user(name, password, ip=None, user_agent=None):
             'device': parse_device_type(user_agent)
         }]
     }
-    users[user_id] = {'name': name.strip(), 'created': now}
+    users[user_id] = {'name': name.strip(), 'created': now, 'role': 'user'}
     save_users(users)
     save_user(user)
     return user_id, None
 
 def login_user(name, password, ip=None, user_agent=None):
-    user_id = name.strip().lower().replace(' ', '_')
+    user_id = name.strip().lower()
+    user_id = re.sub(r'\s+', '_', user_id)
+    user_id = re.sub(r'[^\u0600-\u06ff\w]', '', user_id)
+    if not user_id:
+        return None, 'اسم غير صالح'
     user = load_user(user_id)
     if not user:
         return None, 'المستخدم غير موجود'
@@ -107,10 +120,10 @@ def parse_device_type(ua):
         return 'unknown'
     ua = ua.lower()
     if any(x in ua for x in ['iphone', 'android', 'mobile']):
-        return '📱 موبايل'
+        return 'Mobile'
     if any(x in ua for x in ['ipad', 'tablet']):
-        return '📟 تابلت'
-    return '💻 كمبيوتر'
+        return 'Tablet'
+    return 'Desktop'
 
 def parse_os(ua):
     if not ua:
@@ -187,6 +200,7 @@ def get_all_users_stats():
             stats.append({
                 'id': user_id,
                 'name': user['name'],
+                'role': get_user_role(user),
                 'total': total,
                 'rejected': rejected,
                 'quality': quality,
@@ -200,7 +214,8 @@ def get_all_users_stats():
                     'os': device.get('os', 'unknown'),
                     'browser': device.get('browser', 'unknown'),
                 },
-                'login_history': user.get('login_history', [])
+                'login_history': user.get('login_history', []),
+                'edit_history': __import__('history').get_entries(user_id)
             })
     return sorted(stats, key=lambda x: x['total'], reverse=True)
 
@@ -213,7 +228,37 @@ def delete_user(user_id):
     if os.path.exists(path):
         os.remove(path)
 
+def get_user_role(user):
+    role = user.get('role', 'user')
+    return role if role in VALID_ROLES else 'user'
+
+def user_is_admin(user):
+    return bool(user) and get_user_role(user) == 'admin'
+
+def set_user_role(user_id, role):
+    if role not in VALID_ROLES:
+        return False, 'نوع الحساب غير صالح'
+
+    user = load_user(user_id)
+    if not user:
+        return False, 'المستخدم غير موجود'
+
+    user['role'] = role
+    save_user(user)
+
+    users = load_users()
+    if user_id in users:
+        users[user_id]['role'] = role
+        save_users(users)
+
+    return True, None
+
 def verify_admin(password):
     if not ADMIN_PASSWORD:
         return False
-    return password == ADMIN_PASSWORD
+    # Use constant-time comparison to prevent timing attacks
+    # (compare_digest raises ValueError if lengths differ)
+    try:
+        return hmac.compare_digest(password, ADMIN_PASSWORD)
+    except (TypeError, ValueError):
+        return False

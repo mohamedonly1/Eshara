@@ -1,248 +1,155 @@
-# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة
-# Ishara - Arabic Sign Language Recognition System
+# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة (Detailed Documentation)
 
 ---
 
-## 📋 نظرة عامة على المشروع
+## 🌟 نظرة عامة شاملة
 
-هذا المشروع هو منظومة متكاملة للتعرف على لغة الإشارة العربية الموحدة في الوقت الفعلي (Real-time). تطور المشروع من أداة حاسوبية بسيطة ليصبح **نظاماً ثلاثي الأبعاد (3D System)** للترجمة العكسية، و**تطبيق هاتف ذكي (Android App)** للترجمة الفورية عبر كاميرا الهاتف.
+"إشارة" هو مشروع تخرج متكامل ومتطور للتعرف الفوري على لغة الإشارة العربية. تم بناء النظام ليعمل عبر منصات متعددة لتقديم أقصى فائدة عملية لمجتمع الصم والبكم.
 
-### الهدف
-بناء جسر تواصل متكامل بين مجتمع الصم والبكم والمجتمع العام عبر ثلاث منصات رئيسية تتيح الترجمة الفورية بالاتجاهين (إشارة ← نص، ونص/صوت ← إشارة).
-
----
-
-## 🏗️ معمارية النظام الشاملة
-
-```
-المنظومة تتكون من 3 أقسام متكاملة:
-
-1. الذكاء الاصطناعي (AI Pipeline)
-   OpenCV → MediaPipe Landmarks → Data Normalization → TFLite MLP Model
-
-2. تطبيق الأندرويد (Android Mobile App)
-   CameraX (Frames) → Image Rotation/Correction → MediaPipe Tasks Vision → TFLite Inference → Canvas Overlay
-
-3. منصة الويب والـ 3D (Web Dashboard & Inverse Kinematics)
-   Speech/Text Input → Flask Backend → Three.js (GLTF Model) → Quaternion/Euler IK Math → 3D Hand Animation
-```
+تتكون المنظومة من 3 مكونات برمجية رئيسية:
+1. **نظام الذكاء الاصطناعي (AI & Machine Learning)**: مسؤول عن معالجة البيانات، بناء الشبكة العصبية، وتدريب نماذج التعرف.
+2. **منصة الويب التفاعلية (Web Platform & 3D IK System)**: خادم Flask مع واجهة تفاعلية تضم قاموساً للإشارات ومجسماً ثلاثي الأبعاد (Avatar) يترجم النصوص والصوتيات إلى إيماءات باستخدام تقنيات Inverse Kinematics.
+3. **تطبيق الأندرويد (Mobile Application)**: تطبيق مخصص يعمل في الوقت الفعلي (Real-time) باستخدام كاميرا الهاتف للترجمة الفورية.
 
 ---
 
-## 📱 القسم الأول: تطبيق الأندرويد للترجمة الفورية
+## 📱 1. تطبيق الأندرويد المتقدم (Ishara Android App)
 
-تطبيق هواتف ذكية مبني بلغة **Kotlin** يعمل كعدسة مترجمة في الوقت الفعلي باستخدام الكاميرا.
+تم تطوير تطبيق الهاتف بلغة Kotlin باستخدام أحدث تقنيات نظام الأندرويد لضمان كفاءة عالية (High Performance) أثناء المعالجة الحية للفيديو.
 
-### 📚 المكتبات وتقنيات الأندرويد المستخدمة
+### التقنيات المستخدمة:
+- **CameraX**: لإدارة دورة حياة الكاميرا بسلاسة والتقاط الإطارات بدقة.
+- **MediaPipe Tasks Vision**: الإصدار الأحدث من مكتبة جوجل (HandLandmarker) لاكتشاف وتتبع مفاصل اليد بدقة وسرعة على الأجهزة المحمولة.
+- **TensorFlow Lite (TFLite)**: لتشغيل النموذج المدرب محلياً على الجهاز بدون الحاجة للإنترنت.
 
-#### 1. CameraX
-**الدور**: إدارة الكاميرا والتقاط الإطارات (Frames) بكفاءة عالية بدون إرهاق الذاكرة.
-```kotlin
-val cameraProvider = cameraProviderFuture.get()
-val imageAnalysis = ImageAnalysis.Builder()
-    .setTargetResolution(Size(480, 640))
-    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-    .build()
-```
+### 🔧 التحديات التقنية التي تم حلها (Technical Breakthroughs):
 
-#### 2. MediaPipe Tasks Vision (الإصدار الأحدث للأندرويد)
-**الدور**: اكتشاف اليد واستخراج 21 نقطة مفصلية بسرعة فائقة تناسب الهواتف.
-```kotlin
-val baseOptions = BaseOptions.builder().setModelAssetPath("hand_landmarker.task").build()
-val options = HandLandmarker.HandLandmarkerOptions.builder()
-    .setBaseOptions(baseOptions)
-    .setRunningMode(RunningMode.IMAGE)
-    .setNumHands(1)
-    .build()
-```
-
-#### 3. TensorFlow Lite (TFLite)
-**الدور**: تشغيل المودل المدرب (MLP) محلياً (On-Device) لترجمة الإحداثيات إلى حروف دون الحاجة لإنترنت.
-
-### ⚙️ تحديات تقنية معقدة تم حلها في الأندرويد:
-
-**مشكلة الدوران ونسبة الأبعاد (Rotation & Aspect Ratio)**
-تم تدريب المودل على صور كاميرا الويب (شاشة أفقية 640x480). عند تشغيل التطبيق على الهاتف (شاشة عمودية)، اختلفت الأبعاد وانقلبت الزوايا، مما أدى لانهيار الدقة تماماً.
-
-**الحل الرياضي الجذري (Foolproof Mapping):**
-```kotlin
-// 1. تدوير الصورة فعلياً في الذاكرة لتصبح معتدلة تماماً (Upright) قبل إرسالها للذكاء الاصطناعي
-if (bitmap.width > bitmap.height) {
-    val matrix = Matrix()
-    matrix.postRotate(rotationDegrees.toFloat())
-    bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-}
-
-// 2. تطبيع الإحداثيات لمحاكاة شاشة التدريب (Aspect Ratio Scaling)
-val scaleX = bitmapWidth / 640f
-val scaleY = bitmapHeight / 480f
-val points = landmarks.map { Pair(it.x() * scaleX, it.y() * scaleY) }
-```
-هذا الحل ضمن أن المودل يستقبل الإحداثيات الدقيقة التي تدرب عليها، لتعود الدقة لنسبة تفوق الـ 90%.
+#### أ. مشكلة توافق الأبعاد وتدوير الكاميرا (Aspect Ratio & Rotation Mapping)
+- **المشكلة**: تم تدريب موديل TFLite باستخدام كاميرا ويب (Landscape) بنسبة أبعاد 640x480. عند تشغيل الموديل على كاميرا الهاتف المحمول (Portrait)، تختلف نسبة الأبعاد وزوايا الدوران (Rotation Degrees)، مما أدى لانهيار دقة الاستنتاج وتشوه رسم الخطوط (Overlay) فوق اليد.
+- **الحل (Foolproof Rotation)**:
+  - تمت برمجة الكود ليقوم بتدوير الصورة المستلمة من `ImageProxy` بشكل آلي ودقيق (باستخدام `Matrix.postRotate`) بناءً على دوران مستشعر الهاتف، وذلك لضمان تسليم صورة معتدلة (Upright) لـ MediaPipe بشكل دائم.
+  - تم عمل **تطبيع إحداثيات رياضي (Mathematical Coordinate Normalization)** حيث تُضغط الإحداثيات لمحاكاة نسبة أبعاد كاميرا الويب (ScaleX = width/640, ScaleY = height/480).
+  - تم إصلاح نظام الرسم (Overlay Canvas) ليدعم الكاميرات الأمامية والخلفية (Front/Back) مع معالجة تأثير المرآة (Mirror Effect).
 
 ---
 
-## 🌐 القسم الثاني: منصة الويب والأنيميشن 3D
+## 🌐 2. منصة الويب والأنيميشن ثلاثي الأبعاد (Web Dashboard & 3D System)
 
-تطبيق ويب يتيح ترجمة الصوت أو النص إلى لغة إشارة، وعرضها باستخدام مجسم يد ثلاثي الأبعاد.
+### التقنيات المستخدمة:
+- **Backend**: Python, Flask, Flask-Limiter.
+- **Frontend**: HTML, CSS, JavaScript, Three.js.
+- **Speech-to-Text**: Web Speech API للترجمة الصوتية.
 
-### 📚 المكتبات وتقنيات الويب المستخدمة
+### 🔧 التحديات التقنية التي تم حلها:
 
-#### 1. Flask & Flask-Limiter (Python)
-**الدور**: خادم الويب الأساسي (Backend) لإدارة الجلسات ولوحة التحكم.
-```python
-@app.route('/update_sign', methods=['POST'])
-def update_sign():
-    data = request.json
-    # تحديث وتخزين الزوايا الدقيقة لكل مفصل في قاعدة البيانات
-```
-
-#### 2. Three.js & GLTF Loader
-**الدور**: تشغيل ومعالجة مجسم اليد ثلاثي الأبعاد (Avatar) في المتصفح.
-
-#### 3. الحركيات العكسية (Inverse Kinematics - IK) ورياضيات العظام
-**المشكلة**: عند تحريك أصابع الـ 3D Model بناءً على زوايا ثابتة، كانت العظام تتشوه (Deformation) وتنكمش (Squishing).
-**الحل**: تم بناء نظام يحاكي تشريح اليد برمجياً، يعتمد على تحويل الزوايا إلى `Quaternions` لتجنب مشكلة الـ (Gimbal Lock) وتصفير زوايا المحاور بذكاء عند الانتقال بين الإشارات.
-```javascript
-// الحساب الديناميكي للدوران بدون تشوه
-const axis = new THREE.Vector3(1, 0, 0); // محور الثني
-const quaternion = new THREE.Quaternion().setFromAxisAngle(axis, THREE.MathUtils.degToRad(angle));
-bone.quaternion.copy(quaternion); // استبدال الـ Euler بالـ Quaternion لضمان استقرار العظم
-```
-
-#### 4. Web Speech API
-**الدور**: تحويل الكلام الصوتي المسموع (عربي) إلى نص مقروء يترجمه المجسم لإشارات.
+#### أ. نظام الحركيات العكسية (Inverse Kinematics - IK) للمجسم الثلاثي
+- تم الانتقال من نظام زوايا ثابت (Pre-calculated Rotations) إلى نظام ديناميكي يقوم بحساب مواقع العظام بناءً على بيانات MediaPipe في متصفح الويب.
+- **منع تشوه العظام (Skeletal Deformation Fix)**: تم حل مشكلة تشوه المجسم عند الانتقال بين الإشارات من خلال ضمان إعادة تهيئة العظام وحساب محاور الدوران الدقيقة باستخدام خوارزمياترياضية متقدمة داخل بيئة `Three.js` (مزامنة Quaternion و Euler Angles).
+- **لوحة التحكم (Dashboard)**: نظام متكامل لإدارة الإيماءات وإجراء تعديلات دقيقة (Calibration) لمحاور X, Y, Z وحفظها برمجياً لاستخدامها في النظام المباشر، مع ميزة التحقق البصري وحفظ التاريخ (Timestamp).
 
 ---
 
-## 🧠 القسم الثالث: نظام الذكاء الاصطناعي وتدريب الموديل (AI Pipeline)
+## 🧠 3. نظام الذكاء الاصطناعي (AI Pipeline)
 
-النواة الأساسية التي تم بناء المشروع عليها للتعرف على اليد.
+### معمارية تصنيف الإشارات (MLP Model)
+تم استخدام شبكة عصبية عميقة (Multi-Layer Perceptron) تتميز بسرعتها وخفتها.
 
-### 📚 مكتبات الـ AI المستخدمة وشرح دورها
-
-#### 1. TensorFlow / Keras (tensorflow==2.10.1)
-**الدور**: بناء وتدريب الشبكة العصبية، وتحويلها لصيغة TFLite.
-
-**معمارية الموديل (MLP - Multi-Layer Perceptron)**:
 ```
-Input (42)  →  Dense(128) + BatchNorm + Dropout(0.3)
-            →  Dense(256) + BatchNorm + Dropout(0.3)
-            →  Dense(128) + BatchNorm + Dropout(0.2)
-            →  Dense(64)  + Dropout(0.2)
-            →  Output(28) Softmax
+Input (42 Features)  →  Dense(128) + BatchNorm + Dropout(0.3)
+                     →  Dense(256) + BatchNorm + Dropout(0.3)
+                     →  Dense(128) + BatchNorm + Dropout(0.2)
+                     →  Dense(64)  + Dropout(0.2)
+                     →  Output(28 Classes) Softmax
 ```
 
-- **Input**: 42 قيمة = 21 نقطة × (x, y)
-- **BatchNormalization**: يسرّع التدريب ويستقر النتائج
-- **Dropout**: يمنع الـ Overfitting (حفظ البيانات بدلاً من تعلمها)
-- **Softmax**: يحوّل النتائج لاحتماليات لكل حرف (مجموعها = 1)
-
-#### 2. MediaPipe (mediapipe==0.10.11)
-تقوم باكتشاف اليد في الصورة وإرجاع **21 نقطة** (landmarks) تمثل مفاصل الأصابع وراحة اليد.
-
-#### 3. OpenCV (opencv-contrib-python)
-**الدور**: التعامل مع الكاميرا ورسم العناصر على الشاشة أثناء مرحلة جمع البيانات للتدريب.
-
-#### 4. NumPy (numpy==1.26.4)
-**الدور**: العمليات الحسابية وتطبيع الإحداثيات (Normalization) لجعل المودل مستقلاً عن موقع وحجم اليد في الصورة.
-
-```python
-# تطبيع إحداثيات النقاط
-max_val = max(abs(v) for v in rel_landmarks)
-normalized = [v / max_val for v in rel_landmarks]
-```
-
-#### 5. Pillow + arabic-reshaper + python-bidi
-**الدور**: عرض النص العربي بشكل صحيح داخل نافذة OpenCV لأن المكتبة لا تدعم رسم الحروف العربية المتصلة من اليمين لليسار.
-
-#### 6. scikit-learn
-**الدور**: تقسيم البيانات (80% تدريب - 20% اختبار) وتقييم الموديل وإنشاء `confusion_matrix`.
+### معالجة البيانات (Data Preprocessing):
+- يتم التقاط 21 نقطة من MediaPipe، وتُحول إلى إحداثيات نسبية (Relative Coordinates) نسبةً إلى موقع مفصل المعصم (Wrist) لجعل التعرف مستقلاً عن موقع اليد في الشاشة.
+- يتم تطبيق عملية "تطبيع" (Normalization) بالقسمة على أكبر قيمة مطلقة لجعل التعرف مستقلاً عن المسافة بين اليد والكاميرا.
 
 ---
 
-## 🔄 شرح تدفق بيانات الذكاء الاصطناعي (Data Flow)
+## 🚀 كيفية التثبيت والتشغيل (Quick Start)
 
-### 1. مرحلة جمع البيانات (collect_data.py)
-**خطوات المعالجة**:
-1. قراءة إطار من الكاميرا
-2. MediaPipe يكتشف اليد ويرجع 21 نقطة (x, y لكل نقطة)
-3. **تحويل لإحداثيات نسبية**: طرح إحداثيات المعصم من كل نقطة
-4. **تطبيع**: قسمة على أكبر قيمة مطلقة (النتيجة بين -1 و 1)
-5. حفظ الـ 42 قيمة مع رقم الحرف في ملف CSV
+### متطلبات النظام الأساسية:
+- Python 3.10
+- Android Studio 
 
-### 2. مرحلة التدريب (train_model.py)
-تستخدم **Callbacks** ذكية لتحسين التدريب:
-- `EarlyStopping`: يوقف التدريب إذا توقف التحسن (patience=20 epoch).
-- `ReduceLROnPlateau`: يقلل معدل التعلم عند التوقف.
-- `ModelCheckpoint`: يحفظ أفضل نسخة تلقائياً.
-
-### 3. مرحلة التطبيق السطحي للكمبيوتر (app_arabic.py)
-**نظام تأكيد الحرف (History Buffer)**:
-يستخدم قائمة بحجم 25 إطاراً، ولا يسجل الحرف إلا إذا تكرر بنسبة 85% لضمان عدم الطباعة العشوائية مع حركة اليد العابرة.
-
----
-
-## 🗂️ تنسيق البيانات
-
-### ملف arabic_keypoints.csv
-```
-label, x0, y0, x1, y1, ..., x20, y20
-0, 0.0, 0.0, 0.15, -0.08, ...   ← حرف أ
-1, 0.0, 0.0, 0.12, -0.11, ...   ← حرف ب
-```
-
-### ملف arabic_labels.csv
-```
-0, أ
-1, ب
-...
-28, لا
-```
-
----
-
-## 🔤 الحروف المدعومة ومفاتيح التدريب
-
-| مفتاح | حرف | | مفتاح | حرف |
-|-------|------|-|-------|------|
-|   1   |  أ   | |   y   |  ط   |
-|   2   |  ب   | |   u   |  ظ   |
-|   3   |  ت   | |   i   |  ع   |
-|   4   |  ث   | |   o   |  غ   |
-|   5   |  ج   | |   p   |  ف   |
-|   6   |  ح   | |   a   |  ق   |
-|   7   |  خ   | |   s   |  ك   |
-|   8   |  د   | |   d   |  ل   |
-|   9   |  ذ   | |   f   |  م   |
-|   0   |  ر   | |   g   |  ن   |
-|   q   |  ز   | |   h   |  ه   |
-|   w   |  س   | |   j   |  و   |
-|   e   |  ش   | |   k   |  ي   |
-|   r   |  ص   | |   l   |  لا  |
-|   t   |  ض   | |       |      |
-
----
-
-## ⚙️ متطلبات التشغيل الأساسية للبيئة
-
+### 1. إعداد بيئة بايثون (Web & AI)
 ```bash
-# إنشاء البيئة الافتراضية
 python -m venv venv310
 venv310\Scripts\activate
 
-# تنزيل مكتبات الويب والذكاء الاصطناعي الأساسية
 pip install mediapipe==0.10.11 tensorflow==2.10.1 numpy==1.26.4
 pip install opencv-contrib-python Pillow arabic-reshaper python-bidi
 pip install scikit-learn matplotlib seaborn
 pip install flask flask-limiter python-dotenv
 ```
 
+### 2. تشغيل خادم الويب (Dashboard)
+```bash
+python server.py
+# أو app.py بناءً على ملف التشغيل الرئيسي
+```
+
+### 3. تدريب النموذج (إن رغبت في إضافة إشارات)
+1. تشغيل `python collect_data.py` لجمع العينات عبر الكاميرا.
+2. تشغيل `python train_model.py` لبدء التدريب وتوليد ملف `arabic_sign_model.tflite` الجديد.
+3. يتم نسخ الملف الجديد إلى مجلد الأصول `assets` في مشروع الأندرويد.
+
+### 4. تشغيل تطبيق الأندرويد
+قم بفتح المجلد `Ishara` عبر Android Studio، ثم انتظر حتى يكتمل تحميل Gradle، وقم بتشغيله على هاتفك الموصول أو على المحاكي.
+
 ---
 
-## 🚀 كيفية تشغيل المنصات المختلفة
+## 📊 دقة النظام (System Accuracy)
+وصلت الدقة الكلية للنظام (Accuracy) إلى **93.8%** على مجموعة البيانات الكبيرة، حيث تعمل الطبقات الإضافية كـ BatchNormalization و Dropout على تجنب الحفظ الأعمى (Overfitting) واستقرار الأوزان.
 
-### 1. تشغيل خادم الويب والمجسم ثلاثي الأبعاد
+---
+
+## 🛠 التوسعات المستقبلية (Future Enhancements)
+- إضافة دعم لاكتشاف واستنتاج كلتا اليدين (Two-handed signs).
+- دعم معمارية Long Short-Term Memory (LSTM) لمعرفة تسلسل الكلمات بدلاً من الحروف المتقطعة.l mediapipe==0.10.11
+pip install tensorflow==2.10.1
+pip install numpy==1.26.4
+pip install opencv-contrib-python
+pip install Pillow arabic-reshaper python-bidi
+pip install scikit-learn matplotlib seaborn
+pip install python-dotenv
+pip install flask
+pip install flask-limiter
+```
+
+
+
+# Web
+flask==3.0.2
+
+# Core AI stack (لازم الإصدارات دي بالظبط)
+tensorflow==2.10.1
+numpy==1.26.4
+mediapipe==0.10.11
+
+# Computer Vision (نسخة متوافقة مع numpy 1.x)
+opencv-contrib-python==4.8.0.76
+
+# Image & Arabic text
+Pillow==10.3.0
+arabic-reshaper==3.0.0
+python-bidi==0.4.2
+
+# ML & Visualization
+scikit-learn==1.3.2
+matplotlib==3.7.5
+seaborn==0.13.2
+---
+
+
+
+
+
+## تشغيل المشروع
+
+### 1. جمع البيانات
 ```bash
 python server.py
 # سيتم فتح لوحة التحكم على http://127.0.0.1:5000
@@ -260,7 +167,7 @@ python server.py
 
 ---
 
-## 📊 نتائج التدريب (المرحلة الأساسية)
+## نتائج التدريب (10 حروف - المرحلة الأولى)
 
 | الحرف | Precision | Recall | F1-Score |
 |-------|-----------|--------|----------|
@@ -279,15 +186,52 @@ python server.py
 
 ---
 
-## 🔧 تحسينات وتوسعات مقترحة للمشروع
-- **AI**: إضافة نموذج `LSTM` لتحليل الحركة عبر الزمن، بحيث يفهم الكلمات كاملة (حركة متصلة) بدلاً من الحروف المتقطعة.
-- **Data Augmentation**: تطبيق قلب وتشويه بسيط للبيانات أثناء التدريب برمجياً للحصول على موديل أصلب ومقاوم لأخطاء التصوير.
-- **Android**: إضافة مزامنة سحابية (Cloud Sync) بين تطبيق الأندرويد ومنصة الويب لجلب تحديثات قاموس الـ 3D للإشارات مباشرة للتطبيق.
+## تحسينات مقترحة
+
+### تحسين الدقة
+- زيادة عينات التدريب لـ **300-500 عينة** لكل حرف
+- جمع بيانات من **أشخاص مختلفين** (جنس، حجم يد، لون بشرة)
+- **Data Augmentation**: إضافة تشويش طفيف على الإحداثيات أثناء التدريب
+
+### تحسين الموديل
+- تجربة **CNN** بدلاً من MLP للحصول على دقة أعلى
+- إضافة **LSTM** للتعرف على الكلمات كاملة وليس حرفاً بحرف
+
+### تحسين التطبيق
+- إضافة **Text-to-Speech** لتحويل النص لصوت عربي
+- دعم **كلتا اليدين** معاً
+- نشر التطبيق على **الموبايل** باستخدام TFLite
 
 ---
 
-## 📖 المراجع العلمية والتقنية
-- [MediaPipe Hand Landmarker Guide](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker)
-- [TensorFlow Lite for Android](https://www.tensorflow.org/lite/android)
-- [Three.js Quaternions and Rotations](https://threejs.org/docs/#api/en/math/Quaternion)
-- المشروع الأساسي مبني على إلهام من أبحاث `Kazuhito00` لتقنيات تتبع اليدين.
+## المراجع
+
+- [MediaPipe Hands Documentation](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker)
+- [TensorFlow Lite Guide](https://www.tensorflow.org/lite/guide)
+- المشروع الأصلي: [hand-gesture-recognition-using-mediapipe](https://github.com/Kazuhito00/hand-gesture-recognition-using-mediapipe)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
