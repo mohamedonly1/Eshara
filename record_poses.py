@@ -24,10 +24,18 @@ import cv2 as cv
 import numpy as np
 import json, os, math
 from collections import defaultdict
+import asyncio
+import threading
+import time
 
 # ── MediaPipe ──────────────────────────────────────────
 import mediapipe as mp
 from mediapipe.python.solutions import hands as mp_hands_solutions
+
+try:
+    import websockets
+except Exception:
+    websockets = None
 
 # ── الحروف ─────────────────────────────────────────────
 ARABIC_LETTERS = {
@@ -40,6 +48,67 @@ ARABIC_LETTERS = {
 }
 
 OUTPUT_PATH = os.path.join('static', 'poses.js')
+
+# ── WebSocket streaming (bone quaternions) ──────────────
+clients = set()
+_ws_loop = None
+_ws_last_send_ts = 0.0
+_ws_send_interval_s = 1.0 / 30.0  # ~30 FPS
+
+async def ws_handler(websocket):
+    clients.add(websocket)
+    try:
+        async for _ in websocket:
+            pass
+    finally:
+        clients.discard(websocket)
+
+async def broadcast(data):
+    if not clients:
+        return
+    msg = json.dumps(data)
+    await asyncio.gather(
+        *(c.send(msg) for c in list(clients)),
+        return_exceptions=True
+    )
+
+def _start_ws_server_in_background(host="localhost", port=8765):
+    """
+    Run a small WS server in a background thread so the OpenCV loop
+    never blocks on asyncio.
+    """
+    if websockets is None:
+        print("Warning: websockets dependency missing. Run: pip install websockets")
+        return
+
+    async def _serve():
+        async with websockets.serve(ws_handler, host, port):
+            print(f"WebSocket server running at ws://{host}:{port}")
+            await asyncio.Future()  # run forever
+
+    def _runner():
+        global _ws_loop
+        _ws_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_ws_loop)
+        _ws_loop.run_until_complete(_serve())
+
+    threading.Thread(target=_runner, daemon=True).start()
+
+def _maybe_broadcast_bone_rots(bone_rots):
+    global _ws_last_send_ts
+    if not bone_rots:
+        return
+    if _ws_loop is None or not _ws_loop.is_running():
+        return
+    now = time.time()
+    if now - _ws_last_send_ts < _ws_send_interval_s:
+        return
+    _ws_last_send_ts = now
+    try:
+        asyncio.run_coroutine_threadsafe(broadcast(bone_rots), _ws_loop)
+    except Exception:
+        # Safe: never crash the tracking loop due to WS issues.
+        pass
 
 # ── ربط MediaPipe landmarks بعظام GLB ─────────────────
 #
@@ -83,140 +152,31 @@ BONE_SEGMENTS = [
     ('pinky_dist',   19, 20),
 ]
 
-# Rest-pose quaternions من GLB (x, y, z, w)
-# هذه هي الدوران المحلي لكل bone في وضع الراحة
-GLB_REST_QUAT = {
-    'pinky_dist':   (-0.0054,  0.0630,  0.0240, 0.9977),
-    'pinky_midd':   ( 0.0073,  0.1188, -0.0181, 0.9927),
-    'pinky_prox':   (-0.0014, -0.0316, -0.0600, 0.9977),
-    'pinky_meta':   ( 0.3648,  0.0301,  0.0858, 0.9266),
-    'ring_dist':    ( 0.0116,  0.0010,  0.0164, 0.9998),
-    'ring_midd':    ( 0.0055,  0.0001,  0.0071, 1.0000),
-    'ring_prox':    ( 0.0146, -0.0339, -0.0610, 0.9975),
-    'ring_meta':    ( 0.2504,  0.0215,  0.0740, 0.9651),
-    'midd_dist':    (-0.0086, -0.0004, -0.0035, 1.0000),
-    'midd_midd':    ( 0.0084,  0.0009,  0.0023, 1.0000),
-    'midd_prox':    ( 0.0998, -0.0451, -0.0817, 0.9906),
-    'midd_meta':    ( 0.1136,  0.0327,  0.0839, 0.9894),
-    'index_dist':   ( 0.0014,  0.0044, -0.0016, 1.0000),
-    'index_midd':   ( 0.0505, -0.0029,  0.0088, 0.9987),
-    'index_prox':   ( 0.1318, -0.0205, -0.0798, 0.9878),
-    'index_meta':   (-0.0107,  0.0182,  0.0636, 0.9978),
-    'thumb_dist':   ( 0.0372,  0.1587,  0.0443, 0.9856),
-    'thumb_prox':   ( 0.0696,  0.1937,  0.1351, 0.9692),
-    'thumb_meta':   ( 0.2204,  0.1092, -0.1566, 0.9565),
-    'thumb_trapez': (-0.4081,  0.0179,  0.0802, 0.9093),
-    'radius_ulna':  (-0.2708, -0.0012, -0.0205, 0.9624),
-}
+# تم حذف GLB_REST_QUAT لأننا سنرسل النقاط الثلاثية الأبعاد (Points) مباشرة
+def smooth_points(prev, current, alpha=0.7):
+    # تنعيم الإحداثيات (Points) بين الفريمات
+    return [prev[i] * alpha + current[i] * (1 - alpha) for i in range(len(current))]
 
-# ── Quaternion helpers ─────────────────────────────────
+def adaptive_alpha(prev, curr):
+    diff = sum(
+        abs(curr[i][0] - prev[i][0]) +
+        abs(curr[i][1] - prev[i][1]) +
+        abs(curr[i][2] - prev[i][2])
+        for i in range(21)
+    ) / 21.0
+    return 0.85 if diff < 0.01 else 0.6
 
-def quat_mul(q1, q2):
-    """ضرب quaternions (x,y,z,w)"""
-    x1,y1,z1,w1 = q1
-    x2,y2,z2,w2 = q2
-    return (
-        w1*x2 + x1*w2 + y1*z2 - z1*y2,
-        w1*y2 - x1*z2 + y1*w2 + z1*x2,
-        w1*z2 + x1*y2 - y1*x2 + z1*w2,
-        w1*w2 - x1*x2 - y1*y2 - z1*z2
-    )
+# ── تحويل Landmarks → 3D Points ──────────────────
 
-def quat_conj(q):
-    x,y,z,w = q
-    return (-x,-y,-z,w)
-
-def quat_from_two_vecs(v_from, v_to):
-    """
-    أقل دوران من v_from إلى v_to → quaternion (x,y,z,w)
-    """
-    v_from = v_from / (np.linalg.norm(v_from) + 1e-9)
-    v_to   = v_to   / (np.linalg.norm(v_to)   + 1e-9)
-    dot = float(np.clip(np.dot(v_from, v_to), -1, 1))
-
-    if dot > 0.9999:
-        return (0.0, 0.0, 0.0, 1.0)
-    if dot < -0.9999:
-        # 180° rotation – أي محور عمودي
-        perp = np.array([1,0,0]) if abs(v_from[0]) < 0.9 else np.array([0,1,0])
-        axis = np.cross(v_from, perp)
-        axis /= np.linalg.norm(axis)
-        return (float(axis[0]), float(axis[1]), float(axis[2]), 0.0)
-
-    axis = np.cross(v_from, v_to)
-    s    = math.sqrt((1 + dot) * 2)
-    inv  = 1.0 / s
-    return (float(axis[0]*inv), float(axis[1]*inv), float(axis[2]*inv), float(s*0.5))
-
-def rotate_vec_by_quat(v, q):
-    """دوران vector بـ quaternion"""
-    x,y,z,w = q
-    # q * (0,v) * q^-1
-    vq = (v[0], v[1], v[2], 0.0)
-    r  = quat_mul(quat_mul(q, vq), quat_conj(q))
-    return np.array([r[0], r[1], r[2]])
-
-# ── تحويل Landmarks → Bone Rotations ──────────────────
-
-def landmarks_to_bone_rotations(lms_3d):
+def landmarks_to_points(lms_3d):
     """
     lms_3d: list of 21 × (x, y, z) في فضاء الكاميرا
-    يرجع: dict { bone_name: (qx, qy, qz, qw) } quaternion محلي لكل bone
+    يرجع: قائمة مسطحة (1D Array) تحتوي على 63 قيمة للإحداثيات
     """
-    pts = np.array(lms_3d, dtype=np.float64)  # (21, 3)
-
-    # --- حساب إطار المرجع للكف ---
-    # v_palm_y: من المعصم (0) إلى قاعدة الإصبع الأوسط (9)
-    palm_y = pts[9]  - pts[0]
-    palm_y_n = palm_y / (np.linalg.norm(palm_y) + 1e-9)
-
-    # v_palm_x: من الخنصر (17) إلى السبابة (5)
-    palm_x = pts[5]  - pts[17]
-    # جعلها عمودية تماماً على palm_y
-    palm_x -= np.dot(palm_x, palm_y_n) * palm_y_n
-    palm_x_n = palm_x / (np.linalg.norm(palm_x) + 1e-9)
-
-    palm_z_n = np.cross(palm_x_n, palm_y_n)  # عمودي على سطح الكف
-
-    # مصفوفة دوران الكف في فضاء العالم (cols = محاور)
-    R_palm = np.column_stack([palm_x_n, palm_y_n, palm_z_n])  # (3×3)
-
-    # --- دوران radius_ulna (جذر العظام) ---
-    # في GLB، +Y لـ radius_ulna يشير للأعلى (اتجاه الكف)
-    rest_y_world = rotate_vec_by_quat(np.array([0,1,0]), GLB_REST_QUAT['radius_ulna'])
-    target_y     = palm_y_n
-    delta_root   = quat_from_two_vecs(rest_y_world, target_y)
-
-    result = {}
-    result['radius_ulna'] = tuple(round(v,6) for v in delta_root)
-
-    # --- لكل bone: حساب الدوران المحلي ---
-    for bone_name, lm_start, lm_end in BONE_SEGMENTS:
-        seg = pts[lm_end] - pts[lm_start]
-        seg_len = np.linalg.norm(seg)
-        if seg_len < 1e-6:
-            result[bone_name] = (0.0, 0.0, 0.0, 1.0)
-            continue
-
-        # الاتجاه المطلوب في فضاء العالم
-        target_dir_world = seg / seg_len
-
-        # الـ rest +Y للـ bone في فضاء العالم
-        rest_q = GLB_REST_QUAT[bone_name]
-        rest_y_world = rotate_vec_by_quat(np.array([0.0, 1.0, 0.0]), rest_q)
-
-        # delta = الدوران من rest_y_world → target_dir_world
-        delta = quat_from_two_vecs(rest_y_world, target_dir_world)
-
-        # الـ quaternion النهائي = delta * rest
-        final_q = quat_mul(delta, rest_q)
-        # normalize
-        n = math.sqrt(sum(v*v for v in final_q)) + 1e-12
-        final_q = tuple(v/n for v in final_q)
-
-        result[bone_name] = tuple(round(v, 6) for v in final_q)
-
-    return result
+    pts = []
+    for x, y, z in lms_3d:
+        pts.extend([round(x, 5), round(y, 5), round(z, 5)])
+    return pts
 
 # ── تحميل الوضعيات المحفوظة ────────────────────────────
 
@@ -233,7 +193,7 @@ def load_existing_poses():
             return {}
         return json.loads(content[start:end])
     except Exception as e:
-        print(f'⚠ تحذير: تعذّر تحميل poses.js ({e})')
+        print(f'Warning: could not load poses.js ({e})')
         return {}
 
 def save_poses(poses):
@@ -241,7 +201,7 @@ def save_poses(poses):
     js = 'const POSES = ' + json.dumps(poses, ensure_ascii=False, indent=2) + ';\n'
     with open(OUTPUT_PATH, 'w', encoding='utf-8') as f:
         f.write(js)
-    print(f'✅ حُفظ → {OUTPUT_PATH}  ({len(poses)} حرف)')
+    print(f'Saved -> {OUTPUT_PATH}  ({len(poses)} letters)')
 
 # ── واجهة OpenCV ───────────────────────────────────────
 
@@ -289,13 +249,23 @@ def _pil_font(name, size):
     if path:
         return PILFont.truetype(path, size)
     return PILFont.load_default()
-
 def put_arabic(img_bgr, text, pos, font_name='bold', size=28, color=(0,212,170), anchor='la'):
-    """رسم نص عربي على صورة OpenCV باستخدام PIL"""
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    text = str(text)
+
+    # Arabic text reshaping
+    if len(text) > 1:
+        text = arabic_reshaper.reshape(text)
+        text = get_display(text)
+
     pil_img = PILImage.fromarray(cv.cvtColor(img_bgr, cv.COLOR_BGR2RGB))
     draw    = PILDraw.Draw(pil_img)
     font    = _pil_font(font_name, size)
+
     draw.text(pos, text, font=font, fill=color, anchor=anchor)
+
     img_bgr[:] = cv.cvtColor(np.array(pil_img), cv.COLOR_RGB2BGR)
 
 def draw_ui(img, letter, letter_count, status_msg, recorded_letters):
@@ -376,8 +346,8 @@ def draw_ui(img, letter, letter_count, status_msg, recorded_letters):
 
     # ── رسالة الحالة ────────────────────────────────────
     if status_msg:
-        clean = status_msg.replace('✅','').replace('⚠','').replace('🗑','').replace('💾','').strip()
-        is_ok = any(k in status_msg for k in ('✅','تم','حُفظ','سُجّل'))
+        clean = status_msg.replace('[OK]','').replace('[!]','').replace('[DEL]','').replace('[SAVE]','').strip()
+        is_ok = any(k in status_msg for k in ('[OK]','تم','حُفظ','سُجّل'))
         color_ar = (0,230,140) if is_ok else (120,180,255)
         put_arabic(img, clean,
                    (w - 10, h - btn_h - margin_b - 14),
@@ -392,12 +362,14 @@ def main():
     print("\n=== مسجّل وضعيات اليد ===")
     print("الأزرار: [1..l] اختر الحرف | [SPACE] سجّل | [D] احذف | [S] احفظ | [ESC] خروج\n")
 
+    _start_ws_server_in_background("localhost", 8765)
+
     poses = load_existing_poses()
-    print(f"✔ حُمّل {len(poses)} حرف من poses.js\n")
+    print(f"Loaded {len(poses)} letters from poses.js\n")
 
     cap = cv.VideoCapture(0)
     if not cap.isOpened():
-        print("❌ لا يمكن فتح الكاميرا")
+        print("Cannot open camera")
         return
 
     cap.set(cv.CAP_PROP_FRAME_WIDTH,  1280)
@@ -411,6 +383,9 @@ def main():
 
     current_letter = None
     status_msg     = 'اختر حرفاً ثم ثبّت يدك واضغط SPACE'
+    prev_lms_3d    = None
+    prev_stream_bone_rots = None
+    bone_rots_raw = None
 
     while True:
         ret, frame = cap.read()
@@ -435,6 +410,34 @@ def main():
                            lm.y - hls.landmark[0].y,
                            lm.z - hls.landmark[0].z)
                           for lm in hls.landmark]
+                scale = max(abs(v) for pt in lms_3d for v in pt) or 1
+                lms_3d = [(x/scale, y/scale, z/scale) for (x, y, z) in lms_3d]
+                if prev_lms_3d is not None and lms_3d is not None:
+                    alpha = adaptive_alpha(prev_lms_3d, lms_3d)
+                    lms_3d = [
+                        (
+                            prev_lms_3d[i][0] * alpha + lms_3d[i][0] * (1 - alpha),
+                            prev_lms_3d[i][1] * alpha + lms_3d[i][1] * (1 - alpha),
+                            prev_lms_3d[i][2] * alpha + lms_3d[i][2] * (1 - alpha),
+                        )
+                        for i in range(21)
+                    ]
+                prev_lms_3d = lms_3d
+
+                # Live points (for WebSocket streaming)
+                points_raw = landmarks_to_points(lms_3d)
+                if prev_stream_bone_rots is not None:
+                    points_stream = smooth_points(prev_stream_bone_rots, points_raw, alpha=0.7)
+                else:
+                    points_stream = points_raw
+
+                prev_stream_bone_rots = points_stream
+                _maybe_broadcast_bone_rots(points_stream)
+
+        if not hand_detected:
+            prev_lms_3d = None
+            prev_stream_bone_rots = None
+            bone_rots_raw = None
 
         letter_count = 1 if (current_letter and current_letter in poses) else 0
         frame = draw_ui(frame, current_letter, letter_count, status_msg, poses)
@@ -455,37 +458,41 @@ def main():
 
         elif chr(key) in ARABIC_LETTERS if key < 128 else False:
             current_letter = ARABIC_LETTERS[chr(key)]
-            in_poses = '✅' if current_letter in poses else '○'
+            in_poses = '[OK]' if current_letter in poses else 'o'
             status_msg = f'{in_poses} الحرف: {current_letter} — ثبّت يدك واضغط SPACE'
 
         elif key == ord(' '):  # SPACE → تسجيل
             if not current_letter:
-                status_msg = '⚠ اختر حرفاً أولاً'
+                status_msg = '[!] اختر حرفاً أولاً'
             elif not hand_detected or lms_3d is None:
-                status_msg = '⚠ لم تُكتشف يد'
+                status_msg = '[!] لم تُكتشف يد'
             else:
-                bone_rots = landmarks_to_bone_rotations(lms_3d)
-                poses[current_letter] = bone_rots
-                status_msg = f'✅ تم تسجيل حرف ({current_letter}) — {len(poses)} حرف إجمالاً'
-                print(f'  ✅ سُجّل: {current_letter}  |  {len(bone_rots)} bone')
+                points = points_raw or landmarks_to_points(lms_3d)
+                if current_letter in poses:
+                    prev = poses[current_letter]
+                    points = smooth_points(prev, points, alpha=0.5)
+                poses[current_letter] = points
+                _maybe_broadcast_bone_rots(points)
+                status_msg = f'[OK] تم تسجيل حرف ({current_letter}) — {len(poses)} حرف إجمالاً'
+                print(f'  Recorded: {current_letter}  |  63 points')
 
         elif key == ord('d') or key == ord('D'):  # حذف
             if current_letter and current_letter in poses:
                 del poses[current_letter]
-                status_msg = f'🗑 حُذف: {current_letter}'
+                status_msg = f'[DEL] حُذف: {current_letter}'
             else:
-                status_msg = '⚠ لا يوجد وضعية لهذا الحرف'
+                status_msg = '[!] لا يوجد وضعية لهذا الحرف'
 
         elif key == ord('s') or key == ord('S'):  # حفظ
             save_poses(poses)
-            status_msg = f'💾 حُفظ {len(poses)} حرف → {OUTPUT_PATH}'
+            status_msg = f'[SAVE] حُفظ {len(poses)} حرف -> {OUTPUT_PATH}'
 
     # حفظ تلقائي عند الخروج
     save_poses(poses)
     cap.release()
     hands.close()
     cv.destroyAllWindows()
-    print("\n✅ انتهى. poses.js جاهز للاستخدام في صفحة translate.")
+    print("\nDone. poses.js is ready for use in the translate page.")
 
 if __name__ == '__main__':
     main()

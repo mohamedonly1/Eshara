@@ -3,6 +3,5 @@ venv/
 __pycache__/
 *.pyc
 arabic_data/users/
-arabic_data/arabic_keypoints.csv
 arabic_model/*.h5
 *.zip

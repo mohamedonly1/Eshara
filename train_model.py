@@ -33,45 +33,56 @@ with open(LABELS_PATH, 'r', encoding='utf-8') as f:
     for row in reader:
         labels_dict[int(row[0])] = row[1]
 
-print(f"\n📂 الحروف المتاحة: {len(labels_dict)}")
+print(f"\nLetters available: {len(labels_dict)}")
 
 # تحميل البيانات
-X, y = [], []
+X, y_raw = [], []
 with open(DATA_PATH, 'r') as f:
     reader = csv.reader(f)
     for row in reader:
         if row:
-            y.append(int(row[0]))
+            y_raw.append(int(row[0]))
             X.append([float(v) for v in row[1:]])
 
 X = np.array(X)
-y = np.array(y)
+y_raw = np.array(y_raw)
 
-print(f"✅ تم تحميل {len(X)} عينة")
-print(f"📊 توزيع العينات:")
+print(f"Loaded {len(X)} samples")
 
+# =============================================
+# FIX: re-encode labels to 0..N-1
+# =============================================
+from sklearn.preprocessing import LabelEncoder
+
+le = LabelEncoder()
+y = le.fit_transform(y_raw)          # e.g. [0,1,3,9,28] → [0,1,2,3,4]
+num_classes = len(le.classes_)
+
+# بناء قاموس الحروف المعاد ترميزها
+encoded_labels = {new_idx: labels_dict.get(orig_idx, str(orig_idx))
+                  for new_idx, orig_idx in enumerate(le.classes_)}
+
+print(f"Sample distribution:")
 unique, counts = np.unique(y, return_counts=True)
 for label, count in zip(unique, counts):
-    letter = labels_dict.get(label, '?')
+    letter = encoded_labels.get(label, '?')
     bar = "█" * (count // 10)
-    status = "✅" if count >= 200 else "⚠️ "
+    status = "[OK]" if count >= 200 else "[..]"
     print(f"  {status} {letter}: {count} {bar}")
 
 # =============================================
 # 2. تقسيم البيانات
 # =============================================
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
 
-num_classes = len(np.unique(y))
-print(f"\n🔢 عدد الفئات: {num_classes}")
+print(f"\nNumber of classes: {num_classes}")
 
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42, stratify=y
 )
 
-print(f"✅ بيانات التدريب: {len(X_train)}")
-print(f"✅ بيانات الاختبار: {len(X_test)}")
+print(f"Training data: {len(X_train)}")
+print(f"Testing data: {len(X_test)}")
 
 # =============================================
 # 3. بناء الموديل
@@ -79,10 +90,10 @@ print(f"✅ بيانات الاختبار: {len(X_test)}")
 import tensorflow as tf
 from tensorflow import keras
 
-print("\n🏗️  بناء الموديل...")
+print("\nBuilding model...")
 
 model = keras.Sequential([
-    keras.layers.Input(shape=(42,)),                          # 21 نقطة × 2 (x,y)
+    keras.layers.Input(shape=(42,)),
 
     keras.layers.Dense(128, activation='relu'),
     keras.layers.BatchNormalization(),
@@ -115,30 +126,23 @@ model.summary()
 # =============================================
 callbacks = [
     keras.callbacks.EarlyStopping(
-        monitor='val_accuracy',
-        patience=20,
-        restore_best_weights=True,
-        verbose=1
+        monitor='val_accuracy', patience=20,
+        restore_best_weights=True, verbose=1
     ),
     keras.callbacks.ReduceLROnPlateau(
-        monitor='val_loss',
-        factor=0.5,
-        patience=10,
-        min_lr=1e-6,
-        verbose=1
+        monitor='val_loss', factor=0.5,
+        patience=10, min_lr=1e-6, verbose=1
     ),
     keras.callbacks.ModelCheckpoint(
         filepath=os.path.join(MODEL_SAVE_PATH, 'best_model.h5'),
-        monitor='val_accuracy',
-        save_best_only=True,
-        verbose=1
+        monitor='val_accuracy', save_best_only=True, verbose=1
     )
 ]
 
 # =============================================
 # 5. التدريب
 # =============================================
-print("\n🚀 بدء التدريب...")
+print("\nStarting training...")
 
 history = model.fit(
     X_train, y_train,
@@ -152,10 +156,10 @@ history = model.fit(
 # =============================================
 # 6. التقييم
 # =============================================
-print("\n📊 تقييم الموديل على بيانات الاختبار:")
+print("\nEvaluating model on test data:")
 test_loss, test_acc = model.evaluate(X_test, y_test, verbose=0)
-print(f"  ✅ Accuracy: {test_acc * 100:.2f}%")
-print(f"  📉 Loss: {test_loss:.4f}")
+print(f"  Accuracy: {test_acc * 100:.2f}%")
+print(f"  Loss: {test_loss:.4f}")
 
 # =============================================
 # 7. Confusion Matrix
@@ -166,91 +170,75 @@ import seaborn as sns
 
 y_pred = np.argmax(model.predict(X_test), axis=1)
 
-print("\n📋 تقرير التصنيف:")
-letter_names = [labels_dict.get(i, str(i)) for i in range(num_classes)]
+letter_names = [encoded_labels.get(i, str(i)) for i in range(num_classes)]
+print("\nClassification report:")
 print(classification_report(y_test, y_pred, target_names=letter_names))
 
-# رسم Confusion Matrix
 plt.figure(figsize=(16, 14))
 cm = confusion_matrix(y_test, y_pred)
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-            xticklabels=letter_names,
-            yticklabels=letter_names)
+            xticklabels=letter_names, yticklabels=letter_names)
 plt.title('Confusion Matrix - لغة الإشارة العربية', fontsize=16)
 plt.ylabel('Actual')
 plt.xlabel('Predicted')
 plt.tight_layout()
 plt.savefig(os.path.join(MODEL_SAVE_PATH, 'confusion_matrix.png'), dpi=150)
 plt.show()
-print(f"✅ تم حفظ Confusion Matrix")
 
-# رسم منحنيات التدريب
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-
 ax1.plot(history.history['accuracy'], label='Train Accuracy')
 ax1.plot(history.history['val_accuracy'], label='Val Accuracy')
-ax1.set_title('Model Accuracy')
-ax1.set_xlabel('Epoch')
-ax1.set_ylabel('Accuracy')
-ax1.legend()
-ax1.grid(True)
-
+ax1.set_title('Model Accuracy'); ax1.set_xlabel('Epoch')
+ax1.set_ylabel('Accuracy'); ax1.legend(); ax1.grid(True)
 ax2.plot(history.history['loss'], label='Train Loss')
 ax2.plot(history.history['val_loss'], label='Val Loss')
-ax2.set_title('Model Loss')
-ax2.set_xlabel('Epoch')
-ax2.set_ylabel('Loss')
-ax2.legend()
-ax2.grid(True)
-
+ax2.set_title('Model Loss'); ax2.set_xlabel('Epoch')
+ax2.set_ylabel('Loss'); ax2.legend(); ax2.grid(True)
 plt.tight_layout()
 plt.savefig(os.path.join(MODEL_SAVE_PATH, 'training_curves.png'), dpi=150)
 plt.show()
-print(f"✅ تم حفظ منحنيات التدريب")
 
 # =============================================
-# 8. حفظ الموديل بصيغة TFLite
+# 8. حفظ الموديل + حفظ label encoder
 # =============================================
-print("\n💾 حفظ الموديل...")
+print("\nSaving model...")
 
-# تحديد مسارات ملفات H5
 best_h5_path = os.path.join(MODEL_SAVE_PATH, 'best_model.h5')
 final_h5_path = os.path.join(MODEL_SAVE_PATH, 'arabic_sign_model.h5')
 
-# تحميل أفضل موديل تم حفظه أثناء التدريب، أو استخدام الموديل الحالي كاحتياطي
 if os.path.exists(best_h5_path):
-    print("📌 تحميل أفضل موديل من best_model.h5 للتحويل إلى TFLite")
     best_model = keras.models.load_model(best_h5_path)
-    # نسخ أفضل موديل إلى الاسم الثابت ليستخدمه السيرفر
     shutil.copy2(best_h5_path, final_h5_path)
 else:
-    print("⚠️ best_model.h5 غير موجود، سيتم استخدام الموديل الحالي")
     best_model = model
     best_model.save(final_h5_path)
 
-# تحويل أفضل موديل لـ TFLite
 converter = tf.lite.TFLiteConverter.from_keras_model(best_model)
 converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
-# اسم ملف ثابت لتحميله من السيرفر
 tflite_path = os.path.join(MODEL_SAVE_PATH, 'arabic_sign_model.tflite')
 with open(tflite_path, 'wb') as f:
     f.write(tflite_model)
 
-# اسم ملف مـرقّم يحتوي التاريخ والدقة
 date_str = datetime.now().strftime('%Y-%m-%d')
 acc_pct = test_acc * 100.0
 versioned_name = f"arabic_sign_model_{date_str}_{acc_pct:.2f}.tflite"
-versioned_tflite_path = os.path.join(MODEL_SAVE_PATH, versioned_name)
-with open(versioned_tflite_path, 'wb') as f:
+with open(os.path.join(MODEL_SAVE_PATH, versioned_name), 'wb') as f:
     f.write(tflite_model)
 
-print(f"✅ تم الحفظ:")
+# =============================================
+# FIX: حفظ labels الصحيحة المعاد ترميزها
+# =============================================
+fixed_labels_path = 'arabic_data/arabic_labels.csv'
+with open(fixed_labels_path, 'w', newline='', encoding='utf-8') as f:
+    writer = csv.writer(f)
+    for new_idx, letter in encoded_labels.items():
+        writer.writerow([new_idx, letter])
+
+print(f"Labels file updated: arabic_labels.csv ({num_classes} classes)")
+print(f"Saved:")
 print(f"   - {MODEL_SAVE_PATH}/arabic_sign_model.h5")
 print(f"   - {MODEL_SAVE_PATH}/arabic_sign_model.tflite")
 print(f"   - {MODEL_SAVE_PATH}/{versioned_name}")
-print(f"   - {MODEL_SAVE_PATH}/confusion_matrix.png")
-print(f"   - {MODEL_SAVE_PATH}/training_curves.png")
-print(f"📦 نسخة TFLite المرقمة: {versioned_name}")
-print(f"\n🎉 انتهى التدريب! الدقة النهائية: {test_acc * 100:.2f}%")
+print(f"\nTraining complete! Final accuracy: {test_acc * 100:.2f}%")

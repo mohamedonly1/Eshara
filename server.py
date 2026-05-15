@@ -8,13 +8,18 @@ import csv
 import os
 import json
 import logging
+import threading
+import secrets
 
 from dotenv import load_dotenv
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from auth import (
     register_user, login_user, load_user,
     record_sample, record_rejected,
-    get_all_users_stats, delete_user,
+    get_all_users_stats, delete_user, set_user_role, user_is_admin,
     verify_admin
 )
 
@@ -28,7 +33,23 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev_fallback_secret_change_me')
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://"
+)
+
+_session_secret = os.getenv('FLASK_SECRET_KEY')
+if not _session_secret:
+    _env_name = os.getenv('FLASK_ENV') or os.getenv('APP_ENV') or os.getenv('ENV') or ''
+    if _env_name.lower() in {'prod', 'production'}:
+        raise RuntimeError('FLASK_SECRET_KEY must be set in production')
+    _session_secret = secrets.token_hex(32)
+    logger.warning("FLASK_SECRET_KEY is not set; using a temporary development secret.")
+app.secret_key = _session_secret
 
 # =============================================
 # Login Required Decorator
@@ -37,9 +58,38 @@ def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not session.get('user_id'):
-            if request.path.startswith(('/predict', '/collect', '/history', '/sample_counts')):
+            wants_json = (
+                request.is_json or
+                request.headers.get('Accept', '').find('application/json') != -1 or
+                request.path.startswith('/api/')
+            )
+            if wants_json:
                 return jsonify({'error': 'Unauthorized'}), 401
             return redirect('/login')
+        return f(*args, **kwargs)
+    return wrapper
+
+def current_user_is_admin():
+    if session.get('is_admin'):
+        return True
+    user_id = session.get('user_id')
+    if not user_id:
+        return False
+    return user_is_admin(load_user(user_id))
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not current_user_is_admin():
+            wants_json = (
+                request.is_json or
+                request.headers.get('Accept', '').find('application/json') != -1 or
+                request.path.startswith('/admin/') or
+                request.path.startswith('/pose-editor/')
+            )
+            if wants_json:
+                return jsonify({'error': 'Unauthorized'}), 401
+            return redirect('/admin')
         return f(*args, **kwargs)
     return wrapper
 
@@ -51,7 +101,9 @@ SETTINGS_PATH = os.path.join('arabic_data', 'settings.json')
 def _load_global_settings():
     default = {
         'quality_filter': True,
-        'filter_threshold': 0.95
+        'filter_threshold': 0.95,
+        'hand_yaw': -0.55,
+        'hand_pitch': 0.15
     }
     if not os.path.exists(SETTINGS_PATH):
         os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
@@ -64,6 +116,8 @@ def _load_global_settings():
         return {
             'quality_filter': bool(data.get('quality_filter', True)),
             'filter_threshold': float(data.get('filter_threshold', 0.95)),
+            'hand_yaw': float(data.get('hand_yaw', -0.55)),
+            'hand_pitch': float(data.get('hand_pitch', 0.15)),
         }
     except Exception as exc:
         logger.error("Failed to load global settings: %s", exc)
@@ -77,11 +131,13 @@ def _save_global_settings():
 
 
 GLOBAL_SETTINGS = _load_global_settings()
+_settings_lock = threading.Lock()
 
 # =============================================
 # Model Setup
 # =============================================
-MODEL_PATH = 'arabic_model/arabic_sign_model.tflite'
+MODEL_PATH = 'arabic_model/arabic_sign_model_2026-04-03_93.80.tflite'
+
 LABELS_PATH = 'arabic_data/arabic_labels.csv'
 POSES_PATH = os.path.join('static', 'poses.js')
 
@@ -90,11 +146,15 @@ with open(LABELS_PATH, 'r', encoding='utf-8') as f:
     for row in csv.reader(f):
         labels_dict[int(row[0])] = row[1]
 
+_means_cache = None
+_means_mtime = None
+
 interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
 interpreter.allocate_tensors()
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
-logger.info("الموديل جاهز")
+_interpreter_lock = threading.Lock()
+logger.info("Model loaded successfully")
 
 # =============================================
 # Helpers
@@ -110,16 +170,23 @@ def normalize_landmarks(raw):
 
 def predict_landmarks(landmarks):
     input_data = np.array([landmarks], dtype=np.float32)
-    interpreter.set_tensor(input_details[0]['index'], input_data)
-    interpreter.invoke()
-    return interpreter.get_tensor(output_details[0]['index'])[0]
-
+    with _interpreter_lock:
+        interpreter.set_tensor(input_details[0]['index'], input_data)
+        interpreter.invoke()
+        return interpreter.get_tensor(output_details[0]['index'])[0].copy()
 # =============================================
 # Pages
 # =============================================
 @app.route('/')
 @login_required
 def index():
+    # جعلنا الصفحة الرئيسية هي الترجمة بدلاً من التعرف
+    return render_template('index.html', labels_map=labels_dict)
+
+@app.route('/recognize')
+@login_required
+def recognize_page():
+    # مسار جديد لصفحة التعرف (الكاميرا)
     return render_template('index.html')
 
 @app.route('/login')
@@ -141,20 +208,102 @@ def collect_page():
 @app.route('/translate')
 @login_required
 def translate_page():
-    return render_template('translate.html')
+    # المسار يعمل أيضاً في حال تم طلبه بشكل مباشر
+    return render_template('translate.html', labels_map=labels_dict)
+
+@app.route('/means')
+@login_required
+def means_route():
+    import pandas as pd
+    from sklearn.preprocessing import LabelEncoder
+    global _means_cache, _means_mtime
+
+    path = os.path.join('arabic_data', 'arabic_keypoints.csv')
+    if not os.path.exists(path):
+        _means_cache = {}
+        _means_mtime = None
+        return jsonify({})
+
+    try:
+        file_mtime = os.path.getmtime(path)
+        if _means_cache is not None and _means_mtime == file_mtime:
+            return jsonify(_means_cache)
+
+        df = pd.read_csv(path, header=None)
+        if df.empty or df.shape[1] < 43:
+            _means_cache = {}
+            _means_mtime = file_mtime
+            return jsonify({})
+
+        raw_labels = df.iloc[:, 0]
+        features = df.iloc[:, 1:].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+
+        # Keep LabelEncoder logic for parity with training-time class handling.
+        encoder = LabelEncoder()
+        encoder.fit([labels_dict[idx] for idx in sorted(labels_dict.keys())])
+
+        letter_to_index = {letter: int(idx) for idx, letter in labels_dict.items()}
+        aligned_labels = []
+        for raw in raw_labels:
+            idx = None
+
+            # Dataset may store either numeric labels or Arabic letters.
+            try:
+                numeric = int(float(raw))
+                if numeric in labels_dict:
+                    idx = numeric
+            except (TypeError, ValueError):
+                pass
+
+            if idx is None:
+                label_str = str(raw).strip()
+                if label_str in letter_to_index:
+                    idx = letter_to_index[label_str]
+
+            aligned_labels.append(idx)
+
+        grouped = features.copy()
+        grouped['label'] = aligned_labels
+        grouped = grouped[grouped['label'].notna()].copy()
+        grouped['label'] = grouped['label'].astype(int)
+        if grouped.empty:
+            _means_cache = {}
+            _means_mtime = file_mtime
+            return jsonify({})
+
+        medians = grouped.groupby('label', sort=True).median(numeric_only=True)
+
+        result = {
+            str(int(idx)): [float(v) for v in row.tolist()]
+            for idx, row in medians.iterrows()
+        }
+        _means_cache = result
+        _means_mtime = file_mtime
+        return jsonify(result)
+    except Exception as exc:
+        logger.error("Error in /means: %s", exc)
+        return jsonify({'error': 'تعذّر تحميل المتوسطات'}), 500
 
 @app.route('/pose-editor')
 @login_required
+@admin_required
 def pose_editor_page():
     return render_template('pose_editor.html')
+
+@app.route('/debug')
+@login_required
+@admin_required
+def debug_page():
+    return render_template('debug.html')
 
 # =============================================
 # Auth APIs
 # =============================================
 @app.route('/auth/login', methods=['POST'])
+@limiter.limit("10 per minute")
 def auth_login():
     data = request.get_json(silent=True) or {}
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = request.remote_addr
     ua = request.headers.get('User-Agent', '')
     user_id, error = login_user(
         data.get('name', ''),
@@ -164,12 +313,15 @@ def auth_login():
     if error:
         return jsonify({'success': False, 'error': error})
     session['user_id'] = user_id
+    if user_is_admin(load_user(user_id)):
+        session['is_admin'] = True
     return jsonify({'success': True, 'name': load_user(user_id)['name']})
 
 @app.route('/auth/register', methods=['POST'])
+@limiter.limit("10 per minute")
 def auth_register():
     data = request.get_json(silent=True) or {}
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    ip = request.remote_addr
     ua = request.headers.get('User-Agent', '')
     user_id, error = register_user(
         data.get('name', ''),
@@ -179,6 +331,7 @@ def auth_register():
     if error:
         return jsonify({'success': False, 'error': error})
     session['user_id'] = user_id
+    session['is_admin'] = False
     return jsonify({'success': True})
 
 @app.route('/auth/logout')
@@ -201,7 +354,8 @@ def auth_me():
         'total': user.get('total_accepted', 0),
         'rejected': user.get('rejected', 0),
         'created': user.get('created', ''),
-        'is_admin': session.get('is_admin', False)
+        'is_admin': current_user_is_admin(),
+        'role': 'admin' if user_is_admin(user) else 'user'
     })
 
 # =============================================
@@ -234,17 +388,24 @@ def collect_sample():
     raw = data.get('landmarks', [])
     label = int(data.get('label', -1))
 
+    if label not in range(len(labels_dict)):
+        return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
+
     if len(raw) != 42:
         return jsonify({'success': False, 'error': 'Invalid landmarks'})
 
     try:
         normalized = normalize_landmarks(raw)
 
-        if GLOBAL_SETTINGS['quality_filter']:
+        with _settings_lock:
+            quality_filter = GLOBAL_SETTINGS['quality_filter']
+            filter_threshold = GLOBAL_SETTINGS['filter_threshold']
+
+        if quality_filter:
             probs = predict_landmarks(normalized)
             idx = int(np.argmax(probs))
             confidence = float(probs[idx])
-            if idx != label and confidence > GLOBAL_SETTINGS['filter_threshold']:
+            if idx != label and confidence > filter_threshold:
                 if user_id:
                     record_rejected(user_id)
                 return jsonify({
@@ -264,7 +425,7 @@ def collect_sample():
 
     except Exception as exc:
         logger.error("Error in /collect: %s", exc)
-        return jsonify({'success': False, 'error': str(exc)})
+        return jsonify({'success': False, 'error': 'حدث خطأ، يرجى المحاولة مجدداً'})
 
 @app.route('/sample_counts')
 @login_required
@@ -290,6 +451,8 @@ def history_save():
     text = str(data.get('text', '')).strip()
     if not text:
         return jsonify({'success': False, 'error': 'نص فاضي'})
+    if len(text) > 5000:
+        return jsonify({'success': False, 'error': 'النص طويل جداً (الحد 5000 حرف)'}), 400
     save_entry(session['user_id'], text)
     return jsonify({'success': True})
 
@@ -312,51 +475,78 @@ def history_delete():
 # =============================================
 @app.route('/admin')
 def admin_page():
+    if current_user_is_admin():
+        session['is_admin'] = True
     return render_template('admin.html')
 
 @app.route('/admin/verify', methods=['POST'])
+@limiter.limit("5 per minute")
 def admin_verify():
     data = request.get_json(silent=True) or {}
     ok = verify_admin(data.get('password', ''))
     if ok:
         session['is_admin'] = True
+    else:
+        logger.warning("Failed admin login attempt from %s", request.remote_addr)
     return jsonify({'ok': ok})
 
 @app.route('/admin/stats')
 def admin_stats():
-    if not session.get('is_admin'):
+    if not current_user_is_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify({'users': get_all_users_stats()})
 
 @app.route('/admin/delete_user', methods=['POST'])
 def admin_delete_user():
-    if not session.get('is_admin'):
+    if not current_user_is_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     data = request.get_json(silent=True) or {}
     delete_user(data.get('user_id'))
     return jsonify({'ok': True})
 
+@app.route('/admin/set_user_role', methods=['POST'])
+def admin_set_user_role():
+    if not current_user_is_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json(silent=True) or {}
+    user_id = data.get('user_id')
+    role = data.get('role')
+    if user_id == session.get('user_id') and role != 'admin':
+        return jsonify({'ok': False, 'error': 'لا يمكن إزالة صلاحية الأدمن من حسابك الحالي'}), 400
+
+    ok, error = set_user_role(user_id, role)
+    if not ok:
+        return jsonify({'ok': False, 'error': error}), 400
+
+    return jsonify({'ok': True})
+
 @app.route('/admin/settings', methods=['GET'])
 def admin_get_settings():
-    if not session.get('is_admin'):
+    if not current_user_is_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     return jsonify(GLOBAL_SETTINGS)
 
 @app.route('/admin/settings', methods=['POST'])
 def admin_update_settings():
-    if not session.get('is_admin'):
+    if not current_user_is_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     data = request.get_json(silent=True) or {}
-    if 'quality_filter' in data:
-        GLOBAL_SETTINGS['quality_filter'] = bool(data['quality_filter'])
-    if 'filter_threshold' in data:
-        GLOBAL_SETTINGS['filter_threshold'] = max(0.5, min(1.0, float(data['filter_threshold'])))
-    _save_global_settings()
+    with _settings_lock:
+        if 'quality_filter' in data:
+            GLOBAL_SETTINGS['quality_filter'] = bool(data['quality_filter'])
+        if 'filter_threshold' in data:
+            GLOBAL_SETTINGS['filter_threshold'] = max(0.5, min(1.0, float(data['filter_threshold'])))
+        if 'hand_yaw' in data:
+            GLOBAL_SETTINGS['hand_yaw'] = max(-3.14, min(3.14, float(data['hand_yaw'])))
+        if 'hand_pitch' in data:
+            GLOBAL_SETTINGS['hand_pitch'] = max(-1.57, min(1.57, float(data['hand_pitch'])))
+        _save_global_settings()
     return jsonify({'ok': True, 'settings': GLOBAL_SETTINGS})
 
 @app.route('/admin/export')
 def admin_export():
-    if not session.get('is_admin'):
+    if not current_user_is_admin():
         return jsonify({'error': 'Unauthorized'}), 401
     users = get_all_users_stats()
     return jsonify({'users': users, 'total_users': len(users),
@@ -365,14 +555,22 @@ def admin_export():
 @app.route('/pose-editor/save', methods=['POST'])
 @login_required
 def pose_editor_save():
-    """Update /static/poses.js with a new/updated pose for a letter."""
+    """Update /static/poses.js — admin only."""
+    if not current_user_is_admin():
+        return jsonify({'success': False, 'error': 'غير مسموح'}), 403
+
     data = request.get_json(silent=True) or {}
     letter = data.get('letter')
     pose = data.get('pose')
+
     if not letter or not isinstance(pose, dict):
         return jsonify({'success': False, 'error': 'بيانات غير صالحة'}), 400
 
-    # تحميل poses الحالية إن وُجد الملف
+    # Whitelist: only allow valid Arabic letters (single char or لا)
+    ALLOWED_LETTERS = set('أبتثجحخدذرزسشصضطظعغفقكلمنهوي') | {'لا'}
+    if letter not in ALLOWED_LETTERS:
+        return jsonify({'success': False, 'error': 'حرف غير صالح'}), 400
+
     poses = {}
     if os.path.exists(POSES_PATH):
         try:
@@ -381,10 +579,20 @@ def pose_editor_save():
             start = text.find('{')
             end = text.rfind('}')
             if start != -1 and end != -1 and end > start:
-                json_str = text[start:end+1]
-                poses = json.loads(json_str)
+                poses = json.loads(text[start:end+1])
         except Exception as exc:
             logger.error("Failed to read existing poses.js: %s", exc)
+
+    from datetime import datetime
+    from auth import load_user
+    
+    user = load_user(session.get('user_id', ''))
+    user_name = user.get('name', 'Admin') if user else 'Admin'
+    
+    pose['_meta'] = {
+        'saved_at': datetime.now().strftime('%Y-%m-%d %H:%M'),
+        'saved_by': user_name
+    }
 
     poses[letter] = pose
 
@@ -398,8 +606,10 @@ def pose_editor_save():
         logger.error("Failed to write poses.js: %s", exc)
         return jsonify({'success': False, 'error': 'تعذّر حفظ الملف'}), 500
 
-    return jsonify({'success': True})
+    from history import save_entry
+    save_entry(session['user_id'], f"قام بضبط وتعديل وضعية الأصابع للحرف: {letter}")
 
+    return jsonify({'success': True})
 
 @app.route('/health')
 def health():
@@ -432,10 +642,10 @@ if __name__ == '__main__':
     local_ip = socket.gethostbyname(socket.gethostname())
     banner = (
         f"\n{'='*50}\n"
-        f"  🌐 السيرفر شغال!\n"
-        f"  💻 على الكمبيوتر: http://localhost:5000\n"
-        f"  📱 على الموبايل:  http://{local_ip}:5000\n"
-        f"  🔐 الأدمن: http://localhost:5000/admin\n"
+        f"  Server is running\n"
+        f"  Local:   http://localhost:5000\n"
+        f"  Network: http://{local_ip}:5000\n"
+        f"  Admin:   http://localhost:5000/admin\n"
         f"{'='*50}\n"
     )
     logger.info(banner)

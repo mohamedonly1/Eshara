@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#0a0a0f"
+        android:pathData="M54,54m-54,0a54,54 0,1 1,108 0a54,54 0,1 1,-108 0" />
+    <!-- Hand / sign language icon -->
+    <path
+        android:fillColor="#00d4aa"
+        android:pathData="M54,20 C52,20 50,22 50,24L50,48 C50,48 46,44 43,44 C40,44 38,46 38,49 C38,52 42,56 46,60L46,72 C46,76 50,80 54,80 C58,80 66,80 68,78 C70,76 72,72 72,68L72,42 C72,40 70,38 68,38 C66,38 64,40 64,42L64,36 C64,34 62,32 60,32 C58,32 56,34 56,36L56,34 C56,32 54,30 54,30L54,20Z" />
+</vector>
