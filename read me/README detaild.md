@@ -1,330 +1,114 @@
-# مشروع التعرف على لغة الإشارة العربية الموحدة
-# Arabic Sign Language Recognition System
+# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة (Detailed Documentation)
 
 ---
 
-## 📋 نظرة عامة على المشروع
+## 🌟 نظرة عامة شاملة
 
-هذا المشروع نظام للتعرف على لغة الإشارة العربية الموحدة في الوقت الفعلي (Real-time) باستخدام الكاميرا. يقوم النظام بتحليل حركات اليد والتعرف على الحروف الأبجدية العربية الـ28 وتجميعها في كلمات.
+"إشارة" هو مشروع تخرج متكامل ومتطور للتعرف الفوري على لغة الإشارة العربية. تم بناء النظام ليعمل عبر منصات متعددة لتقديم أقصى فائدة عملية لمجتمع الصم والبكم.
 
-### الهدف
-بناء نظام يساعد في التواصل بين مجتمع الصم والبكم والمجتمع العام عن طريق ترجمة إشارات اليد إلى نص عربي مقروء.
-
----
-
-## 🏗️ معمارية النظام
-
-```
-الكاميرا (OpenCV) → MediaPipe (21 نقطة) → موديل TFLite (MLP) → عرض النتيجة (نص عربي)
-```
-
-### شرح المراحل
-1. **الكاميرا**: تلتقط الفيديو في الوقت الفعلي عبر OpenCV
-2. **MediaPipe**: يستخرج 21 نقطة من اليد (landmarks) ويحوّلها لإحداثيات
-3. **الموديل**: شبكة عصبية (MLP) تصنّف الإيماءة وتحدد الحرف
-4. **العرض**: يظهر الحرف والكلمة بالنص العربي على الشاشة
+تتكون المنظومة من 3 مكونات برمجية رئيسية:
+1. **نظام الذكاء الاصطناعي (AI & Machine Learning)**: مسؤول عن معالجة البيانات، بناء الشبكة العصبية، وتدريب نماذج التعرف.
+2. **منصة الويب التفاعلية (Web Platform & 3D IK System)**: خادم Flask مع واجهة تفاعلية تضم قاموساً للإشارات ومجسماً ثلاثي الأبعاد (Avatar) يترجم النصوص والصوتيات إلى إيماءات باستخدام تقنيات Inverse Kinematics.
+3. **تطبيق الأندرويد (Mobile Application)**: تطبيق مخصص يعمل في الوقت الفعلي (Real-time) باستخدام كاميرا الهاتف للترجمة الفورية.
 
 ---
 
-## 📁 هيكل المشروع
+## 📱 1. تطبيق الأندرويد المتقدم (Ishara Android App)
 
-```
-arabic-sign-language/
-│
-├── collect_data.py          ← أداة جمع بيانات التدريب
-├── train_model.py           ← سكريبت تدريب الموديل
-├── app_arabic.py            ← التطبيق النهائي (Real-time)
-├── Cairo-Regular.ttf        ← فونت عربي للعرض
-│
-├── arabic_data/             ← بيانات التدريب (تتولد تلقائياً)
-│   ├── arabic_keypoints.csv   ← إحداثيات نقاط اليد لكل عينة
-│   └── arabic_labels.csv      ← أسماء الحروف وأرقامها
-│
-└── arabic_model/            ← الموديل المدرَّب (يتولد بعد التدريب)
-    ├── arabic_sign_model.h5       ← الموديل بصيغة Keras
-    ├── arabic_sign_model.tflite   ← الموديل المضغوط للنشر
-    ├── best_model.h5              ← أفضل نسخة أثناء التدريب
-    ├── confusion_matrix.png       ← مصفوفة الأخطاء
-    └── training_curves.png        ← منحنيات الدقة والخسارة
-```
+تم تطوير تطبيق الهاتف بلغة Kotlin باستخدام أحدث تقنيات نظام الأندرويد لضمان كفاءة عالية (High Performance) أثناء المعالجة الحية للفيديو.
+
+### التقنيات المستخدمة:
+- **CameraX**: لإدارة دورة حياة الكاميرا بسلاسة والتقاط الإطارات بدقة.
+- **MediaPipe Tasks Vision**: الإصدار الأحدث من مكتبة جوجل (HandLandmarker) لاكتشاف وتتبع مفاصل اليد بدقة وسرعة على الأجهزة المحمولة.
+- **TensorFlow Lite (TFLite)**: لتشغيل النموذج المدرب محلياً على الجهاز بدون الحاجة للإنترنت.
+
+### 🔧 التحديات التقنية التي تم حلها (Technical Breakthroughs):
+
+#### أ. مشكلة توافق الأبعاد وتدوير الكاميرا (Aspect Ratio & Rotation Mapping)
+- **المشكلة**: تم تدريب موديل TFLite باستخدام كاميرا ويب (Landscape) بنسبة أبعاد 640x480. عند تشغيل الموديل على كاميرا الهاتف المحمول (Portrait)، تختلف نسبة الأبعاد وزوايا الدوران (Rotation Degrees)، مما أدى لانهيار دقة الاستنتاج وتشوه رسم الخطوط (Overlay) فوق اليد.
+- **الحل (Foolproof Rotation)**:
+  - تمت برمجة الكود ليقوم بتدوير الصورة المستلمة من `ImageProxy` بشكل آلي ودقيق (باستخدام `Matrix.postRotate`) بناءً على دوران مستشعر الهاتف، وذلك لضمان تسليم صورة معتدلة (Upright) لـ MediaPipe بشكل دائم.
+  - تم عمل **تطبيع إحداثيات رياضي (Mathematical Coordinate Normalization)** حيث تُضغط الإحداثيات لمحاكاة نسبة أبعاد كاميرا الويب (ScaleX = width/640, ScaleY = height/480).
+  - تم إصلاح نظام الرسم (Overlay Canvas) ليدعم الكاميرات الأمامية والخلفية (Front/Back) مع معالجة تأثير المرآة (Mirror Effect).
 
 ---
 
-## 📚 المكتبات المستخدمة وشرح دورها
+## 🌐 2. منصة الويب والأنيميشن ثلاثي الأبعاد (Web Dashboard & 3D System)
 
-### 1. MediaPipe (mediapipe==0.10.11)
-**الدور**: المكتبة الأساسية لاكتشاف اليد واستخراج نقاطها.
+### التقنيات المستخدمة:
+- **Backend**: Python, Flask, Flask-Limiter.
+- **Frontend**: HTML, CSS, JavaScript, Three.js.
+- **Speech-to-Text**: Web Speech API للترجمة الصوتية.
 
-تقوم باكتشاف اليد في الصورة وإرجاع **21 نقطة** (landmarks) تمثل مفاصل الأصابع وراحة اليد:
+### 🔧 التحديات التقنية التي تم حلها:
 
-```
-النقاط: المعصم (0) + إبهام (1-4) + سبابة (5-8) + وسطى (9-12) + بنصر (13-16) + خنصر (17-20)
-```
-
-```python
-from mediapipe.python.solutions import hands as mp_hands_solutions
-hands = mp_hands_solutions.Hands(
-    max_num_hands=1,               # يد واحدة فقط
-    min_detection_confidence=0.7,  # دقة اكتشاف 70%
-    min_tracking_confidence=0.5    # دقة تتبع 50%
-)
-```
+#### أ. نظام الحركيات العكسية (Inverse Kinematics - IK) للمجسم الثلاثي
+- تم الانتقال من نظام زوايا ثابت (Pre-calculated Rotations) إلى نظام ديناميكي يقوم بحساب مواقع العظام بناءً على بيانات MediaPipe في متصفح الويب.
+- **منع تشوه العظام (Skeletal Deformation Fix)**: تم حل مشكلة تشوه المجسم عند الانتقال بين الإشارات من خلال ضمان إعادة تهيئة العظام وحساب محاور الدوران الدقيقة باستخدام خوارزمياترياضية متقدمة داخل بيئة `Three.js` (مزامنة Quaternion و Euler Angles).
+- **لوحة التحكم (Dashboard)**: نظام متكامل لإدارة الإيماءات وإجراء تعديلات دقيقة (Calibration) لمحاور X, Y, Z وحفظها برمجياً لاستخدامها في النظام المباشر، مع ميزة التحقق البصري وحفظ التاريخ (Timestamp).
 
 ---
 
-### 2. TensorFlow / Keras (tensorflow==2.10.1)
-**الدور**: بناء وتدريب الشبكة العصبية، وتحويلها لصيغة TFLite.
+## 🧠 3. نظام الذكاء الاصطناعي (AI Pipeline)
 
-**معمارية الموديل (MLP - Multi-Layer Perceptron)**:
+### معمارية تصنيف الإشارات (MLP Model)
+تم استخدام شبكة عصبية عميقة (Multi-Layer Perceptron) تتميز بسرعتها وخفتها.
+
 ```
-Input (42)  →  Dense(128) + BatchNorm + Dropout(0.3)
-            →  Dense(256) + BatchNorm + Dropout(0.3)
-            →  Dense(128) + BatchNorm + Dropout(0.2)
-            →  Dense(64)  + Dropout(0.2)
-            →  Output(28) Softmax
+Input (42 Features)  →  Dense(128) + BatchNorm + Dropout(0.3)
+                     →  Dense(256) + BatchNorm + Dropout(0.3)
+                     →  Dense(128) + BatchNorm + Dropout(0.2)
+                     →  Dense(64)  + Dropout(0.2)
+                     →  Output(28 Classes) Softmax
 ```
 
-- **Input**: 42 قيمة = 21 نقطة × (x, y)
-- **BatchNormalization**: يسرّع التدريب ويستقر النتائج
-- **Dropout**: يمنع الـ Overfitting (حفظ البيانات بدلاً من تعلمها)
-- **Softmax**: يحوّل النتائج لاحتماليات لكل حرف (مجموعها = 1)
+### معالجة البيانات (Data Preprocessing):
+- يتم التقاط 21 نقطة من MediaPipe، وتُحول إلى إحداثيات نسبية (Relative Coordinates) نسبةً إلى موقع مفصل المعصم (Wrist) لجعل التعرف مستقلاً عن موقع اليد في الشاشة.
+- يتم تطبيق عملية "تطبيع" (Normalization) بالقسمة على أكبر قيمة مطلقة لجعل التعرف مستقلاً عن المسافة بين اليد والكاميرا.
 
 ---
 
-### 3. OpenCV (opencv-contrib-python)
-**الدور**: التعامل مع الكاميرا ورسم العناصر على الشاشة.
+## 🚀 كيفية التثبيت والتشغيل (Quick Start)
 
-```python
-cap = cv.VideoCapture(0)                           # فتح الكاميرا
-image = cv.flip(image, 1)                          # عكس الصورة (مرآة)
-image = cv.cvtColor(image, cv.COLOR_BGR2RGB)       # تحويل الألوان لـ MediaPipe
-cv.rectangle(image, pt1, pt2, color, thickness)   # رسم مستطيل حول اليد
-cv.imshow('window', image)                         # عرض الصورة
-```
+### متطلبات النظام الأساسية:
+- Python 3.10
+- Android Studio 
 
----
-
-### 4. NumPy (numpy==1.26.4)
-**الدور**: العمليات الحسابية على المصفوفات.
-
-```python
-# تطبيع إحداثيات النقاط
-max_val = max(abs(v) for v in rel_landmarks)
-normalized = [v / max_val for v in rel_landmarks]
-
-# تحضير البيانات للموديل
-input_data = np.array([landmarks], dtype=np.float32)
-```
-
----
-
-### 5. Pillow + arabic-reshaper + python-bidi
-**الدور**: عرض النص العربي بشكل صحيح على الصورة.
-
-**المشكلة**: OpenCV لا يدعم النص العربي مباشرة لأن:
-- العربية تُكتب من اليمين لليسار (RTL)
-- الحروف تتشكل حسب موقعها في الكلمة
-
-**الحل بثلاث خطوات**:
-```python
-import arabic_reshaper
-from bidi.algorithm import get_display
-from PIL import ImageFont, ImageDraw, Image
-
-# 1. arabic_reshaper: يصحح شكل الحروف (مثلاً: ب تصبح بـ أو ـبـ حسب الموقع)
-reshaped = arabic_reshaper.reshape("مرحبا")
-
-# 2. python-bidi: يعكس اتجاه الكتابة من اليسار لليمين
-bidi_text = get_display(reshaped)
-
-# 3. Pillow: يرسم النص على الصورة بفونت Cairo
-img_pil = Image.fromarray(cv.cvtColor(img, cv.COLOR_BGR2RGB))
-draw = ImageDraw.Draw(img_pil)
-font = ImageFont.truetype('Cairo-Regular.ttf', 40)
-draw.text(position, bidi_text, font=font, fill=color)
-```
-
----
-
-### 6. scikit-learn
-**الدور**: تقسيم البيانات وتقييم الموديل.
-
-```python
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
-
-# تقسيم 80% تدريب، 20% اختبار مع الحفاظ على توزيع الفئات
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
-)
-```
-
----
-
-### 7. Matplotlib + Seaborn
-**الدور**: رسم نتائج التدريب وتحليل الأداء.
-
-```python
-# Confusion Matrix: تُظهر الحروف المتشابهة والأخطاء
-sns.heatmap(confusion_matrix(y_test, y_pred), annot=True)
-
-# Training Curves: منحنيات الدقة والخسارة عبر الـ Epochs
-plt.plot(history.history['accuracy'])
-plt.plot(history.history['val_accuracy'])
-```
-
----
-
-## 🔄 شرح تدفق البيانات
-
-### مرحلة جمع البيانات (collect_data.py)
-
-**خطوات المعالجة**:
-1. قراءة إطار من الكاميرا
-2. MediaPipe يكتشف اليد ويرجع 21 نقطة (x, y لكل نقطة)
-3. **تحويل لإحداثيات نسبية**: طرح إحداثيات المعصم من كل نقطة
-4. **تطبيع**: قسمة على أكبر قيمة مطلقة (النتيجة بين -1 و 1)
-5. حفظ الـ 42 قيمة مع رقم الحرف في ملف CSV
-
-```python
-def extract_landmarks(hand_landmarks, image_shape):
-    # استخراج الإحداثيات الخام
-    for lm in hand_landmarks.landmark:
-        x = int(lm.x * width)
-        y = int(lm.y * height)
-
-    # تحويل لإحداثيات نسبية (مستقلة عن موقع اليد في الصورة)
-    base_x, base_y = landmark_list[0]  # المعصم كنقطة مرجعية
-    rel = [x - base_x, y - base_y for x, y in landmark_list]
-
-    # تطبيع (مستقل عن حجم اليد)
-    max_val = max(abs(v) for v in rel)
-    normalized = [v / max_val for v in rel]
-```
-
-**لماذا التطبيع مهم؟**
-- يجعل الموديل يتعرف على الإيماءة بغض النظر عن **موقع اليد** في الصورة
-- يجعله مستقلاً عن **حجم اليد** (يد كبيرة أو صغيرة)
-- يحسن دقة التعرف بشكل كبير
-
----
-
-### مرحلة التدريب (train_model.py)
-
-**الـ Callbacks المستخدمة**:
-
-| Callback | الدور |
-|----------|-------|
-| EarlyStopping | يوقف التدريب إذا توقف التحسن (patience=20 epoch) |
-| ReduceLROnPlateau | يقلل معدل التعلم عند التوقف (factor=0.5) |
-| ModelCheckpoint | يحفظ أفضل نسخة من الموديل تلقائياً |
-
----
-
-### مرحلة التطبيق (app_arabic.py)
-
-**نظام تأكيد الحرف (History Buffer)**:
-```python
-HISTORY_LENGTH = 25    # عدد الإطارات المطلوبة
-AGREEMENT_RATIO = 0.85 # 85% من الإطارات يجب أن تتفق
-
-prediction_history = deque(maxlen=25)
-
-# يسجل الحرف فقط لو 85% من آخر 25 إطار متفقين
-most_common = Counter(prediction_history).most_common(1)[0]
-if most_common[1] >= 25 * 0.85:
-    confirmed_letter = labels_dict[most_common[0]]
-```
-
-**لماذا هذا النظام؟**
-- يمنع تسجيل حروف خاطئة بسبب حركة عابرة
-- يعطي وقتاً كافياً للمستخدم لثبيت الإيماءة
-- الشريط الأخضر على الشاشة يُظهر مدى اكتمال التأكيد
-
-**نظام الـ Cooldown**:
-```python
-COOLDOWN_FRAMES = 40  # 40 إطار تقريباً 1.3 ثانية
-
-# بعد تسجيل حرف، انتظر قبل تسجيل التالي
-if confirmed_letter:
-    current_word.append(confirmed_letter)
-    cooldown = COOLDOWN_FRAMES
-```
-
----
-
-## 🗂️ تنسيق البيانات
-
-### ملف arabic_keypoints.csv
-```
-label, x0, y0, x1, y1, ..., x20, y20
-0, 0.0, 0.0, 0.15, -0.08, ...   ← حرف أ
-1, 0.0, 0.0, 0.12, -0.11, ...   ← حرف ب
-```
-- **العمود الأول**: رقم الحرف (0-28)
-- **الأعمدة التالية**: 42 قيمة (إحداثيات 21 نقطة بعد التطبيع)
-
-### ملف arabic_labels.csv
-```
-0, أ
-1, ب
-2, ت
-...
-28, لا
-```
-
----
-
-## 🔤 الحروف المدعومة ومفاتيحها
-
-| مفتاح | حرف |
-|-------|------|
-|   1   |  أ   |
-|   2   |  ب   |
-|   3   |  ت   |
-|   4   |  ث   |
-|   5   |  ج   |
-|   6   |  ح   |
-|   7   |  خ   |
-|   8   |  د   |
-|   9   |  ذ   |
-|   0   |  ر   |
-|   q   |  ز   |
-|   w   |  س   |
-|   e   |  ش   |
-|   r   |  ص   |
-|   t   |  ض   |
-|   y   |  ط   |
-|   u   |  ظ   |
-|   i   |  ع   |
-|   o   |  غ   |
-|   p   |  ف   |
-|   a   |  ق   |
-|   s   |  ك   |
-|   d   |  ل   |
-|   f   |  م   |
-|   g   |  ن   |
-|   h   |  ه   |
-|   j   |  و   |
-|   k   |  ي   |
-|   l   |  لا   |
----
-
-## ⚙️ متطلبات التشغيل
-
-### البيئة
-```
-Python 3.10
-Windows 10/11
-كاميرا ويب
-```
-
-### تثبيت المكتبات
+### 1. إعداد بيئة بايثون (Web & AI)
 ```bash
-python -m venv
+python -m venv venv310
 venv310\Scripts\activate
 
-pip install mediapipe==0.10.11
+pip install mediapipe==0.10.11 tensorflow==2.10.1 numpy==1.26.4
+pip install opencv-contrib-python Pillow arabic-reshaper python-bidi
+pip install scikit-learn matplotlib seaborn
+pip install flask flask-limiter python-dotenv
+```
+
+### 2. تشغيل خادم الويب (Dashboard)
+```bash
+python server.py
+# أو app.py بناءً على ملف التشغيل الرئيسي
+```
+
+### 3. تدريب النموذج (إن رغبت في إضافة إشارات)
+1. تشغيل `python collect_data.py` لجمع العينات عبر الكاميرا.
+2. تشغيل `python train_model.py` لبدء التدريب وتوليد ملف `arabic_sign_model.tflite` الجديد.
+3. يتم نسخ الملف الجديد إلى مجلد الأصول `assets` في مشروع الأندرويد.
+
+### 4. تشغيل تطبيق الأندرويد
+قم بفتح المجلد `Ishara` عبر Android Studio، ثم انتظر حتى يكتمل تحميل Gradle، وقم بتشغيله على هاتفك الموصول أو على المحاكي.
+
+---
+
+## 📊 دقة النظام (System Accuracy)
+وصلت الدقة الكلية للنظام (Accuracy) إلى **93.8%** على مجموعة البيانات الكبيرة، حيث تعمل الطبقات الإضافية كـ BatchNormalization و Dropout على تجنب الحفظ الأعمى (Overfitting) واستقرار الأوزان.
+
+---
+
+## 🛠 التوسعات المستقبلية (Future Enhancements)
+- إضافة دعم لاكتشاف واستنتاج كلتا اليدين (Two-handed signs).
+- دعم معمارية Long Short-Term Memory (LSTM) لمعرفة تسلسل الكلمات بدلاً من الحروف المتقطعة.l mediapipe==0.10.11
 pip install tensorflow==2.10.1
 pip install numpy==1.26.4
 pip install opencv-contrib-python
@@ -363,7 +147,7 @@ seaborn==0.13.2
 
 
 
-## 🚀 تشغيل المشروع
+## تشغيل المشروع
 
 ### 1. جمع البيانات
 ```bash
@@ -395,7 +179,7 @@ python app_arabic.py
 
 ---
 
-## 📊 نتائج التدريب (10 حروف - المرحلة الأولى)
+## نتائج التدريب (10 حروف - المرحلة الأولى)
 
 | الحرف | Precision | Recall | F1-Score |
 |-------|-----------|--------|----------|
@@ -419,7 +203,7 @@ python app_arabic.py
 
 ---
 
-## 🔧 تحسينات مقترحة
+## تحسينات مقترحة
 
 ### تحسين الدقة
 - زيادة عينات التدريب لـ **300-500 عينة** لكل حرف
@@ -437,8 +221,34 @@ python app_arabic.py
 
 ---
 
-## 📖 المراجع
+## المراجع
 
 - [MediaPipe Hands Documentation](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker)
 - [TensorFlow Lite Guide](https://www.tensorflow.org/lite/guide)
 - المشروع الأصلي: [hand-gesture-recognition-using-mediapipe](https://github.com/Kazuhito00/hand-gesture-recognition-using-mediapipe)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -45,7 +45,7 @@ def load_keypoints():
     counts = defaultdict(int)
 
     if not os.path.exists(KEYPOINTS_PATH):
-        print(f"⚠️ ملف النقاط غير موجود: {KEYPOINTS_PATH}")
+        print(f"Keypoints file not found: {KEYPOINTS_PATH}")
         return sums, counts
 
     with open(KEYPOINTS_PATH, "r", encoding="utf-8") as f:
@@ -119,12 +119,12 @@ def main():
     write_js(letter_means)
 
     # طباعة عدد العينات لكل حرف
-    print("\n📊 عدد العينات المستخدمة لكل حرف:")
+    print("\nSamples used per letter:")
     for idx, letter in labels.items():
         c = counts.get(idx, 0)
         print(f"  {letter}: {c} sample(s)")
 
-    print(f"\n✅ تم إنشاء الملف: {OUTPUT_JS_PATH}")
+    print(f"\nOutput file created: {OUTPUT_JS_PATH}")
 
 
 if __name__ == "__main__":

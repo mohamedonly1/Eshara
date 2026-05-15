@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>تسجيل البيانات</title>
+    <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -21,93 +22,63 @@
         .page-content {
             padding-top: var(--navbar);
             height: 100dvh;
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            margin: 0 auto;
+            overflow: hidden;
         }
 
-        /* Desktop: side-by-side layout */
-        @media (min-width: 768px) {
-            .page-content {
-                flex-direction: row;
-                max-width: 1200px;
-            }
+        /* Collapsible letter panel — fixed at bottom on all screen sizes */
+.letter-selector {
+            background: var(--surface);
+            border-top: 1px solid rgba(0,0,0,0.08);
+            z-index: 10;
         }
 
-        /* شبكة الحروف */
-        .letter-selector {
-            padding: 6px 12px;
-            flex-shrink: 0;
+        .letter-selector.collapsed .letters-grid,
+        .letter-selector.collapsed .letter-dropdown {
+            display: none;
         }
+
+        .selector-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         .selector-label {
-            font-size: 10px;
+            font-size: 12px;
+            font-weight: 700;
             color: var(--text-dim);
-            margin-bottom: 4px;
+            margin: 0;
         }
+
+        .selector-toggle-icon {
+            font-size: 14px;
+            color: var(--text-dim);
+            transition: transform 0.3s;
+        }
+
+        .letter-selector.collapsed .selector-toggle-icon {
+            transform: rotate(180deg);
+        }
+
         .letters-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(45px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
             gap: 6px;
+            padding: 6px 12px 16px;
+            max-height: 40vh;
+            overflow-y: auto;
         }
 
-        /* Mobile: collapsible panel below camera */
-        @media (max-width: 767px) {
-            .letter-selector {
-                position: fixed;
-                bottom: 0;
-                left: 0;
-                right: 0;
-                z-index: 100;
-                background: var(--surface);
-                border-top: 1px solid rgba(255,255,255,0.08);
-                border-radius: 20px 20px 0 0;
-                padding: 0;
-                transition: transform 0.3s ease;
-            }
-            .letter-selector.collapsed .letters-grid {
-                display: none;
-            }
-            .selector-toggle {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 10px 16px;
-                cursor: pointer;
-                user-select: none;
-            }
-            .selector-toggle-icon {
-                transition: transform 0.3s;
-                font-size: 14px;
-            }
-            .letter-selector.collapsed .selector-toggle-icon {
-                transform: rotate(180deg);
-            }
-            .letters-grid {
-                padding: 6px 12px 12px;
-                max-height: 45vh;
-                overflow-y: auto;
-            }
-            /* Push camera up to leave space for toggle bar */
-            .camera-wrap {
-                margin-bottom: 44px;
-            }
-        }
-
-        /* Desktop: sidebar on the right */
-        @media (min-width: 768px) {
-            .letter-selector {
-                width: 200px;
-                flex-shrink: 0;
-                overflow-y: auto;
-                padding: 12px 10px;
-                border-left: 1px solid rgba(255,255,255,0.06);
-                background: var(--surface);
-                height: 100%;
-            }
-            .selector-toggle { display: none; }
-            .letters-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
+        /* hide the old select dropdown — not needed anymore */
+        .letter-dropdown {
+            display: none !important;
         }
         .letter-btn {
             aspect-ratio: 1;
@@ -133,30 +104,63 @@
         .letter-count { font-size: 6px; opacity: 0.65; margin-top: 1px; }
 
         /* الكاميرا تملأ باقي المساحة */
-        .camera-wrap {
+.camera-wrap {
             flex: 1;
             position: relative;
             overflow: hidden;
             background: #000;
             min-height: 0;
         }
-
-        @media (min-width: 768px) {
-            .camera-wrap {
-                height: 100%;
-                min-height: 0;
-            }
-        }
         #video { width: 100%; height: 100%; object-fit: contain; transform: scaleX(-1); display: block; }
         #overlay { position: absolute; inset: 0; transform: scaleX(-1); pointer-events: none; }
 
-        /* إطار التركيز */
-        .bracket { position: absolute; width: 28px; height: 28px; border-color: var(--warn); border-style: solid; opacity: 0.75; }
-        .bracket.tl { top:10px; right:10px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
-        .bracket.tr { top:10px; left:10px; border-width:3px 3px 0 0; border-radius:0 4px 0 0; }
-        .bracket.bl { bottom:175px; right:10px; border-width:0 0 3px 3px; border-radius:0 0 0 4px; }
-        .bracket.br { bottom:175px; left:10px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+       /* ══════════════════════════════════════════════════════
+             إصلاح زوايا إطار التركيز لتطابق فريم الكاميرا
+        ══════════════════════════════════════════════════════ */
 
+    /* الإعدادات العامة للزوايا */
+    .bracket { 
+        position: absolute; 
+        width: 25px; 
+        height: 25px; 
+        border-color: var(--warn); 
+        border-style: solid; 
+        opacity: 0.8; 
+        z-index: 5;
+        transition: all 0.3s;
+    }
+
+    /* الزاوية العلوية اليمنى (Top Right) */
+    .bracket.tl { 
+        top: 0; 
+        right: 0; 
+        border-width: 3px 3px 0 0; /* رسم الضلع العلوي والأيمن */
+        border-radius: 0 8px 0 0; 
+    }
+
+    /* الزاوية العلوية اليسرى (Top Left) */
+    .bracket.tr { 
+        top: 0; 
+        left: 0; 
+        border-width: 3px 0 0 3px; /* رسم الضلع العلوي والأيسر */
+        border-radius: 8px 0 0 0; 
+    }
+
+    /* الزاوية السفلية اليمنى (Bottom Right) */
+    .bracket.bl { 
+        bottom: 0; 
+        right: 0; 
+        border-width: 0 3px 3px 0; /* رسم الضلع السفلي والأيمن */
+        border-radius: 0 0 8px 0; 
+    }
+
+    /* الزاوية السفلية اليسرى (Bottom Left) */
+    .bracket.br { 
+        bottom: 0; 
+        left: 0; 
+        border-width: 0 0 3px 3px; /* رسم الضلع السفلي والأيسر */
+        border-radius: 0 0 0 8px; 
+    }
         /* حالة اليد - فوق الكاميرا مش تحت الـ navbar */
         .hand-status {
             position: absolute;
@@ -200,12 +204,12 @@
         }
 
         /* البانل السفلي داخل الكاميرا */
+/* البانل السفلي */
         .bottom-panel {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: linear-gradient(0deg, rgba(10,10,15,0.97) 0%, rgba(10,10,15,0.7) 100%);
-            backdrop-filter: blur(16px);
+            background: var(--surface);
             padding: 10px 14px 12px;
+            border-top: 1px solid rgba(0,0,0,0.08);
+            z-index: 10;
         }
 
         .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
@@ -278,6 +282,7 @@
         /* Loading */
         .loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; transition: opacity 0.5s; }
         .loading-screen.hidden { opacity: 0; pointer-events: none; }
+
         .spinner { width: 28px; height: 28px; border: 3px solid var(--surface2); border-top-color: var(--warn); border-radius: 50%; animation: spin 0.8s linear infinite; margin-top: 12px; }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
@@ -293,22 +298,14 @@
 {% include 'navbar.html' %}
 
 <div class="loading-screen" id="loadingScreen">
-    <div style="font-size:36px">📝</div>
+    <div style="font-size:36px"></div>
     <div style="font-size:18px;font-weight:900;margin-top:10px;color:#f59e0b">تسجيل البيانات</div>
     <div style="font-size:12px;color:#6b7280;margin-top:6px" id="loadingSub">جاري تحميل MediaPipe...</div>
     <div class="spinner"></div>
 </div>
 
 <div class="toast" id="toast"></div>
-
-<div class="page-content">
-    <!-- شبكة الحروف -->
-    <div class="letter-selector">
-        <div class="selector-label">اختر الحرف للتسجيل:</div>
-        <div class="letters-grid" id="lettersGrid"></div>
-    </div>
-
-    <!-- الكاميرا تملأ باقي المساحة -->
+<div class="page-content layout-collect">
     <div class="camera-wrap">
         <video id="video" autoplay playsinline muted></video>
         <canvas id="overlay"></canvas>
@@ -316,50 +313,42 @@
         <div class="bracket tr"></div>
         <div class="bracket bl"></div>
         <div class="bracket br"></div>
-
-        <!-- حالة اليد داخل الكاميرا -->
-        <div class="hand-status" id="handStatus">🖐 في انتظار اليد...</div>
-
-        <!-- رسالة الرفض داخل الكاميرا -->
+        <div class="hand-status" id="handStatus">في انتظار اليد...</div>
         <div class="reject-msg" id="rejectMsg"></div>
-
-        <!-- البانل السفلي -->
-        <div class="bottom-panel">
-            <div class="progress-row">
-                <div class="progress-letter" id="currentLetterDisplay">—</div>
-                <div class="progress-info">
-                    <div class="progress-nums">
-                        <span id="progressLabel">اختر حرفاً</span>
-                        <span id="progressCount">0/200</span>
-                    </div>
-                    <div class="progress-track">
-                        <div class="progress-fill" id="progressFill" style="width:0%"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="auto-bar-wrap">
-                <div class="auto-bar" id="autoBar"></div>
-            </div>
-            <div class="btns-row">
-                <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>اختر حرفاً أولاً</button>
-                <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()">🤖<br>تلقائي</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- شبكة الحروف -->
-    <div class="letter-selector collapsed" id="letterSelector">
+    </div> <div class="letter-selector collapsed" id="letterSelector">
         <div class="selector-toggle" onclick="toggleLetterPanel()">
-            <span class="selector-label" style="margin:0">اختر الحرف للتسجيل</span>
+            <span class="selector-label">اختر الحرف للتسجيل</span>
             <span class="selector-toggle-icon">▲</span>
         </div>
         <div class="letters-grid" id="lettersGrid"></div>
+    </div>
+
+    <div class="bottom-panel">
+        <div class="progress-row">
+            <div class="progress-letter" id="currentLetterDisplay">—</div>
+            <div class="progress-info">
+                <div class="progress-nums">
+                    <span id="progressLabel">اختر حرفاً</span>
+                    <span id="progressCount">0/200</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="auto-bar-wrap">
+            <div class="auto-bar" id="autoBar"></div>
+        </div>
+        <div class="btns-row">
+            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>اختر حرفاً أولاً</button>
+            <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()"><br>تلقائي</button>
+        </div>
     </div>
 </div>
 
 <script>
 const TARGET_SAMPLES = 200;
-const AUTO_CONFIRM_FRAMES = 10;
+const AUTO_CONFIRM_FRAMES = 5;
 const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
 
 let selectedLetter = null;
@@ -376,8 +365,13 @@ const overlayCtx = overlayCanvas.getContext('2d');
 const cameraWrap = document.querySelector('.camera-wrap');
 
 // ===== شبكة الحروف =====
+function toggleLetterPanel() {
+    document.getElementById('letterSelector').classList.toggle('collapsed');
+}
+
 function buildLettersGrid() {
     const grid = document.getElementById('lettersGrid');
+
     ARABIC_LETTERS.forEach((letter, idx) => {
         const btn = document.createElement('button');
         btn.className = 'letter-btn';
@@ -419,15 +413,12 @@ function selectLetter(idx, letter) {
     document.getElementById('progressFill').style.width = Math.min(count / TARGET_SAMPLES * 100, 100) + '%';
     const btn = document.getElementById('recordBtn');
     btn.disabled = false;
-    btn.textContent = '📸 سجّل ' + letter;
+    btn.textContent = 'سجّل ' + letter;
     btn.className = 'record-btn';
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
     showToast('تم اختيار: ' + letter);
-    // Open panel briefly on desktop, close on mobile after selection
-    if (window.innerWidth < 768) {
-        document.getElementById('letterSelector').classList.add('collapsed');
-    }
+    document.getElementById('letterSelector').classList.add('collapsed');
 }
 
 // ===== تسجيل =====
@@ -454,17 +445,17 @@ async function recordSample(auto) {
             if (countEl) countEl.textContent = count >= TARGET_SAMPLES ? '✓' : count;
             if (count >= TARGET_SAMPLES) {
                 document.getElementById('lbtn_' + selectedIdx).classList.add('complete');
-                showToast('✅ اكتمل ' + selectedLetter + '!');
+                showToast('اكتمل ' + selectedLetter + '!');
             }
             btn.className = 'record-btn success';
-            btn.textContent = '✅ ' + count;
+            btn.textContent = count + ' تم';
             if (navigator.vibrate) navigator.vibrate(30);
             setTimeout(() => {
                 btn.className = 'record-btn';
-                btn.textContent = '📸 سجّل ' + selectedLetter;
+                btn.textContent = 'سجّل ' + selectedLetter;
                 btn.disabled = false;
                 isRecording = false;
-            }, auto ? 250 : 500);
+            }, auto ? 100 : 500);
 
         } else if (data.rejected) {
             // رسالة الرفض داخل الكاميرا
@@ -472,12 +463,12 @@ async function recordSample(auto) {
             btn.disabled = false;
             isRecording = false;
         } else {
-            showToast('❌ ' + (data.error || 'فشل'));
+            showToast((data.error || 'فشل'));
             btn.disabled = false;
             isRecording = false;
         }
     } catch(e) {
-        showToast('❌ خطأ');
+        showToast('خطأ');
         btn.disabled = false;
         isRecording = false;
     }
@@ -487,8 +478,8 @@ function toggleAuto() {
     autoMode = !autoMode;
     const btn = document.getElementById('autoToggle');
     btn.className = autoMode ? 'auto-toggle active' : 'auto-toggle';
-    btn.innerHTML = autoMode ? '🤖<br>✓ تلقائي' : '🤖<br>تلقائي';
-    showToast(autoMode ? '🤖 تلقائي مفعّل' : 'تلقائي متوقف');
+    btn.innerHTML = autoMode ? '<br>تلقائي' : '<br>تلقائي';
+    showToast(autoMode ? 'تلقائي مفعّل' : 'تلقائي متوقف');
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
 }
@@ -575,7 +566,7 @@ function initMediaPipe() {
             landmarks.forEach(lm => raw.push(lm.x, lm.y));
             currentLandmarks = raw;
 
-            document.getElementById('handStatus').textContent = '✅ يد مكتشفة';
+            document.getElementById('handStatus').textContent = 'يد مكتشفة';
             document.getElementById('handStatus').className = 'hand-status detected';
 
             if (autoMode && selectedLetter && !isRecording) {
@@ -590,11 +581,17 @@ function initMediaPipe() {
         } else {
             currentLandmarks = null;
             overlayCtx.clearRect(0, 0, w, h);
-            document.getElementById('handStatus').textContent = '🖐 في انتظار اليد...';
+            document.getElementById('handStatus').textContent = 'في انتظار اليد...';
             document.getElementById('handStatus').className = 'hand-status';
             if (autoMode) { autoFrameCount = 0; document.getElementById('autoBar').style.width = '0%'; }
         }
     });
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        document.getElementById('loadingSub').textContent = 'متصفحك لا يدعم الكاميرا';
+        console.error('Camera init failed: getUserMedia not supported');
+        return;
+    }
 
     const camera = new Camera(video, {
         onFrame: async () => {
@@ -612,14 +609,12 @@ function initMediaPipe() {
 
     camera.start().then(() => {
         document.getElementById('loadingScreen').classList.add('hidden');
-    }).catch(() => {
-        document.getElementById('loadingSub').textContent = '❌ تعذّر الوصول للكاميرا';
+    }).catch((err) => {
+        console.error('Failed to start camera', err);
+        const cameraError = err?.message || err?.name || String(err);
+        document.getElementById('loadingSub').textContent = `تعذّر الوصول للكاميرا: ${cameraError}`;
+        showToast('فشل تشغيل الكاميرا: ' + cameraError, 'error');
     });
-}
-
-function toggleLetterPanel() {
-    const panel = document.getElementById('letterSelector');
-    panel.classList.toggle('collapsed');
 }
 
 buildLettersGrid();

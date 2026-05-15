@@ -60,7 +60,7 @@ if not os.path.exists(LABELS_PATH):
         writer = csv.writer(f)
         for i, letter in INDEX_TO_LETTER.items():
             writer.writerow([i, letter])
-    print(f"✅ تم إنشاء ملف التسميات: {LABELS_PATH}")
+    print(f"Labels file created: {LABELS_PATH}")
 
 # =============================================
 # دالة استخراج نقاط اليد
@@ -120,7 +120,7 @@ def draw_ui(image, current_key, current_letter, sample_counts, recorded_this_ses
                    (10, 35), cv.FONT_HERSHEY_SIMPLEX, 0.8, (200, 200, 200), 2)
 
     # حالة الكاميرا
-    hand_status = "Hand Detected ✓" if landmark_detected else "No Hand Detected"
+    hand_status = "Hand Detected" if landmark_detected else "No Hand Detected"
     hand_color = (0, 255, 0) if landmark_detected else (0, 0, 255)
     cv.putText(image, hand_status, (10, 70), cv.FONT_HERSHEY_SIMPLEX, 0.7, hand_color, 2)
 
@@ -175,7 +175,7 @@ def main():
     landmark_detected = False
     current_landmarks = None
 
-    print("✅ جاهز! اضغط حرف لاختيار الحرف، ثم SPACE لتسجيل الإيماءة")
+    print("Ready! Press a key to select a letter, then SPACE to record")
 
     while True:
         ret, image = cap.read()
@@ -225,7 +225,7 @@ def main():
                 recorded_this_session += 1
 
                 total = sample_counts[label_idx]
-                print(f"✅ [{current_letter}] سُجّلت! إجمالي: {total}/200", end="\r")
+                print(f"[{current_letter}] recorded! Total: {total}/200", end="\r")
 
                 # وميض أخضر للتأكيد
                 flash = debug_image.copy()
@@ -235,9 +235,9 @@ def main():
                 cv.waitKey(100)
 
             elif not current_letter:
-                print("\n⚠️  اختار حرف الأول!")
+                print("\nSelect a letter first!")
             elif not landmark_detected:
-                print("\n⚠️  مش شايف إيدك! تأكد من الإضاءة")
+                print("\nHand not detected! Check lighting")
         else:
             # اختيار حرف
             char = chr(key).lower() if key < 128 else None
@@ -246,7 +246,7 @@ def main():
                 current_letter = ARABIC_LETTERS[char]
                 idx = KEY_TO_INDEX[char]
                 count = sample_counts.get(idx, 0)
-                print(f"\n🔤 اخترت: {current_letter} | العينات الحالية: {count}/200")
+                print(f"\nSelected: {current_letter} | Current samples: {count}/200")
 
     cap.release()
     cv.destroyAllWindows()
@@ -265,7 +265,7 @@ def main():
     for i, letter in INDEX_TO_LETTER.items():
         count = sample_counts.get(i, 0)
         bar = "█" * min(count // 10, 20)
-        status = "✅" if count >= 200 else "⏳"
+        status = "[OK]" if count >= 200 else "[..]"
         print(f"  {status} {letter}: {count:3d}/200 {bar}")
 
 if __name__ == '__main__':

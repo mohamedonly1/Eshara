@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة التحكم</title>
+    <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/static/pwa/manifest.json">
     <style>
@@ -52,14 +53,19 @@
 
         /* USERS TABLE */
         .users-table { background: var(--surface); border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(255,255,255,0.06); }
-        .table-head { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1.2fr auto; padding: 11px 16px; background: var(--surface2); font-size: 11px; font-weight: 700; color: var(--text-dim); gap: 6px; align-items: center; }
-        .user-row { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1.2fr auto; padding: 11px 16px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px; gap: 6px; align-items: center; cursor: pointer; transition: background 0.15s; }
+        .table-head { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1.2fr minmax(170px, auto); padding: 11px 16px; background: var(--surface2); font-size: 11px; font-weight: 700; color: var(--text-dim); gap: 6px; align-items: center; }
+        .user-row { display: grid; grid-template-columns: 1.5fr 0.8fr 0.8fr 0.8fr 0.8fr 1.2fr minmax(170px, auto); padding: 11px 16px; border-top: 1px solid rgba(255,255,255,0.04); font-size: 12px; gap: 6px; align-items: center; cursor: pointer; transition: background 0.15s; }
         .user-row:hover { background: rgba(255,255,255,0.03); }
         .q-badge { padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
         .q-high { background: rgba(0,212,170,0.15); color: var(--accent); }
         .q-mid { background: rgba(245,158,11,0.15); color: var(--warn); }
         .q-low { background: rgba(239,68,68,0.15); color: var(--danger); }
         .del-btn { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--danger); padding: 4px 10px; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 11px; cursor: pointer; white-space: nowrap; }
+        .role-badge { display: inline-flex; align-items: center; justify-content: center; padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 800; white-space: nowrap; }
+        .role-admin { background: rgba(124,58,237,0.14); color: var(--purple); border: 1px solid rgba(124,58,237,0.28); }
+        .role-user { background: var(--surface2); color: var(--text-dim); border: 1px solid rgba(255,255,255,0.06); }
+        .row-actions { display: flex; align-items: center; gap: 6px; justify-content: flex-end; flex-wrap: nowrap; }
+        .role-btn { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.22); color: var(--purple); padding: 4px 10px; border-radius: 8px; font-family: 'Cairo', sans-serif; font-size: 11px; cursor: pointer; white-space: nowrap; }
         .device-chip { display: inline-flex; align-items: center; gap: 4px; background: var(--surface2); padding: 3px 8px; border-radius: 20px; font-size: 10px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
 
         /* MODAL */
@@ -129,6 +135,139 @@
         .filter-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; }
         .filter-status.on { background: rgba(0,212,170,0.15); color: var(--accent); border: 1px solid rgba(0,212,170,0.3); }
         .filter-status.off { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+        @media (max-width: 900px) {
+            .users-table { overflow-x: auto; }
+            .table-head,
+            .user-row {
+                min-width: 860px;
+            }
+        }
+
+        /* التحكم في اتجاه اليد */
+        .orient-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .orient-card .orient-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .orient-card .orient-title {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        .orient-card .orient-desc {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+        .orient-body {
+            display: flex;
+            align-items: stretch;
+            gap: 16px;
+        }
+        .orient-preview {
+            width: 180px;
+            height: 180px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #020617;
+            border: 1px solid rgba(255,255,255,0.06);
+        }
+        .orient-preview canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .orient-sliders {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 14px;
+        }
+        .orient-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .orient-row .orient-label {
+            font-size: 12px;
+            color: var(--text-dim);
+            min-width: 40px;
+            text-align: left;
+        }
+        .orient-row .orient-val {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 42px;
+            text-align: center;
+            font-variant-numeric: tabular-nums;
+        }
+        input[type=range].orient-slider {
+            -webkit-appearance: none;
+            flex: 1;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--surface2);
+            outline: none;
+        }
+        input[type=range].orient-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+        }
+        .orient-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .orient-save-btn {
+            background: rgba(0,212,170,0.12);
+            border: 1px solid rgba(0,212,170,0.3);
+            color: var(--accent);
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .orient-save-btn:hover { background: rgba(0,212,170,0.22); }
+        .orient-reset-btn {
+            background: var(--surface2);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-dim);
+            padding: 6px 16px;
+            border-radius: 8px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .orient-reset-btn:hover { color: var(--text); border-color: rgba(255,255,255,0.15); }
+        .orient-saved {
+            font-size: 11px;
+            color: var(--accent);
+            opacity: 0;
+            transition: opacity 0.2s;
+            align-self: center;
+        }
+        .orient-saved.show { opacity: 1; }
+        @media (max-width: 500px) {
+            .orient-body { flex-direction: column; }
+            .orient-preview { width: 100%; height: 160px; }
+        }
     </style>
 <script>
 // override initNavbar for admin page - no redirect needed, has its own gate
@@ -141,7 +280,7 @@ window._adminPage = true;
 <!-- Gate -->
 <div class="gate" id="gate">
     <div class="gate-card">
-        <div style="font-size:40px">🔐</div>
+        <div style="font-size:40px"></div>
         <div style="font-size:17px;font-weight:900;margin-top:10px;color:var(--warn)">لوحة التحكم</div>
         <input type="password" id="adminPass" placeholder="كلمة مرور الأدمن" onkeydown="if(event.key==='Enter')checkAdmin()">
         <button class="gate-btn" onclick="checkAdmin()">دخول</button>
@@ -152,10 +291,10 @@ window._adminPage = true;
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard">
     <div class="dash-header">
-        <div class="dash-title">🛡️ لوحة التحكم</div>
+        <div class="dash-title">لوحة التحكم</div>
         <div class="header-actions">
-            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')">📥 تصدير</button>
-            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)">🔄 تحديث</button>
+            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')"> تصدير</button>
+            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)"> تحديث</button>
         </div>
     </div>
 
@@ -164,7 +303,7 @@ window._adminPage = true;
     <!-- فلتر الجودة -->
     <div class="filter-card">
         <div class="filter-info">
-            <div class="filter-title">🔍 فلتر جودة العينات</div>
+            <div class="filter-title">فلتر جودة العينات</div>
             <div class="filter-desc">لما يكون مفعّل، الموديل بيرفض العينات الغلط. عطّله لو المستخدمين بيسجّلوا حروف جديدة.</div>
         </div>
         <div class="filter-controls">
@@ -185,13 +324,15 @@ window._adminPage = true;
         </div>
     </div>
 
+    <!-- Orientation control removed. Moved to Pose Editor per-letter -->
+
     <div class="section">
-        <div class="section-title">📊 عينات كل حرف (إجمالي الكل)</div>
+        <div class="section-title">عينات كل حرف (إجمالي الكل)</div>
         <div class="letters-grid" id="lettersOverview"></div>
     </div>
 
     <div class="section">
-        <div class="section-title">👥 المستخدمون</div>
+        <div class="section-title">المستخدمون</div>
         <div class="users-table">
             <div class="table-head">
                 <span>الاسم</span>
@@ -200,7 +341,7 @@ window._adminPage = true;
                 <span>حروف</span>
                 <span>جودة</span>
                 <span>الجهاز</span>
-                <span></span>
+                <span>إجراءات</span>
             </div>
             <div id="usersBody"></div>
         </div>
@@ -222,23 +363,36 @@ window._adminPage = true;
 <div class="export-modal" id="exportModal">
     <div class="export-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-            <div style="font-size:16px;font-weight:900">📥 تصدير البيانات</div>
+            <div style="font-size:16px;font-weight:900">تصدير البيانات</div>
             <button class="close-btn" onclick="document.getElementById('exportModal').classList.remove('show')">✕</button>
         </div>
         <div class="export-option" onclick="exportJSON()">
-            <div class="export-icon">📋</div>
+            <div class="export-icon"></div>
             <div><div class="export-title">تصدير JSON</div><div class="export-sub">كل بيانات المستخدمين والإحصائيات</div></div>
         </div>
         <div class="export-option" onclick="exportCSV()">
-            <div class="export-icon">📊</div>
+            <div class="export-icon"></div>
             <div><div class="export-title">تصدير CSV</div><div class="export-sub">جدول المستخدمين لـ Excel</div></div>
         </div>
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
 <script>
 const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
 let allStats = [];
+
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+}[ch]));
+
+const safeNumber = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
 // ===== فلتر الجودة =====
 async function loadFilterSettings() {
@@ -294,10 +448,29 @@ async function checkAdmin() {
         document.getElementById('dashboard').style.display = 'block';
         loadDashboard();
         loadFilterSettings();
+        oResize();
     } else {
         document.getElementById('gateErr').textContent = 'كلمة المرور غلط';
     }
 }
+
+async function openDashboardIfAlreadyAdmin() {
+    try {
+        const res = await fetch('/auth/me');
+        const user = await res.json();
+        if (user.logged_in && user.is_admin) {
+            document.getElementById('gate').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadDashboard();
+            loadFilterSettings();
+            oResize();
+        }
+    } catch(e) {}
+}
+
+openDashboardIfAlreadyAdmin();
+
+// Removed global orientation controls.
 
 async function loadDashboard() {
     const res = await fetch('/admin/stats');
@@ -327,17 +500,24 @@ async function loadDashboard() {
     }).join('');
 
     // مستخدمين
-    document.getElementById('usersBody').innerHTML = allStats.length ? allStats.map(u => {
+    document.getElementById('usersBody').innerHTML = allStats.length ? allStats.map((u, userIndex) => {
         const qcls = u.quality >= 80 ? 'q-high' : u.quality >= 60 ? 'q-mid' : 'q-low';
         const dev = u.device || {};
-        return `<div class="user-row" onclick="showUser('${u.id}')">
-            <span style="font-weight:700">${u.name}</span>
-            <span style="color:var(--accent)">${u.total}</span>
-            <span style="color:var(--danger)">${u.rejected}</span>
-            <span>${u.letters_count}</span>
-            <span><div class="q-badge ${qcls}">${u.quality}%</div></span>
-            <span><div class="device-chip">${dev.device_type||'?'} ${dev.os||''}</div></span>
-            <span><button class="del-btn" onclick="event.stopPropagation();deleteUser('${u.id}','${u.name}')">حذف</button></span>
+        const role = u.role === 'admin' ? 'admin' : 'user';
+        const nextRole = role === 'admin' ? 'user' : 'admin';
+        const roleLabel = role === 'admin' ? 'أدمن' : 'عادي';
+        const roleBtnLabel = role === 'admin' ? 'جعله عادي' : 'جعله أدمن';
+        return `<div class="user-row" onclick="showUserByIndex(${userIndex})">
+            <span style="font-weight:700">${escapeHTML(u.name)}</span>
+            <span style="color:var(--accent)">${safeNumber(u.total)}</span>
+            <span style="color:var(--danger)">${safeNumber(u.rejected)}</span>
+            <span>${safeNumber(u.letters_count)}</span>
+            <span><div class="q-badge ${qcls}">${safeNumber(u.quality)}%</div><div style="margin-top:4px"><span class="role-badge role-${role}">${roleLabel}</span></div></span>
+            <span><div class="device-chip">${escapeHTML(dev.device_type || '?')} ${escapeHTML(dev.os || '')}</div></span>
+            <span><div class="row-actions">
+                <button class="role-btn" onclick="event.stopPropagation();setUserRoleByIndex(${userIndex}, '${nextRole}')">${roleBtnLabel}</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف</button>
+            </div></span>
         </div>`;
     }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">لا يوجد مستخدمون بعد</div>';
 }
@@ -352,44 +532,56 @@ function getLetterTotals() {
     return totals;
 }
 
-function showUser(userId) {
-    const u = allStats.find(x => x.id === userId);
+function showUserByIndex(userIndex) {
+    const u = allStats[userIndex];
     if (!u) return;
     const dev = u.device || {};
     const history = u.login_history || [];
 
-    document.getElementById('modalTitle').textContent = '👤 ' + u.name;
+    document.getElementById('modalTitle').textContent = u.name;
     document.getElementById('modalContent').innerHTML = `
         <div class="info-grid">
-            <div class="info-card"><div class="info-label">العينات المقبولة</div><div class="info-val" style="color:var(--accent)">${u.total}</div></div>
-            <div class="info-card"><div class="info-label">العينات المرفوضة</div><div class="info-val" style="color:var(--danger)">${u.rejected}</div></div>
-            <div class="info-card"><div class="info-label">الحروف المسجّلة</div><div class="info-val">${u.letters_count} / 29</div></div>
-            <div class="info-card"><div class="info-label">الجودة</div><div class="info-val">${u.quality}%</div></div>
+            <div class="info-card"><div class="info-label">العينات المقبولة</div><div class="info-val" style="color:var(--accent)">${safeNumber(u.total)}</div></div>
+            <div class="info-card"><div class="info-label">العينات المرفوضة</div><div class="info-val" style="color:var(--danger)">${safeNumber(u.rejected)}</div></div>
+            <div class="info-card"><div class="info-label">الحروف المسجّلة</div><div class="info-val">${safeNumber(u.letters_count)} / 29</div></div>
+            <div class="info-card"><div class="info-label">الجودة</div><div class="info-val">${safeNumber(u.quality)}%</div></div>
+            <div class="info-card"><div class="info-label">نوع الحساب</div><div class="info-val"><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'user'}">${u.role === 'admin' ? 'أدمن' : 'عادي'}</span></div></div>
         </div>
 
         <div class="device-section">
-            <div class="device-title">📱 معلومات الجهاز</div>
-            <div class="device-row"><span class="device-key">عنوان IP</span><span style="font-family:monospace">${dev.ip || 'unknown'}</span></div>
-            <div class="device-row"><span class="device-key">نوع الجهاز</span><span>${dev.device_type || 'unknown'}</span></div>
-            <div class="device-row"><span class="device-key">نظام التشغيل</span><span>${dev.os || 'unknown'}</span></div>
-            <div class="device-row"><span class="device-key">المتصفح</span><span>${dev.browser || 'unknown'}</span></div>
-            <div class="device-row"><span class="device-key">تاريخ التسجيل</span><span>${u.created || '-'}</span></div>
-            <div class="device-row"><span class="device-key">آخر نشاط</span><span>${u.last_active || '-'}</span></div>
+            <div class="device-title">معلومات الجهاز</div>
+            <div class="device-row"><span class="device-key">عنوان IP</span><span style="font-family:monospace">${escapeHTML(dev.ip || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">نوع الجهاز</span><span>${escapeHTML(dev.device_type || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">نظام التشغيل</span><span>${escapeHTML(dev.os || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">المتصفح</span><span>${escapeHTML(dev.browser || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">تاريخ التسجيل</span><span>${escapeHTML(u.created || '-')}</span></div>
+            <div class="device-row"><span class="device-key">آخر نشاط</span><span>${escapeHTML(u.last_active || '-')}</span></div>
         </div>
 
         ${history.length ? `
         <div class="login-history">
-            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">🕐 سجل تسجيلات الدخول (آخر ${history.length})</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">سجل تسجيلات الدخول (آخر ${history.length})</div>
             ${[...history].reverse().map(h => `
                 <div class="login-item">
-                    <span>${h.time}</span>
-                    <span style="color:var(--text-dim)">${h.device || ''}</span>
-                    <span style="font-family:monospace;font-size:10px;color:var(--text-dim)">${h.ip || ''}</span>
+                    <span>${escapeHTML(h.time)}</span>
+                    <span style="color:var(--text-dim)">${escapeHTML(h.device || '')}</span>
+                    <span style="font-family:monospace;font-size:10px;color:var(--text-dim)">${escapeHTML(h.ip || '')}</span>
                 </div>
             `).join('')}
         </div>` : ''}
 
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">📝 عينات كل حرف:</div>
+        ${(u.edit_history && u.edit_history.length) ? `
+        <div class="login-history">
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">سجل تعديلات الأصابع (آخر ${u.edit_history.length})</div>
+            ${u.edit_history.map(h => `
+                <div class="login-item">
+                    <span style="min-width: 120px">${escapeHTML(h.time)}</span>
+                    <span style="color:var(--accent); text-align: left; flex: 1;">${escapeHTML(h.text)}</span>
+                </div>
+            `).join('')}
+        </div>` : ''}
+
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">عينات كل حرف:</div>
         <div class="modal-letters">
             ${ARABIC_LETTERS.map((l, idx) => {
                 const c = u.samples[idx] || 0;
@@ -401,6 +593,31 @@ function showUser(userId) {
         </div>
     `;
     document.getElementById('userModal').classList.add('show');
+}
+
+function deleteUserByIndex(userIndex) {
+    const u = allStats[userIndex];
+    if (!u) return;
+    deleteUser(u.id, u.name);
+}
+
+async function setUserRoleByIndex(userIndex, role) {
+    const u = allStats[userIndex];
+    if (!u) return;
+    const roleName = role === 'admin' ? 'أدمن' : 'عادي';
+    if (!confirm('تغيير نوع حساب ' + u.name + ' إلى ' + roleName + '؟')) return;
+
+    const res = await fetch('/admin/set_user_role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: u.id, role })
+    });
+    const data = await res.json();
+    if (!data.ok) {
+        alert(data.error || 'تعذّر تغيير نوع الحساب');
+        return;
+    }
+    loadDashboard();
 }
 
 async function deleteUser(userId, name) {
