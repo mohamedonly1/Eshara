@@ -1,4 +1,0 @@
-com.ishara.app.test.app-androidTest-0 C:\Users\moham\Desktop\project final file\Ishara\app\build\generated\res\resValues\androidTest\debug
-com.ishara.app.test.app-mergeDebugAndroidTestResources-1 C:\Users\moham\Desktop\project final file\Ishara\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
-com.ishara.app.test.app-mergeDebugAndroidTestResources-2 C:\Users\moham\Desktop\project final file\Ishara\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
-com.ishara.app.test.app-merged_res-3 C:\Users\moham\Desktop\project final file\Ishara\app\build\intermediates\merged_res\debugAndroidTest
