@@ -1,0 +1,13 @@
+numpy
+tensorflow
+scikit-learn
+matplotlib
+seaborn
+flask
+python-dotenv
+flask-limiter
+opencv-python
+mediapipe
+pillow
+python-docx
+werkzeug

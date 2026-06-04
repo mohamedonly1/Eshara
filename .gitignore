@@ -1,33 +1,31 @@
-venv/
+﻿# بيانات حساسة ومجلدات ضخيمة
 .env
-__pycache__/
-*.pyc
-arabic_data/users/
-arabic_model/*.h5
-*.zip
-# ملفات حساسة
-users_keys.txt
-deleted_accounts_with_data.txt
-out.txt
-out_stats.json
-missing.txt
-filenames.txt
-*.txt
- 
-# بيانات المستخدمين والتدريب
 arabic_data/users/
 arabic_data/arabic_keypoints.csv
- 
-# موديلات H5 الكبيرة
-arabic_model/*.h5
-arabic_model/best_model.h5
- 
-# Python
+arabic_data/arabic_labels.csv
+arabic_data/settings.json
+
+# ملفات Python المؤقتة
 __pycache__/
 *.pyc
-.env
-venv/
+*.pyo
 .venv/
- 
-# نظام
+venv/
+
+# ملفات النماذج (كبيرة — ارفعها منفصلة في Releases)
+arabic_model/*.h5
+
+# ملفات النظام
 .DS_Store
+*.log
+
+# ملفات حساسة / مؤقتة
+users_keys.txt
+deleted_accounts_with_data.txt
+*.zip
+
+# بناء أندرويد وملفات Release (لا ترفع مع الـ repo)
+Ishara/**/build/
+Ishara/**/.gradle/
+*.apk
+*.docx
