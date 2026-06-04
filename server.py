@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from flask import Flask, render_template, request, jsonify, session, redirect
+from flask import Flask, render_template, request, jsonify, session, redirect, send_from_directory
 from functools import wraps
 import numpy as np
 import tensorflow as tf
@@ -57,7 +57,11 @@ app.secret_key = _session_secret
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not session.get('user_id'):
+        user_id = session.get('user_id')
+        user = load_user(user_id) if user_id else None
+        if not user or user.get('status') == 'disabled':
+            if user_id:
+                session.clear()
             wants_json = (
                 request.is_json or
                 request.headers.get('Accept', '').find('application/json') != -1 or
@@ -101,7 +105,7 @@ SETTINGS_PATH = os.path.join('arabic_data', 'settings.json')
 def _load_global_settings():
     default = {
         'quality_filter': True,
-        'filter_threshold': 0.95,
+        'filter_threshold': 0.85,
         'hand_yaw': -0.55,
         'hand_pitch': 0.15
     }
@@ -136,7 +140,7 @@ _settings_lock = threading.Lock()
 # =============================================
 # Model Setup
 # =============================================
-MODEL_PATH = 'arabic_model/arabic_sign_model_2026-04-03_93.80.tflite'
+MODEL_PATH = 'arabic_model/arabic_sign_model_2026-05-22_95.96.tflite'
 
 LABELS_PATH = 'arabic_data/arabic_labels.csv'
 POSES_PATH = os.path.join('static', 'poses.js')
@@ -180,19 +184,24 @@ def predict_landmarks(landmarks):
 @app.route('/')
 @login_required
 def index():
-    # جعلنا الصفحة الرئيسية هي الترجمة بدلاً من التعرف
+    # جعلنا الصفحة الرئيسية هي صفحة التعرف (الكاميرا)
     return render_template('index.html', labels_map=labels_dict)
 
 @app.route('/recognize')
 @login_required
 def recognize_page():
-    # مسار جديد لصفحة التعرف (الكاميرا)
-    return render_template('index.html')
+    # إعادة توجيه مسار التعرف إلى الصفحة الرئيسية
+    return redirect('/')
 
 @app.route('/login')
 def login_page():
-    if session.get('user_id'):
-        return redirect('/')
+    user_id = session.get('user_id')
+    if user_id:
+        user = load_user(user_id)
+        if user and user.get('status') != 'disabled':
+            return redirect('/')
+        else:
+            session.clear()
     return render_template('login.html')
 
 @app.route('/profile')
@@ -290,11 +299,6 @@ def means_route():
 def pose_editor_page():
     return render_template('pose_editor.html')
 
-@app.route('/debug')
-@login_required
-@admin_required
-def debug_page():
-    return render_template('debug.html')
 
 # =============================================
 # Auth APIs
@@ -345,7 +349,9 @@ def auth_me():
     if not user_id:
         return jsonify({'logged_in': False})
     user = load_user(user_id)
-    if not user:
+    if not user or user.get('status') == 'disabled':
+        if user_id:
+            session.clear()
         return jsonify({'logged_in': False})
     return jsonify({
         'logged_in': True,
@@ -430,14 +436,11 @@ def collect_sample():
 @app.route('/sample_counts')
 @login_required
 def sample_counts():
-    counts = {}
-    path = 'arabic_data/arabic_keypoints.csv'
-    if os.path.exists(path):
-        with open(path, 'r') as f:
-            for row in csv.reader(f):
-                if row:
-                    label = int(row[0])
-                    counts[label] = counts.get(label, 0) + 1
+    user_id = session.get('user_id')
+    user = load_user(user_id)
+    if not user:
+        return jsonify({'counts': {}})
+    counts = {int(k): v for k, v in user.get('samples', {}).items()}
     return jsonify({'counts': counts})
 
 # =============================================
@@ -502,6 +505,24 @@ def admin_delete_user():
         return jsonify({'error': 'Unauthorized'}), 401
     data = request.get_json(silent=True) or {}
     delete_user(data.get('user_id'))
+    return jsonify({'ok': True})
+
+@app.route('/admin/disable_user', methods=['POST'])
+def admin_disable_user():
+    if not current_user_is_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json(silent=True) or {}
+    from auth import disable_user
+    disable_user(data.get('user_id'))
+    return jsonify({'ok': True})
+
+@app.route('/admin/enable_user', methods=['POST'])
+def admin_enable_user():
+    if not current_user_is_admin():
+        return jsonify({'error': 'Unauthorized'}), 401
+    data = request.get_json(silent=True) or {}
+    from auth import enable_user
+    enable_user(data.get('user_id'))
     return jsonify({'ok': True})
 
 @app.route('/admin/set_user_role', methods=['POST'])
@@ -610,6 +631,66 @@ def pose_editor_save():
     save_entry(session['user_id'], f"قام بضبط وتعديل وضعية الأصابع للحرف: {letter}")
 
     return jsonify({'success': True})
+
+
+# =============================================
+# Test Data Collection (no auth required)
+# =============================================
+TEST_CSV = os.path.join('arabic_data', 'test_keypoints.csv')
+_test_csv_lock = threading.Lock()
+
+@app.route('/collect-test')
+def collect_test_page():
+    return render_template('collect_test.html')
+
+@app.route('/collect-test', methods=['POST'])
+@limiter.limit("30 per minute")
+def collect_test_sample():
+    data = request.get_json(silent=True) or {}
+    raw = data.get('landmarks', [])
+    label = data.get('label')
+    tester_id = str(data.get('tester_id', '')).strip()
+
+    if not tester_id or label is None:
+        return jsonify({'success': False, 'error': 'بيانات ناقصة'}), 400
+    label = int(label)
+    if label not in range(len(labels_dict)):
+        return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
+    if len(raw) != 42:
+        return jsonify({'success': False, 'error': 'Invalid landmarks'}), 400
+
+    try:
+        normalized = normalize_landmarks(raw)
+        os.makedirs('arabic_data', exist_ok=True)
+        with _test_csv_lock:
+            with open(TEST_CSV, 'a', newline='', encoding='utf-8') as f:
+                csv.writer(f).writerow([tester_id, label] + normalized)
+            # count for this tester+label
+            total = 0
+            if os.path.exists(TEST_CSV):
+                with open(TEST_CSV, 'r', encoding='utf-8') as f:
+                    for row in csv.reader(f):
+                        if len(row) >= 2 and row[0] == tester_id and row[1] == str(label):
+                            total += 1
+        return jsonify({'success': True, 'total': total})
+    except Exception as exc:
+        logger.error("Error in /collect-test POST: %s", exc)
+        return jsonify({'success': False, 'error': 'حدث خطأ'}), 500
+
+@app.route('/collect-test/export')
+def collect_test_export():
+    if not os.path.exists(TEST_CSV):
+        return jsonify({'error': 'لا توجد بيانات بعد'}), 404
+    try:
+        with open(TEST_CSV, 'r', encoding='utf-8') as f:
+            row_count = sum(1 for _ in csv.reader(f))
+        if row_count < 50:
+            return jsonify({'error': f'عدد العينات غير كافٍ ({row_count}/50)'}), 403
+    except Exception:
+        return jsonify({'error': 'خطأ في قراءة الملف'}), 500
+    return send_from_directory('arabic_data', 'test_keypoints.csv',
+                               as_attachment=True,
+                               download_name='test_keypoints.csv')
 
 @app.route('/health')
 def health():

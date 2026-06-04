@@ -251,19 +251,18 @@ async function initNavbar() {
     document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
     const path = window.location.pathname;
 const links = [
-        { href: '/recognize',    icon: '', label: 'التعرف',       roles: ['user','admin'] },
+        { href: '/',             icon: '', label: 'التعرف',       roles: ['user','admin'] },
         { href: '/translate',    icon: '', label: 'ترجمة',        roles: ['user','admin'] },
         { href: '/collect-data', icon: '', label: 'تسجيل بيانات', roles: ['user','admin'] },
         { href: '/profile',      icon: '', label: 'حسابي',        roles: ['user','admin'] },
         { href: '/pose-editor',  icon: '', label: 'المحرر',       roles: ['admin'] },
-        { href: '/debug',        icon: '', label: 'فحص اليد',      roles: ['admin'] },
         { href: '/admin',        icon: '', label: 'الأدمن',       roles: ['admin'], cls: 'admin-link' },
     ];
     const role = user.is_admin ? 'admin' : 'user';
     document.getElementById('navLinks').innerHTML = links
         .filter(l => l.roles.includes(role))
         .map(l => `
-            <a href="${l.href}" class="nav-link ${l.cls||''} ${(path===l.href || (path==='/' && l.href==='/recognize'))?'active':''}">
+            <a href="${l.href}" class="nav-link ${l.cls||''} ${path===l.href?'active':''}">
                 <span>${l.icon}</span><span>${l.label}</span>
             </a>`).join('');
 }

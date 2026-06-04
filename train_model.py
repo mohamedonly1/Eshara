@@ -242,3 +242,50 @@ print(f"   - {MODEL_SAVE_PATH}/arabic_sign_model.h5")
 print(f"   - {MODEL_SAVE_PATH}/arabic_sign_model.tflite")
 print(f"   - {MODEL_SAVE_PATH}/{versioned_name}")
 print(f"\nTraining complete! Final accuracy: {test_acc * 100:.2f}%")
+
+# =============================================
+# تحديث موديل السيرفر تلقائياً أو تفاعلياً
+# =============================================
+def update_server_model_path(new_versioned_name):
+    import re
+    server_path = 'server.py'
+    if not os.path.exists(server_path):
+        print(f"⚠️ لم يتم العثور على ملف {server_path} لتحديث مسار الموديل.")
+        return False
+    
+    with open(server_path, 'r', encoding='utf-8') as f:
+        content = f.read()
+    
+    # نمط للبحث عن مسار الموديل في السيرفر واستبداله بالجديد
+    pattern = r"MODEL_PATH\s*=\s*['\"]arabic_model/[^'\"]+\.tflite['\"]"
+    replacement = f"MODEL_PATH = 'arabic_model/{new_versioned_name}'"
+    new_content, count = re.subn(pattern, replacement, content)
+    
+    if count > 0:
+        with open(server_path, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+        print(f"✅ تم تحديث مسار الموديل بنجاح في {server_path} إلى:")
+        print(f"   MODEL_PATH = 'arabic_model/{new_versioned_name}'")
+        return True
+    else:
+        print(f"⚠️ لم يتم العثور على تعريف MODEL_PATH في {server_path} لتعديله تلقائياً.")
+        return False
+
+print("\n" + "="*50)
+print(f"هل تريد تفعيل الموديل الجديد في السيرفر (server.py)؟")
+print(f"الموديل النشط حالياً سيتم استبداله بـ: arabic_model/{versioned_name}")
+
+import sys
+if not sys.stdin.isatty():
+    print("🤖 بيئة التشغيل غير تفاعلية (Non-interactive)، سيتم تحديث الموديل تلقائياً في السيرفر...")
+    update_server_model_path(versioned_name)
+else:
+    try:
+        choice = input("اكتب 'y' أو اضغط Enter للتحديث، أو 'n' للإلغاء: ").strip().lower()
+        if choice in {'', 'y', 'yes', 'نعم'}:
+            update_server_model_path(versioned_name)
+        else:
+            print("❌ لم يتم تحديث مسار الموديل في السيرفر. يمكنك تحديثه يدوياً في server.py.")
+    except (EOFError, KeyboardInterrupt):
+        print("\n🤖 تم استشعار إدخال غير صالح أو مقطوع، سيتم تحديث الموديل تلقائياً...")
+        update_server_model_path(versioned_name)
