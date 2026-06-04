@@ -1,0 +1,441 @@
+{% if show_tour is not defined or show_tour %}
+<!-- templates/onboarding.html -->
+<div id="ishara-tour" class="ishara-tour-wrapper" style="display: none;">
+  <div class="ishara-tour-backdrop" onclick="closeTour()"></div>
+  <div class="ishara-tour-modal" dir="rtl">
+    <button class="ishara-tour-close" onclick="closeTour()" aria-label="إغلاق">&times;</button>
+    
+    <div class="ishara-tour-body">
+      <div id="ishara-tour-step-content" class="ishara-tour-step-content">
+        <!-- Content will be injected dynamically via JavaScript -->
+      </div>
+    </div>
+    
+    <div class="ishara-tour-footer">
+      <button id="ishara-tour-back" class="ishara-tour-btn-secondary" onclick="prevStep()">السابق</button>
+      <div id="ishara-tour-dots" class="ishara-tour-dots">
+        <!-- Dots will be generated here -->
+      </div>
+      <button id="ishara-tour-next" class="ishara-tour-btn-primary" onclick="nextStep()">التالي</button>
+    </div>
+  </div>
+</div>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap');
+
+/* Tour Overlay Wrapper */
+.ishara-tour-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100dvh;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding: 20px;
+}
+
+/* Semi-transparent dark backdrop */
+.ishara-tour-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(10, 10, 15, 0.75);
+  backdrop-filter: blur(8px);
+  z-index: 1;
+}
+
+/* Centered White Modal */
+.ishara-tour-modal {
+  position: relative;
+  z-index: 2;
+  background: #ffffff;
+  color: #1f2937;
+  font-family: 'Cairo', sans-serif;
+  width: 100%;
+  min-width: 320px;
+  max-width: 450px;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 36px 24px 24px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Close button on the top corner (left for RTL) */
+.ishara-tour-close {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  font-weight: 400;
+  color: #9ca3af;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.2s, transform 0.2s;
+  padding: 4px;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ishara-tour-close:hover {
+  color: #ef4444;
+  background: #fee2e2;
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.ishara-tour-body {
+  min-height: 290px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Step Content Transitions */
+.ishara-tour-step-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.ishara-tour-step-content.fade-out {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+/* Icon Container & Animations */
+.ishara-tour-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 20px;
+  border-radius: 50%;
+  background: rgba(29, 158, 117, 0.1);
+  color: #1D9E75;
+  font-size: 40px;
+  box-shadow: inset 0 2px 4px rgba(29, 158, 117, 0.05);
+  animation: float-icon 3s ease-in-out infinite;
+}
+@keyframes float-icon {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.ishara-tour-title {
+  font-size: 19px;
+  font-weight: 900;
+  color: #111827;
+  margin: 0 0 10px;
+  text-align: center;
+}
+.ishara-tour-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #4b5563;
+  line-height: 1.6;
+  text-align: center;
+  margin: 0;
+}
+
+/* GIF Demo Area Requirements */
+.ishara-tour-demo-container {
+  margin-top: 16px;
+  width: 100%;
+  text-align: center;
+}
+.ishara-tour-gif-wrapper {
+  width: 100%;
+  height: 140px;
+  border-radius: 12px;
+  border: 1.5px solid #1D9E75;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  box-sizing: border-box;
+}
+.ishara-tour-gif {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.ishara-tour-gif-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e5e7eb;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 700;
+}
+.ishara-tour-demo-caption {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+/* Footer & Dots */
+.ishara-tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 16px;
+}
+.ishara-tour-dots {
+  display: flex;
+  gap: 8px;
+}
+.ishara-tour-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.ishara-tour-dot.active {
+  background: #1D9E75;
+  width: 20px;
+  border-radius: 4px;
+}
+
+/* Buttons */
+.ishara-tour-btn-primary {
+  background: linear-gradient(135deg, #1D9E75, #534AB7);
+  color: #ffffff;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 12px;
+  font-family: 'Cairo', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(29, 158, 117, 0.25);
+}
+.ishara-tour-btn-primary:hover {
+  background: linear-gradient(135deg, #00d4aa, #6366f1);
+  box-shadow: 0 4px 12px rgba(0, 212, 170, 0.4);
+}
+.ishara-tour-btn-primary:active {
+  transform: scale(0.96);
+}
+
+.ishara-tour-btn-cta {
+  animation: pulse-cta 2s infinite;
+}
+@keyframes pulse-cta {
+  0% {
+    box-shadow: 0 0 0 0 rgba(29, 158, 117, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(29, 158, 117, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(29, 158, 117, 0);
+  }
+}
+
+.ishara-tour-btn-secondary {
+  background: #f3f4f6;
+  color: #534AB7;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-family: 'Cairo', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.ishara-tour-btn-secondary:hover {
+  background: #e5e7eb;
+  color: #3b2fa0;
+}
+.ishara-tour-btn-secondary:active {
+  transform: scale(0.96);
+}
+</style>
+
+<script>
+const steps = [
+  { 
+    icon: '🤟', 
+    title: 'مرحباً بك في إشارة!', 
+    text: 'تتيح لك إشارة التواصل باستخدام لغة الإشارة العربية - ترجم إيماءات اليد فورياً إلى نصوص، أو اكتب نصاً لمشاهدته مترجماً إلى لغة الإشارة.' 
+  },
+  { 
+    icon: '📷', 
+    title: 'ترجمة الإشارات إلى نصوص', 
+    text: 'افتح الكاميرا، وضع يدك أمامها، وستتعرف إشارة على كل حرف عربي في الوقت الفعلي - لتصنع الكلمات تلقائياً أثناء الإشارة.',
+    gif: '/static/gifs/sign_to_text.gif',
+    fallback: 'عرض توضيحي: إشارة ← نص',
+    caption: 'التعرف الفوري على الإشارات'
+  },
+  { 
+    icon: '✍️', 
+    title: 'ترجمة النصوص إلى لغة الإشارة', 
+    text: 'اكتب أي كلمة أو جملة عربية، وستعرض لك إشارة إيماءات لغة الإشارة الصحيحة لكل حرف - وهي ممتازة للتعلم.',
+    gif: '/static/gifs/text_to_sign.gif',
+    fallback: 'عرض توضيحي: نص ← إشارة',
+    caption: 'دليل الحروف الإشارية خطوة بخطوة'
+  },
+  { 
+    icon: '✅', 
+    title: 'كل شيء جاهز!', 
+    text: 'يمكنك الآن الترجمة في كلا الاتجاهين. كلما استخدمت إشارة أكثر، أصبحت أكثر ذكاءً. ابدأ الترجمة الآن!', 
+    cta: true 
+  }
+];
+
+let current = 0;
+
+function handleGifError(imgEl, fallbackText) {
+  const wrapper = imgEl.parentElement;
+  if (wrapper) {
+    wrapper.innerHTML = `<div class="ishara-tour-gif-fallback">${fallbackText}</div>`;
+  }
+}
+
+function renderStep(i) {
+  const contentEl = document.getElementById('ishara-tour-step-content');
+  if (!contentEl) return;
+
+  // Add fade-out transition class
+  contentEl.classList.add('fade-out');
+
+  setTimeout(() => {
+    const step = steps[i];
+    
+    let demoHtml = '';
+    if (step.gif) {
+      demoHtml = `
+        <div class="ishara-tour-demo-container">
+          <div class="ishara-tour-gif-wrapper">
+            <img src="${step.gif}" alt="${step.title}" class="ishara-tour-gif" onerror="handleGifError(this, '${step.fallback}')">
+          </div>
+          <div class="ishara-tour-demo-caption">${step.caption}</div>
+        </div>
+      `;
+    }
+
+    contentEl.innerHTML = `
+      <div class="ishara-tour-icon-container">
+        <div>${step.icon}</div>
+      </div>
+      <h2 class="ishara-tour-title">${step.title}</h2>
+      <p class="ishara-tour-text">${step.text}</p>
+      ${demoHtml}
+    `;
+
+    // Render dot indicators
+    const dotsContainer = document.getElementById('ishara-tour-dots');
+    if (dotsContainer) {
+      dotsContainer.innerHTML = steps.map((_, idx) => `
+        <div class="ishara-tour-dot ${idx === i ? 'active' : ''}" onclick="goToStep(${idx})"></div>
+      `).join('');
+    }
+
+    // Toggle Back button visibility
+    const backBtn = document.getElementById('ishara-tour-back');
+    if (backBtn) {
+      backBtn.style.visibility = (i === 0) ? 'hidden' : 'visible';
+    }
+
+    // Next / CTA button handling
+    const nextBtn = document.getElementById('ishara-tour-next');
+    if (nextBtn) {
+      if (step.cta) {
+        nextBtn.textContent = 'ابدأ الترجمة الآن ←';
+        nextBtn.onclick = onCtaClick;
+        nextBtn.className = 'ishara-tour-btn-primary ishara-tour-btn-cta';
+      } else {
+        nextBtn.textContent = 'التالي';
+        nextBtn.onclick = nextStep;
+        nextBtn.className = 'ishara-tour-btn-primary';
+      }
+    }
+
+    // Fade in
+    contentEl.classList.remove('fade-out');
+  }, 250);
+}
+
+function nextStep() {
+  if (current < steps.length - 1) {
+    current++;
+    renderStep(current);
+  }
+}
+
+function prevStep() {
+  if (current > 0) {
+    current--;
+    renderStep(current);
+  }
+}
+
+function goToStep(idx) {
+  current = idx;
+  renderStep(current);
+}
+
+function openTour() {
+  const tourEl = document.getElementById('ishara-tour');
+  if (tourEl) {
+    tourEl.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    renderStep(0);
+  }
+}
+
+function closeTour() {
+  localStorage.setItem('ishara_tour_done', '1');
+  const tourEl = document.getElementById('ishara-tour');
+  if (tourEl) {
+    tourEl.style.display = 'none';
+  }
+  document.body.style.overflow = '';
+}
+
+function onCtaClick() {
+  closeTour();
+  if (window.location.pathname !== '/') {
+    window.location.href = '/';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const path = window.location.pathname;
+  // Ignore login, admin, and pose editor pages
+  if (path === '/login' || path.startsWith('/admin') || path.startsWith('/pose-editor')) {
+    return;
+  }
+  
+  if (!localStorage.getItem('ishara_tour_done')) {
+    openTour();
+  }
+});
+</script>
+{% endif %}

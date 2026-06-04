@@ -61,6 +61,7 @@ def register_user(name, password, ip=None, user_agent=None):
         'password': hash_password(password),
         'created': now,
         'role': 'user',
+        'status': 'active',
         'samples': {},
         'rejected': 0,
         'total_accepted': 0,
@@ -80,7 +81,7 @@ def register_user(name, password, ip=None, user_agent=None):
             'device': parse_device_type(user_agent)
         }]
     }
-    users[user_id] = {'name': name.strip(), 'created': now, 'role': 'user'}
+    users[user_id] = {'name': name.strip(), 'created': now, 'role': 'user', 'status': 'active'}
     save_users(users)
     save_user(user)
     return user_id, None
@@ -94,6 +95,8 @@ def login_user(name, password, ip=None, user_agent=None):
     user = load_user(user_id)
     if not user:
         return None, 'المستخدم غير موجود'
+    if user.get('status') == 'disabled':
+        return None, 'هذا الحساب معطل'
     if not check_password_hash(user.get('password', ''), password):
         return None, 'كلمة المرور غلط'
 
@@ -201,6 +204,7 @@ def get_all_users_stats():
                 'id': user_id,
                 'name': user['name'],
                 'role': get_user_role(user),
+                'status': user.get('status', 'active'),
                 'total': total,
                 'rejected': rejected,
                 'quality': quality,
@@ -227,6 +231,26 @@ def delete_user(user_id):
     path = os.path.join(USERS_DIR, f'{user_id}.json')
     if os.path.exists(path):
         os.remove(path)
+
+def disable_user(user_id):
+    users = load_users()
+    if user_id in users:
+        users[user_id]['status'] = 'disabled'
+        save_users(users)
+    user = load_user(user_id)
+    if user:
+        user['status'] = 'disabled'
+        save_user(user)
+
+def enable_user(user_id):
+    users = load_users()
+    if user_id in users:
+        users[user_id]['status'] = 'active'
+        save_users(users)
+    user = load_user(user_id)
+    if user:
+        user['status'] = 'active'
+        save_user(user)
 
 def get_user_role(user):
     role = user.get('role', 'user')

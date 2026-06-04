@@ -5,3 +5,29 @@ __pycache__/
 arabic_data/users/
 arabic_model/*.h5
 *.zip
+# ملفات حساسة
+users_keys.txt
+deleted_accounts_with_data.txt
+out.txt
+out_stats.json
+missing.txt
+filenames.txt
+*.txt
+ 
+# بيانات المستخدمين والتدريب
+arabic_data/users/
+arabic_data/arabic_keypoints.csv
+ 
+# موديلات H5 الكبيرة
+arabic_model/*.h5
+arabic_model/best_model.h5
+ 
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
+ 
+# نظام
+.DS_Store

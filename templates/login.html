@@ -244,7 +244,7 @@ async function doLogin() {
         body: JSON.stringify({ name, password: pass })
     });
     const data = await res.json();
-    if (data.success) { window.location.href = '/collect-data'; }
+    if (data.success) { window.location.href = '/'; }
     else { showError(data.error || 'خطأ في تسجيل الدخول'); }
 }
 
@@ -261,7 +261,7 @@ async function doRegister() {
         body: JSON.stringify({ name, password: pass })
     });
     const data = await res.json();
-    if (data.success) { window.location.href = '/collect-data'; }
+    if (data.success) { window.location.href = '/'; }
     else { showError(data.error || 'خطأ في إنشاء الحساب'); }
 }
 

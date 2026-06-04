@@ -143,6 +143,12 @@
             }
         }
 
+        /* TABS */
+        .tabs-header { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tab-btn { background: var(--surface2); border: 1px solid rgba(255,255,255,0.06); color: var(--text-dim); padding: 8px 16px; border-radius: 20px; font-family: 'Cairo', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .tab-btn:hover { background: rgba(255,255,255,0.05); color: var(--text); }
+        .tab-btn.active { background: rgba(0,212,170,0.1); border-color: rgba(0,212,170,0.3); color: var(--accent); }
+
         /* التحكم في اتجاه اليد */
         .orient-card {
             background: var(--surface);
@@ -332,7 +338,13 @@ window._adminPage = true;
     </div>
 
     <div class="section">
-        <div class="section-title">المستخدمون</div>
+        <div class="section-title" style="justify-content: space-between;">
+            <div>المستخدمون</div>
+            <div class="tabs-header">
+                <button class="tab-btn active" id="tabActiveBtn" onclick="switchUsersTab('active')">نشطة</button>
+                <button class="tab-btn" id="tabDisabledBtn" onclick="switchUsersTab('disabled')">معطلة</button>
+            </div>
+        </div>
         <div class="users-table">
             <div class="table-head">
                 <span>الاسم</span>
@@ -383,6 +395,7 @@ window._adminPage = true;
 <script>
 const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
 let allStats = [];
+let currentUsersTab = 'active';
 
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&': '&amp;',
@@ -499,14 +512,45 @@ async function loadDashboard() {
         return `<div class="letter-stat ${cls}"><div class="l">${l}</div><div class="c">${c}</div></div>`;
     }).join('');
 
-    // مستخدمين
-    document.getElementById('usersBody').innerHTML = allStats.length ? allStats.map((u, userIndex) => {
+    renderUsersTable();
+}
+
+function switchUsersTab(tab) {
+    currentUsersTab = tab;
+    document.getElementById('tabActiveBtn').classList.toggle('active', tab === 'active');
+    document.getElementById('tabDisabledBtn').classList.toggle('active', tab === 'disabled');
+    renderUsersTable();
+}
+
+function renderUsersTable() {
+    const filteredUsers = allStats.filter(u => {
+        const isUserDisabled = u.status === 'disabled';
+        return currentUsersTab === 'disabled' ? isUserDisabled : !isUserDisabled;
+    });
+
+    document.getElementById('usersBody').innerHTML = filteredUsers.length ? filteredUsers.map(u => {
+        const userIndex = allStats.findIndex(x => x.id === u.id);
         const qcls = u.quality >= 80 ? 'q-high' : u.quality >= 60 ? 'q-mid' : 'q-low';
         const dev = u.device || {};
         const role = u.role === 'admin' ? 'admin' : 'user';
         const nextRole = role === 'admin' ? 'user' : 'admin';
         const roleLabel = role === 'admin' ? 'أدمن' : 'عادي';
         const roleBtnLabel = role === 'admin' ? 'جعله عادي' : 'جعله أدمن';
+        
+        let actionsHtml = '';
+        if (currentUsersTab === 'active') {
+            actionsHtml = `
+                <button class="role-btn" onclick="event.stopPropagation();setUserRoleByIndex(${userIndex}, '${nextRole}')">${roleBtnLabel}</button>
+                <button class="del-btn" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); color: var(--warn);" onclick="event.stopPropagation();disableUserByIndex(${userIndex})">تعطيل</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف</button>
+            `;
+        } else {
+            actionsHtml = `
+                <button class="role-btn" style="color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.1);" onclick="event.stopPropagation();enableUserByIndex(${userIndex})">تفعيل</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف نهائي</button>
+            `;
+        }
+
         return `<div class="user-row" onclick="showUserByIndex(${userIndex})">
             <span style="font-weight:700">${escapeHTML(u.name)}</span>
             <span style="color:var(--accent)">${safeNumber(u.total)}</span>
@@ -515,11 +559,10 @@ async function loadDashboard() {
             <span><div class="q-badge ${qcls}">${safeNumber(u.quality)}%</div><div style="margin-top:4px"><span class="role-badge role-${role}">${roleLabel}</span></div></span>
             <span><div class="device-chip">${escapeHTML(dev.device_type || '?')} ${escapeHTML(dev.os || '')}</div></span>
             <span><div class="row-actions">
-                <button class="role-btn" onclick="event.stopPropagation();setUserRoleByIndex(${userIndex}, '${nextRole}')">${roleBtnLabel}</button>
-                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف</button>
+                ${actionsHtml}
             </div></span>
         </div>`;
-    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">لا يوجد مستخدمون بعد</div>';
+    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">لا يوجد مستخدمون هنا</div>';
 }
 
 function getLetterTotals() {
@@ -599,6 +642,30 @@ function deleteUserByIndex(userIndex) {
     const u = allStats[userIndex];
     if (!u) return;
     deleteUser(u.id, u.name);
+}
+
+async function disableUserByIndex(userIndex) {
+    const u = allStats[userIndex];
+    if (!u) return;
+    if (!confirm('تعطيل المستخدم: ' + u.name + '؟ (لن يتمكن من الدخول)')) return;
+    await fetch('/admin/disable_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: u.id })
+    });
+    loadDashboard();
+}
+
+async function enableUserByIndex(userIndex) {
+    const u = allStats[userIndex];
+    if (!u) return;
+    if (!confirm('تفعيل المستخدم: ' + u.name + '؟')) return;
+    await fetch('/admin/enable_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: u.id })
+    });
+    loadDashboard();
 }
 
 async function setUserRoleByIndex(userIndex, role) {
