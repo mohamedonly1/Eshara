@@ -1,4 +1,4 @@
-# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة
+﻿# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة
 # Ishara - Arabic Sign Language Recognition System
 
 ---
@@ -48,8 +48,8 @@
 - **معمارية النظام**:
   1. **اكتشاف اليد**: استخراج 21 نقطة مفصلية باستخدام MediaPipe.
   2. **المعالجة المسبقة**: تحويل النقاط إلى إحداثيات نسبية وتطبيعها (Normalization) لجعل الموديل مستقلاً عن حجم ومكان اليد في الصورة.
-  3. **الشبكة العصبية (MLP)**: شبكة مكونة من عدة طبقات (Dense) مع (BatchNormalization و Dropout) لتصنيف الإيماءة إلى واحد من 28 حرفاً أبجدياً.
-- **النتائج**: دقة تجاوزت **91%** على بيانات اختبار متنوعة، وتم تحويل الموديل إلى صيغة `TFLite` المدمجة ليعمل على الهواتف بكفاءة وسرعة.
+  3. **الشبكة العصبية (MLP)**: شبكة مكونة من عدة طبقات (Dense) مع (BatchNormalization و Dropout) لتصنيف الإيماءة إلى واحد من 29 حرفاً أبجدياً.
+- **النتائج**: دقة تجاوزت **95.96%** على بيانات اختبار متنوعة، وتم تحويل الموديل إلى صيغة `TFLite` المدمجة ليعمل على الهواتف بكفاءة وسرعة.
 
 ---
 
@@ -85,3 +85,23 @@ ishara-project/
 pip install mediapipe==0.10.11 tensorflow==2.10.1 numpy==1.26.4
 pip install opencv-contrib-python Flask scikit-learn matplotlib
 ```
+
+---
+
+## التحميل السريع
+
+### تطبيق الأندرويد
+[⬇️ تحميل APK](https://github.com/mohamedonly1/graduation-project/releases/latest)
+
+### تشغيل الويب
+```bash
+git clone https://github.com/mohamedonly1/graduation-project
+cd graduation-project
+pip install -r requirements.txt
+# حمّل arabic_sign_model.tflite من Releases وضعه في arabic_model/
+python server.py
+```
+
+## الدقة
+- النموذج الحالي: **95.96%** على 29 حرف (مايو 2026)
+- تاريخ آخر تحديث: مايو 2026
