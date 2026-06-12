@@ -248,7 +248,11 @@ async function initNavbar() {
         return;
     }
     document.getElementById('navName').textContent = user.name;
-    document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
+    if (user.profile_pic) {
+        document.getElementById('navAvatar').innerHTML = `<img src="${user.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
+    } else {
+        document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
+    }
     const path = window.location.pathname;
 const links = [
         { href: '/',             icon: '', label: 'التعرف',       roles: ['user','admin'] },

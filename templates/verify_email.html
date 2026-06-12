@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>التحقق من البريد الإلكتروني — إشارة</title>
+    <link rel="stylesheet" href="/static/ishara-theme.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        html, body {
+            min-height: 100%;
+            background: #F8FAF9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            font-family: 'Cairo', sans-serif;
+            transition: background 0.3s;
+        }
+        /* Dark theme support */
+        [data-theme="dark"] html, [data-theme="dark"] body {
+            background: #0a0a0f;
+            color: #f0f0f8;
+        }
+        [data-theme="dark"] .card {
+            background: #13131a;
+            border-color: rgba(255,255,255,0.06);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+        }
+        [data-theme="dark"] input {
+            background: #1c1c28;
+            border-color: rgba(255,255,255,0.1);
+            color: #f0f0f8;
+        }
+        [data-theme="dark"] input::placeholder {
+            color: #5b6e64;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background: #FFFFFF;
+            border-radius: 20px;
+            padding: 36px 28px;
+            border: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+            text-align: center;
+        }
+
+        .logo-mark {
+            width: 64px; height: 64px;
+            border-radius: 16px;
+            background: #1D9E75;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
+        }
+
+        .title {
+            font-size: 20px;
+            font-weight: 900;
+            color: #1D9E75;
+            margin-bottom: 8px;
+        }
+
+        .description {
+            font-size: 14px;
+            color: #6B7B74;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        [data-theme="dark"] .description {
+            color: #a8bbb4;
+        }
+
+        .email-display {
+            font-weight: 700;
+            color: #2C2C2A;
+            word-break: break-all;
+        }
+        [data-theme="dark"] .email-display {
+            color: #00d4aa;
+        }
+
+        .code-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            direction: ltr; /* To make it enter from left-to-right */
+        }
+
+        .code-input {
+            width: 45px;
+            height: 50px;
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            border: 2px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            background: #F1F5F3;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .code-input:focus {
+            border-color: #1D9E75;
+            box-shadow: 0 0 0 3px rgba(29,158,117,0.15);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 12px;
+            border: none;
+            font-family: 'Cairo', sans-serif;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            background: #1D9E75;
+            color: #fff;
+            margin-bottom: 16px;
+            transition: all 0.15s;
+            box-shadow: 0 2px 8px rgba(29,158,117,0.25);
+        }
+        .submit-btn:hover  { background: #0F6E56; }
+        .submit-btn:active { transform: scale(0.98); }
+
+        .resend-container {
+            font-size: 13px;
+            color: #6B7B74;
+        }
+        [data-theme="dark"] .resend-container {
+            color: #a8bbb4;
+        }
+
+        .resend-btn {
+            background: none;
+            border: none;
+            color: #1D9E75;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+            text-decoration: underline;
+        }
+        .resend-btn:disabled {
+            color: #a8bbb4;
+            text-decoration: none;
+            cursor: not-allowed;
+        }
+
+        .error-msg {
+            background: #FCEBEB;
+            border: 1px solid rgba(163,45,45,0.2);
+            color: #A32D2D;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .error-msg.show { display: block; }
+        
+        .success-msg {
+            background: #EAFDF7;
+            border: 1px solid rgba(29,158,117,0.2);
+            color: #1D9E75;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .success-msg.show { display: block; }
+
+        .logout-link {
+            display: inline-block;
+            margin-top: 20px;
+            font-size: 13px;
+            color: #ef4444;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .logout-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="logo-mark">
+        <svg width="36" height="36" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="28" height="28" rx="7" fill="#1D9E75"/>
+            <path d="M6 10 L14 15 L22 10" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <rect x="4" y="6" width="20" height="16" rx="2" stroke="white" stroke-width="2" fill="none"/>
+        </svg>
+    </div>
+    <div class="title">تأكيد البريد الإلكتروني</div>
+    <div class="description">
+        لقد أرسلنا رمز تحقق مكون من 6 أرقام إلى:<br>
+        <span class="email-display" id="userEmail">...</span>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="success-msg" id="successMsg"></div>
+
+    <div class="code-container">
+        <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code" autofocus>
+        <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+        <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+        <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+        <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+        <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
+    </div>
+
+    <button class="submit-btn" onclick="submitVerification()">تحقق من الرمز</button>
+
+    <div class="resend-container">
+        لم يصلك الرمز؟ 
+        <button class="resend-btn" id="resendBtn" onclick="resendCode()">إعادة إرسال</button>
+        <span id="cooldownText" style="display:none"> (بعد <span id="timer">60</span> ثانية)</span>
+    </div>
+
+    <a href="/auth/logout" class="logout-link">تسجيل الخروج</a>
+</div>
+
+<script>
+    // Theme setup
+    const savedTheme = localStorage.getItem('ishara-theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    }
+
+    // Input fields logic (auto-focus next)
+    const inputs = document.querySelectorAll('.code-input');
+    inputs.forEach((input, index) => {
+        input.addEventListener('input', (e) => {
+            if (e.target.value.length === 1) {
+                if (index < inputs.length - 1) {
+                    inputs[index + 1].focus();
+                }
+            }
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && e.target.value.length === 0) {
+                if (index > 0) {
+                    inputs[index - 1].focus();
+                }
+            }
+        });
+    });
+
+    // Load user email on start
+    async function loadEmail() {
+        try {
+            const res = await fetch('/auth/me');
+            const data = await res.json();
+            if (data.logged_in) {
+                // If already verified, redirect to homepage
+                if (data.email_verified !== false) {
+                    window.location.href = '/';
+                    return;
+                }
+                document.getElementById('userEmail').textContent = data.email || 'بريدك الإلكتروني';
+            } else {
+                window.location.href = '/login';
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    }
+    loadEmail();
+
+    function showError(msg) {
+        document.getElementById('successMsg').classList.remove('show');
+        const el = document.getElementById('errorMsg');
+        el.textContent = msg;
+        el.classList.add('show');
+    }
+
+    function showSuccess(msg) {
+        document.getElementById('errorMsg').classList.remove('show');
+        const el = document.getElementById('successMsg');
+        el.textContent = msg;
+        el.classList.add('show');
+    }
+
+    async function submitVerification() {
+        let code = '';
+        inputs.forEach(input => code += input.value);
+        if (code.length < 6) {
+            showError('يرجى إدخال الرمز المكون من 6 أرقام كاملاً');
+            return;
+        }
+
+        try {
+            const res = await fetch('/auth/verify-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showSuccess('تم التحقق بنجاح! جاري تحويلك...');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1500);
+            } else {
+                showError(data.error || 'رمز التحقق غير صحيح');
+            }
+        } catch(e) {
+            showError('حدث خطأ أثناء الاتصال بالخادم');
+        }
+    }
+
+    let cooldown = 0;
+    let timerInterval = null;
+
+    function startCooldown() {
+        cooldown = 60;
+        const resendBtn = document.getElementById('resendBtn');
+        const cooldownText = document.getElementById('cooldownText');
+        const timerSpan = document.getElementById('timer');
+        
+        resendBtn.disabled = true;
+        cooldownText.style.display = 'inline';
+        timerSpan.textContent = cooldown;
+
+        timerInterval = setInterval(() => {
+            cooldown--;
+            timerSpan.textContent = cooldown;
+            if (cooldown <= 0) {
+                clearInterval(timerInterval);
+                resendBtn.disabled = false;
+                cooldownText.style.display = 'none';
+            }
+        }, 1000);
+    }
+
+    async function resendCode() {
+        if (cooldown > 0) return;
+        try {
+            const res = await fetch('/auth/resend-code', {
+                method: 'POST'
+            });
+            const data = await res.json();
+            if (data.success) {
+                showSuccess('تم إعادة إرسال رمز التحقق إلى بريدك الإلكتروني');
+                startCooldown();
+            } else {
+                showError(data.error || 'تعذر إعادة إرسال الرمز');
+            }
+        } catch(e) {
+            showError('حدث خطأ أثناء الاتصال بالخادم');
+        }
+    }
+
+    // Auto submit if last input is filled
+    inputs[5].addEventListener('input', () => {
+        setTimeout(submitVerification, 100);
+    });
+</script>
+</body>
+</html>

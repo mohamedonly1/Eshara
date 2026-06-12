@@ -18,7 +18,10 @@
 
         /* Header Card */
         .profile-header { background: linear-gradient(135deg, rgba(0,212,170,0.15), rgba(124,58,237,0.15)); border: 1px solid rgba(0,212,170,0.2); border-radius: 20px; padding: 24px; text-align: center; margin-bottom: 20px; }
-        .profile-avatar { width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #00d4aa, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #fff; margin: 0 auto 12px; }
+        .profile-avatar-container { position: relative; width: 80px; height: 80px; margin: 0 auto 12px; cursor: pointer; }
+        .profile-avatar { width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(135deg, #00d4aa, #7c3aed); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 900; color: #fff; overflow: hidden; }
+        .avatar-overlay { position: absolute; bottom: 0; right: 0; background: var(--accent); width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid var(--surface); color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .profile-avatar-container:hover .avatar-overlay { transform: scale(1.1); }
         .profile-name { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
         .profile-since { font-size: 12px; color: var(--text-dim); }
 
@@ -72,9 +75,50 @@
 <div class="page-content layout-scroll">
     <div class="inner">
         <div class="profile-header" id="profileHeader">
-            <div class="profile-avatar" id="profileAvatar">؟</div>
+            <div class="profile-avatar-container" onclick="triggerAvatarUpload()">
+                <div class="profile-avatar" id="profileAvatar">؟</div>
+                <div class="avatar-overlay">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                </div>
+                <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="uploadAvatar(event)">
+            </div>
             <div class="profile-name" id="profileName">...</div>
             <div class="profile-since" id="profileSince"></div>
+            <div class="profile-email" id="profileEmail" style="font-size:12px; color:var(--text-dim); margin-top:4px;"></div>
+        </div>
+
+        <!-- Edit Profile Section -->
+        <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>إعدادات الحساب</span>
+            <button onclick="toggleEditProfile()" style="background:none; border:none; color:var(--accent); font-family:'Cairo'; font-size:12px; font-weight:700; cursor:pointer;">تعديل البيانات</button>
+        </div>
+
+        <div id="editProfileCard" style="display:none; background:var(--surface); border-radius:var(--radius); padding:20px; border:1px solid rgba(255,255,255,0.06); margin-bottom:20px;">
+            <div id="editErrorMsg" class="error-msg" style="background:#FCEBEB; border:1px solid rgba(163,45,45,0.2); color:#A32D2D; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; display:none;"></div>
+            <div id="editSuccessMsg" class="success-msg" style="background:#EAFDF7; border:1px solid rgba(29,158,117,0.2); color:#1D9E75; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; display:none;"></div>
+            
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">الاسم</label>
+                <input type="text" id="editName" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">البريد الإلكتروني</label>
+                <input type="email" id="editEmail" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
+                <span style="font-size:10px; color:var(--warn); display:block; margin-top:4px;">* تغيير البريد الإلكتروني سيتطلب إعادة التحقق منه.</span>
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px;">
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">كلمة المرور الجديدة (اختياري)</label>
+                <input type="password" id="editNewPass" placeholder="اتركه فارغاً للاحتفاظ بالحالية" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
+            </div>
+
+            <div class="form-group" style="margin-bottom:18px;">
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">كلمة المرور الحالية (مطلوب لحفظ التعديلات)</label>
+                <input type="password" id="editCurrentPass" placeholder="أدخل كلمة المرور الحالية لتأكيد التغييرات" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
+            </div>
+
+            <button onclick="saveProfileChanges()" style="width:100%; padding:12px; border-radius:10px; border:none; font-family:'Cairo'; font-size:14px; font-weight:700; cursor:pointer; background:var(--accent); color:#fff;">حفظ التغييرات</button>
         </div>
 
         <div class="stats-grid">
@@ -126,9 +170,21 @@ async function loadProfile() {
     const user = await res.json();
     if (!user.logged_in) return;
 
-    document.getElementById('profileAvatar').textContent = user.name.charAt(0).toUpperCase();
+    if (user.profile_pic) {
+        document.getElementById('profileAvatar').innerHTML = `<img src="${user.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    } else {
+        document.getElementById('profileAvatar').textContent = user.name.charAt(0).toUpperCase();
+    }
     document.getElementById('profileName').textContent = user.name;
     document.getElementById('profileSince').textContent = 'عضو منذ: ' + (user.created || '');
+    document.getElementById('profileEmail').textContent = user.email || '';
+    
+    // Set edit form defaults
+    document.getElementById('editName').value = user.name;
+    document.getElementById('editEmail').value = user.email || '';
+    document.getElementById('editNewPass').value = '';
+    document.getElementById('editCurrentPass').value = '';
+
     document.getElementById('statTotal').textContent = user.total || 0;
     document.getElementById('statRejected').textContent = user.rejected || 0;
 
@@ -157,6 +213,93 @@ async function loadProfile() {
 }
 
 loadProfile();
+
+function triggerAvatarUpload() {
+    document.getElementById('avatarInput').click();
+}
+
+async function uploadAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    try {
+        const res = await fetch('/profile/upload_avatar', {
+            method: 'POST',
+            body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('profileAvatar').innerHTML = `<img src="${data.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            const navAv = document.getElementById('navAvatar');
+            if (navAv) {
+                navAv.innerHTML = `<img src="${data.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
+            }
+        } else {
+            alert(data.error || 'فشل تحميل الصورة');
+        }
+    } catch(e) {
+        alert('حدث خطأ أثناء تحميل الصورة');
+    }
+}
+
+function toggleEditProfile() {
+    const card = document.getElementById('editProfileCard');
+    const isHidden = card.style.display === 'none';
+    card.style.display = isHidden ? 'block' : 'none';
+    
+    document.getElementById('editErrorMsg').style.display = 'none';
+    document.getElementById('editSuccessMsg').style.display = 'none';
+}
+
+async function saveProfileChanges() {
+    const name = document.getElementById('editName').value.trim();
+    const email = document.getElementById('editEmail').value.trim();
+    const newPassword = document.getElementById('editNewPass').value;
+    const currentPassword = document.getElementById('editCurrentPass').value;
+
+    const errorEl = document.getElementById('editErrorMsg');
+    const successEl = document.getElementById('editSuccessMsg');
+    
+    errorEl.style.display = 'none';
+    successEl.style.display = 'none';
+
+    if (!name || !currentPassword) {
+        errorEl.textContent = 'الاسم وكلمة المرور الحالية مطلوبين';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    try {
+        const res = await fetch('/auth/update_profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                email,
+                new_password: newPassword || null,
+                current_password: currentPassword
+            })
+        });
+        const data = await res.json();
+        if (data.success) {
+            successEl.textContent = 'تم تحديث البيانات بنجاح!';
+            successEl.style.display = 'block';
+            
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
+        } else {
+            errorEl.textContent = data.error || 'حدث خطأ أثناء التحديث';
+            errorEl.style.display = 'block';
+        }
+    } catch(e) {
+        errorEl.textContent = 'حدث خطأ في الاتصال بالخادم';
+        errorEl.style.display = 'block';
+    }
+}
 
 // ===== سجل الجمل =====
 async function loadHistory() {
