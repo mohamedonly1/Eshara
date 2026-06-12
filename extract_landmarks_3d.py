@@ -54,10 +54,15 @@ def load_keypoints():
             if not row:
                 continue
             try:
-                label_idx = int(row[0])
-                values = [float(v) for v in row[1:]]
+                if len(row) == 44:
+                    label_idx = int(row[1])
+                    values = [float(v) for v in row[2:]]
+                elif len(row) == 43:
+                    label_idx = int(row[0])
+                    values = [float(v) for v in row[1:]]
+                else:
+                    continue
                 if len(values) != 42:
-                    # تجاهل أي صف غير مكتمل
                     continue
             except ValueError:
                 continue

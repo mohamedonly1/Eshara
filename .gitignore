@@ -48,3 +48,6 @@ Thumbs.db
 Ishara/**/build/
 Ishara/**/.gradle/
 *.apk
+scratch/
+test_keypoints.py
+Ishara/app/release/

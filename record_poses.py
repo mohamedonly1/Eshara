@@ -22,7 +22,7 @@
 
 import cv2 as cv
 import numpy as np
-import json, os, math
+import json, os, math, config
 from collections import defaultdict
 import asyncio
 import threading
@@ -47,7 +47,7 @@ ARABIC_LETTERS = {
     'h':'ه','j':'و','k':'ي','l':'لا'
 }
 
-OUTPUT_PATH = os.path.join('static', 'poses.js')
+OUTPUT_PATH = config.POSES_JS
 
 # ── WebSocket streaming (bone quaternions) ──────────────
 clients = set()

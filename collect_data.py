@@ -23,6 +23,7 @@ import numpy as np
 import mediapipe as mp
 import os
 from datetime import datetime
+import config
 
 # =============================================
 # إعداد MediaPipe
@@ -48,9 +49,9 @@ INDEX_TO_LETTER = {i: v for i, v in enumerate(ARABIC_LETTERS.values())}
 # =============================================
 # مسارات الملفات
 # =============================================
-DATA_DIR = 'arabic_data'
-CSV_PATH = os.path.join(DATA_DIR, 'arabic_keypoints.csv')
-LABELS_PATH = os.path.join(DATA_DIR, 'arabic_labels.csv')
+DATA_DIR = config.DATA_DIR
+CSV_PATH = config.TRAIN_CSV
+LABELS_PATH = config.LABELS_CSV
 
 os.makedirs(DATA_DIR, exist_ok=True)
 
