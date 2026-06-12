@@ -19,6 +19,7 @@ import secrets
 from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect, CSRFError, generate_csrf
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 import config
@@ -45,6 +46,31 @@ limiter = Limiter(
     storage_uri="memory://"
 )
 
+# =============================================
+# CSRF Protection (SEC-01)
+# =============================================
+csrf = CSRFProtect(app)
+
+@app.after_request
+def set_csrf_cookie(response):
+    """Expose the CSRF token as a cookie so JavaScript fetch calls can read and send it."""
+    response.set_cookie('csrf_token', generate_csrf(), samesite='Lax', httponly=False)
+    return response
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    """Return a clear JSON or HTML error when a CSRF token is missing or invalid."""
+    wants_json = (
+        request.is_json or
+        request.headers.get('Accept', '').find('application/json') != -1 or
+        request.path.startswith('/api/') or
+        request.path.startswith('/auth/') or
+        request.path.startswith('/admin/')
+    )
+    if wants_json:
+        return jsonify({'error': 'CSRF token missing or invalid', 'csrf_error': True}), 400
+    return redirect('/login')
+
 _session_secret = os.getenv('FLASK_SECRET_KEY')
 if not _session_secret:
     _env_name = os.getenv('FLASK_ENV') or os.getenv('APP_ENV') or os.getenv('ENV') or ''
@@ -53,6 +79,62 @@ if not _session_secret:
     _session_secret = secrets.token_hex(32)
     logger.warning("FLASK_SECRET_KEY is not set; using a temporary development secret.")
 app.secret_key = _session_secret
+
+# =============================================
+# Translation & Internationalization System (Part 3)
+# =============================================
+TRANSLATIONS = {}
+
+def load_translations():
+    global TRANSLATIONS
+    for lang in ['ar', 'en', 'fr']:
+        path = os.path.join(app.root_path, 'translations', f'{lang}.json')
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    TRANSLATIONS[lang] = json.load(f)
+            except Exception as e:
+                logger.error("Failed to load translation file %s: %s", path, e)
+                TRANSLATIONS[lang] = {}
+        else:
+            logger.warning("Translation file not found: %s", path)
+            TRANSLATIONS[lang] = {}
+
+load_translations()
+
+def t(key, lang=None, **kwargs):
+    if not lang:
+        try:
+            lang = session.get('active_lang')
+            if not lang:
+                lang = languages_config.get('active_language', 'ar')
+        except Exception:
+            lang = 'ar'
+    if lang not in TRANSLATIONS:
+        lang = 'ar'
+    val = TRANSLATIONS.get(lang, {}).get(key)
+    if val is None:
+        # fallback to ar
+        val = TRANSLATIONS.get('ar', {}).get(key, key)
+    if kwargs and isinstance(val, str):
+        try:
+            val = val.format(**kwargs)
+        except Exception:
+            pass
+    return val
+
+@app.context_processor
+def inject_t():
+    try:
+        lang = session.get('active_lang')
+        if not lang:
+            lang = languages_config.get('active_language', 'ar')
+    except Exception:
+        lang = 'ar'
+    return dict(
+        t=lambda key, **kwargs: t(key, lang=lang, **kwargs),
+        active_lang=lang
+    )
 
 # =============================================
 # Login Required Decorator
@@ -154,37 +236,119 @@ GLOBAL_SETTINGS = _load_global_settings()
 _settings_lock = threading.Lock()
 
 # =============================================
-# Model Setup
+# Model Setup (Multi-language aware)
 # =============================================
 # This variable name and path is preserved exactly for train_model.py regex update compatibility
-MODEL_PATH = 'arabic_model/arabic_sign_model_2026-05-22_95.96.tflite'
+MODEL_PATH = 'arabic_model/ar_sign_model_2026-06-12_95.97.tflite'
 
 LABELS_PATH = config.LABELS_CSV
 POSES_PATH = config.POSES_JS
 
+# Legacy fallback references
 labels_dict = {}
-if os.path.exists(LABELS_PATH):
-    with open(LABELS_PATH, 'r', encoding='utf-8') as f:
-        for row in csv.reader(f):
-            if row:
-                labels_dict[int(row[0])] = row[1]
-
-_means_cache = None
-_means_mtime = None
-
-# Thread-safe model load
 interpreter = None
 _interpreter_lock = threading.Lock()
 
-try:
-    logger.info("Loading TFLite model from path: %s", MODEL_PATH)
-    interpreter = tf.lite.Interpreter(model_path=MODEL_PATH)
-    interpreter.allocate_tensors()
-    input_details = interpreter.get_input_details()
-    output_details = interpreter.get_output_details()
-    logger.info("Model loaded successfully")
-except Exception as e:
-    logger.error("Failed to load TFLite model during startup: %s", e, exc_info=True)
+LANGUAGES_CONFIG_PATH = 'arabic_data/languages.json'
+languages_config = {}
+interpreters = {}
+_interpreters_lock = threading.Lock()
+
+def load_languages_config():
+    global languages_config
+    if os.path.exists(LANGUAGES_CONFIG_PATH):
+        try:
+            with open(LANGUAGES_CONFIG_PATH, 'r', encoding='utf-8') as f:
+                languages_config = json.load(f)
+        except Exception as e:
+            logger.error("Failed to parse languages.json: %s", e)
+    
+    if not languages_config or 'languages' not in languages_config:
+        languages_config = {
+            "active_language": "ar",
+            "languages": {
+                "ar": {
+                    "code": "ar",
+                    "name": "العربية",
+                    "labels": ["أ", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي", "لا"],
+                    "model_path": MODEL_PATH,
+                    "dataset_path": "arabic_data/arabic_keypoints.csv"
+                }
+            }
+        }
+    return languages_config
+
+def init_interpreters():
+    global interpreters, interpreter, labels_dict
+    config_data = load_languages_config()
+    with _interpreters_lock:
+        interpreters.clear()
+        for lang_code, lang_info in config_data['languages'].items():
+            model_path = lang_info['model_path']
+            
+            # If the model file does not exist, copy default Arabic model as a placeholder
+            if not os.path.exists(model_path):
+                default_model = 'arabic_model/arabic_sign_model_2026-05-22_95.96.tflite'
+                if os.path.exists(default_model) and model_path != default_model:
+                    os.makedirs(os.path.dirname(model_path), exist_ok=True)
+                    try:
+                        import shutil
+                        shutil.copy2(default_model, model_path)
+                        logger.info("Copied placeholder model for language %s to %s", lang_code, model_path)
+                    except Exception as e:
+                        logger.error("Failed to copy placeholder model for %s: %s", lang_code, e)
+            
+            if os.path.exists(model_path):
+                try:
+                    logger.info("Loading TFLite model for %s from path: %s", lang_code, model_path)
+                    interp = tf.lite.Interpreter(model_path=model_path)
+                    interp.allocate_tensors()
+                    interpreters[lang_code] = {
+                        'interpreter': interp,
+                        'input_details': interp.get_input_details(),
+                        'output_details': interp.get_output_details(),
+                        'lock': threading.Lock()
+                    }
+                    logger.info("Loaded interpreter for language: %s", lang_code)
+                except Exception as e:
+                    logger.error("Failed to load interpreter for %s: %s", lang_code, e)
+        
+        # Populate legacy fallback references
+        if 'ar' in interpreters:
+            interpreter = interpreters['ar']['interpreter']
+            ar_info = config_data['languages']['ar']
+            labels_dict = {idx: l for idx, l in enumerate(ar_info['labels'])}
+        elif interpreters:
+            first_key = list(interpreters.keys())[0]
+            interpreter = interpreters[first_key]['interpreter']
+            first_info = config_data['languages'][first_key]
+            labels_dict = {idx: l for idx, l in enumerate(first_info['labels'])}
+
+init_interpreters()
+
+def get_active_labels():
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
+    if lang_info:
+        return {idx: label for idx, label in enumerate(lang_info['labels'])}
+    return labels_dict
+
+def get_active_labels_list():
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
+    if lang_info:
+        return lang_info['labels']
+    return list(labels_dict.values())
+
+def get_active_dataset_path():
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
+    if lang_info:
+        return lang_info['dataset_path']
+    return config.TRAIN_CSV
+
+_means_cache = {}
+_means_mtime = {}
 
 # =============================================
 # Helpers
@@ -202,15 +366,33 @@ def normalize_landmarks(raw):
     max_val = max(abs(v) for v in rel) or 1
     return [v / max_val for v in rel]
 
-def predict_landmarks(landmarks):
-    """Runs thread-safe TFLite interpreter inference."""
+def predict_landmarks(landmarks, lang_code=None):
+    """Runs thread-safe TFLite interpreter inference for the active language."""
+    if not lang_code:
+        try:
+            lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+        except Exception:
+            lang_code = languages_config.get('active_language', 'ar')
+            
     input_data = np.array([landmarks], dtype=np.float32)
-    with _interpreter_lock:
-        if interpreter is None:
-            raise RuntimeError("TFLite interpreter is not initialized.")
-        interpreter.set_tensor(input_details[0]['index'], input_data)
-        interpreter.invoke()
-        return interpreter.get_tensor(output_details[0]['index'])[0].copy()
+    with _interpreters_lock:
+        lang_item = interpreters.get(lang_code, interpreters.get('ar'))
+        if lang_item is None and interpreters:
+            lang_item = interpreters[list(interpreters.keys())[0]]
+            
+        if lang_item is None:
+            raise RuntimeError(f"TFLite interpreter for language '{lang_code}' is not initialized.")
+        
+    # Serialize calls to this specific interpreter to prevent clashing inputs, while allowing concurrency across languages
+    lock = lang_item.setdefault('lock', threading.Lock())
+    with lock:
+        interp = lang_item['interpreter']
+        in_details = lang_item['input_details']
+        out_details = lang_item['output_details']
+        
+        interp.set_tensor(in_details[0]['index'], input_data)
+        interp.invoke()
+        return interp.get_tensor(out_details[0]['index'])[0].copy()
 
 # =============================================
 # Pages
@@ -218,7 +400,8 @@ def predict_landmarks(landmarks):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', labels_map=labels_dict)
+    active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return render_template('index.html', labels_map=get_active_labels(), letters=get_active_labels_list(), active_lang=active_lang)
 
 @app.route('/recognize')
 @login_required
@@ -239,17 +422,20 @@ def login_page():
 @app.route('/profile')
 @login_required
 def profile_page():
-    return render_template('profile.html')
+    active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return render_template('profile.html', letters=get_active_labels_list(), active_lang=active_lang)
 
 @app.route('/collect-data')
 @login_required
 def collect_page():
-    return render_template('collect.html')
+    active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return render_template('collect.html', letters=get_active_labels_list(), active_lang=active_lang)
 
 @app.route('/translate')
 @login_required
 def translate_page():
-    return render_template('translate.html', labels_map=labels_dict)
+    active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return render_template('translate.html', labels_map=get_active_labels(), letters=get_active_labels_list(), active_lang=active_lang)
 
 @app.route('/means')
 @login_required
@@ -258,16 +444,17 @@ def means_route():
     from sklearn.preprocessing import LabelEncoder
     global _means_cache, _means_mtime
 
-    path = config.TRAIN_CSV
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    path = get_active_dataset_path()
     if not os.path.exists(path):
-        _means_cache = {}
-        _means_mtime = None
+        _means_cache[lang_code] = {}
+        _means_mtime[lang_code] = None
         return jsonify({})
 
     try:
         file_mtime = os.path.getmtime(path)
-        if _means_cache is not None and _means_mtime == file_mtime:
-            return jsonify(_means_cache)
+        if _means_cache.get(lang_code) is not None and _means_mtime.get(lang_code) == file_mtime:
+            return jsonify(_means_cache[lang_code])
 
         # Robust parser for both 43-column and 44-column CSV rows
         rows_data = []
@@ -285,8 +472,8 @@ def means_route():
                     rows_data.append([label] + landmarks)
 
         if not rows_data:
-            _means_cache = {}
-            _means_mtime = file_mtime
+            _means_cache[lang_code] = {}
+            _means_mtime[lang_code] = file_mtime
             return jsonify({})
 
         df = pd.DataFrame(rows_data)
@@ -295,15 +482,16 @@ def means_route():
 
         # Keep LabelEncoder logic for parity with training-time class handling.
         encoder = LabelEncoder()
-        encoder.fit([labels_dict[idx] for idx in sorted(labels_dict.keys())])
+        labels_map = get_active_labels()
+        encoder.fit([labels_map[idx] for idx in sorted(labels_map.keys())])
 
-        letter_to_index = {letter: int(idx) for idx, letter in labels_dict.items()}
+        letter_to_index = {letter: int(idx) for idx, letter in labels_map.items()}
         aligned_labels = []
         for raw in raw_labels:
             idx = None
             try:
                 numeric = int(float(raw))
-                if numeric in labels_dict:
+                if numeric in labels_map:
                     idx = numeric
             except (TypeError, ValueError):
                 pass
@@ -320,18 +508,18 @@ def means_route():
         grouped = grouped[grouped['label'].notna()].copy()
         grouped['label'] = grouped['label'].astype(int)
         if grouped.empty:
-            _means_cache = {}
-            _means_mtime = file_mtime
+            _means_cache[lang_code] = {}
+            _means_mtime[lang_code] = file_mtime
             return jsonify({})
 
         medians = grouped.groupby('label', sort=True).median(numeric_only=True)
 
-        result = {
-            str(int(idx)): [float(v) for v in row.tolist()]
-            for idx, row in medians.iterrows()
-        }
-        _means_cache = result
-        _means_mtime = file_mtime
+        result = {}
+        for idx, row in medians.iterrows():
+            result[str(int(idx))] = [float(v) for v in row.tolist()]
+
+        _means_cache[lang_code] = result
+        _means_mtime[lang_code] = file_mtime
         return jsonify(result)
     except Exception as exc:
         logger.error("Error in /means: %s", exc, exc_info=True)
@@ -341,7 +529,8 @@ def means_route():
 @login_required
 @admin_required
 def pose_editor_page():
-    return render_template('pose_editor.html')
+    active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return render_template('pose_editor.html', letters=get_active_labels_list(), active_lang=active_lang)
 
 # =============================================
 # Auth APIs
@@ -408,6 +597,7 @@ def auth_me():
         'name': user['name'],
         'email': user.get('email', ''),
         'email_verified': user.get('email_verified', True),
+        'pending_email': user.get('pending_email', ''),
         'profile_pic': user.get('profile_pic', ''),
         'samples': user.get('samples', {}),
         'total': user.get('total_accepted', 0),
@@ -436,16 +626,48 @@ def auth_verify_code():
     if not user:
         return jsonify({'success': False, 'error': 'المستخدم غير موجود'}), 404
 
+    # Validate code
     if not code or user.get('verification_code') != code:
         return jsonify({'success': False, 'error': 'رمز التحقق غير صحيح'}), 400
 
-    # Mark as verified
+    # Check expiration
+    from datetime import datetime
+    expires_str = user.get('verification_code_expires', '')
+    if expires_str:
+        try:
+            expires_at = datetime.strptime(expires_str, '%Y-%m-%d %H:%M')
+            if datetime.now() > expires_at:
+                return jsonify({'success': False, 'error': 'رمز التحقق منتهي الصلاحية. أعد إرسال رمز جديد.'}), 400
+        except Exception:
+            pass
+
+    from auth import save_user, save_users, load_users
+
+    # SEC-05: If there's a pending_email, this is an email change verification
+    pending = user.get('pending_email', '')
+    if pending:
+        user['email'] = pending
+        user['pending_email'] = ''
+        user['email_verified'] = True
+        user['verification_code'] = ''
+        user['verification_code_expires'] = ''
+        save_user(user)
+
+        users = load_users()
+        if user_id in users:
+            users[user_id]['email'] = pending
+            users[user_id]['email_verified'] = True
+            save_users(users)
+
+        logger.info("User %s email changed and verified to %s", user_id, pending)
+        return jsonify({'success': True, 'email_changed': True})
+
+    # Standard registration verification
     user['email_verified'] = True
     user['verification_code'] = ''
-    from auth import save_user, save_users, load_users
+    user['verification_code_expires'] = ''
     save_user(user)
 
-    # Update in users index as well
     users = load_users()
     if user_id in users:
         users[user_id]['email_verified'] = True
@@ -466,15 +688,20 @@ def auth_resend_code():
     if not user.get('email'):
         return jsonify({'success': False, 'error': 'لا يوجد بريد إلكتروني مسجل'}), 400
 
-    import random
-    new_code = f"{random.randint(100000, 999999)}"
+    from auth import generate_secure_otp, save_user, send_verification_email
+    from datetime import datetime, timedelta
+    new_code = generate_secure_otp()
     user['verification_code'] = new_code
-    user['email_verified'] = False
-    from auth import save_user, send_verification_email
+    user['verification_code_expires'] = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M')
+
+    # Send to pending email if one exists, otherwise to primary email
+    target_email = user.get('pending_email') or user.get('email')
+    if not user.get('pending_email'):
+        user['email_verified'] = False
     save_user(user)
 
-    send_verification_email(user['email'], user['name'], new_code)
-    logger.info("Resent verification code to user %s", user_id)
+    send_verification_email(target_email, user['name'], new_code)
+    logger.info("Resent verification code to user %s (target: %s)", user_id, target_email)
     return jsonify({'success': True})
 
 @app.route('/auth/update_profile', methods=['POST'])
@@ -501,8 +728,11 @@ def auth_update_profile_api():
         logger.info("Profile updated and user renamed from %s to %s", user_id, new_user_id)
     else:
         logger.info("Profile updated for user %s", user_id)
-        
-    return jsonify({'success': True})
+
+    # Check if a pending email verification was initiated
+    updated_user = load_user(new_user_id)
+    pending = updated_user.get('pending_email', '') if updated_user else ''
+    return jsonify({'success': True, 'pending_email_verification': bool(pending)})
 
 @app.route('/profile/upload_avatar', methods=['POST'])
 @login_required
@@ -575,12 +805,16 @@ def predict_route():
             return jsonify({'error': 'Invalid numeric values'}), 400
             
         normalized = normalize_landmarks(float_raw)
-        probs = predict_landmarks(normalized)
+        
+        lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+        probs = predict_landmarks(normalized, lang_code=lang_code)
         idx = int(np.argmax(probs))
+        
+        labels_map = get_active_labels()
         
         logger.debug("Successful prediction: class %d, confidence %f", idx, float(probs[idx]))
         return jsonify({
-            'letter': labels_dict.get(idx, '?'),
+            'letter': labels_map.get(idx, '?'),
             'confidence': round(float(probs[idx]) * 100, 1),
             'status': 'ok'
         })
@@ -599,13 +833,16 @@ def collect_sample():
     user_id = session.get('user_id')
     raw = data.get('landmarks', [])
     
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    labels_map = get_active_labels()
+    
     try:
         label = int(data.get('label', -1))
     except (ValueError, TypeError):
         logger.warning("Collect request rejected: label '%s' is not integer", data.get('label'))
         return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
 
-    if label not in range(len(labels_dict)):
+    if label not in range(len(labels_map)):
         logger.warning("Collect request rejected: label %d out of bounds", label)
         return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
 
@@ -627,7 +864,7 @@ def collect_sample():
             filter_threshold = GLOBAL_SETTINGS['filter_threshold']
 
         if quality_filter:
-            probs = predict_landmarks(normalized)
+            probs = predict_landmarks(normalized, lang_code=lang_code)
             idx = int(np.argmax(probs))
             confidence = float(probs[idx])
             if idx != label and confidence > filter_threshold:
@@ -637,12 +874,13 @@ def collect_sample():
                 return jsonify({
                     'success': False,
                     'rejected': True,
-                    'error': f'الإيماءة تشبه حرف {labels_dict.get(idx, "?")} — جرّب تاني'
+                    'error': f'الإيماءة تشبه حرف {labels_map.get(idx, "?")} — جرّب تاني'
                 })
 
         # Save to main CSV with user tracking if logged in (Phase 3 metadata)
-        os.makedirs(os.path.dirname(config.TRAIN_CSV), exist_ok=True)
-        with open(config.TRAIN_CSV, 'a', newline='', encoding='utf-8') as f:
+        dataset_path = get_active_dataset_path()
+        os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
+        with open(dataset_path, 'a', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
             if user_id:
                 writer.writerow([user_id, label] + normalized)
@@ -650,9 +888,9 @@ def collect_sample():
                 writer.writerow([label] + normalized)
 
         if user_id:
-            record_sample(user_id, label)
+            record_sample(user_id, label, lang_code=lang_code)
 
-        logger.info("Collected sample recorded: user=%s, label=%d", user_id or "anonymous", label)
+        logger.info("Collected sample recorded: user=%s, label=%d, lang=%s", user_id or "anonymous", label, lang_code)
         return jsonify({'success': True})
 
     except Exception as exc:
@@ -666,7 +904,24 @@ def sample_counts():
     user = load_user(user_id)
     if not user:
         return jsonify({'counts': {}})
-    counts = {int(k): v for k, v in user.get('samples', {}).items()}
+    
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    all_samples = user.get('samples', {})
+    
+    # Migrate flat dict if needed
+    has_flat = False
+    for k in list(all_samples.keys()):
+        if k.isdigit():
+            has_flat = True
+            break
+    if has_flat:
+        all_samples = {'ar': {k: v for k, v in all_samples.items() if k.isdigit()}}
+        user['samples'] = all_samples
+        from auth import save_user
+        save_user(user)
+        
+    lang_samples = all_samples.get(lang_code, {})
+    counts = {int(k): v for k, v in lang_samples.items()}
     return jsonify({'counts': counts})
 
 # =============================================
@@ -706,7 +961,7 @@ def history_delete():
 def admin_page():
     if current_user_is_admin():
         session['is_admin'] = True
-    return render_template('admin.html')
+    return render_template('admin.html', letters=get_active_labels_list(), active_lang=session.get('active_lang', languages_config.get('active_language', 'ar')))
 
 @app.route('/admin/verify', methods=['POST'])
 @limiter.limit("5 per minute")
@@ -724,7 +979,8 @@ def admin_verify():
 def admin_stats():
     if not current_user_is_admin():
         return jsonify({'error': 'Unauthorized'}), 401
-    return jsonify({'users': get_all_users_stats()})
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return jsonify({'users': get_all_users_stats(lang_code)})
 
 @app.route('/admin/delete_user', methods=['POST'])
 def admin_delete_user():
@@ -882,7 +1138,8 @@ _test_csv_lock = threading.Lock()
 @app.route('/collect-test')
 @app.route('/collect_test')
 def collect_test_page():
-    return render_template('collect_test.html')
+    active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    return render_template('collect_test.html', letters=get_active_labels_list(), active_lang=active_lang)
 
 @app.route('/collect-test', methods=['POST'])
 @app.route('/collect_test', methods=['POST'])
@@ -989,6 +1246,131 @@ def auth_reset_password():
         return jsonify({'success': False, 'error': error}), 400
 
     return jsonify({'success': True, 'message': 'تم تغيير كلمة المرور بنجاح. يمكنك تسجيل الدخول الآن.'})
+
+# =============================================
+# Language Switcher & Management Routes
+# =============================================
+@app.route('/auth/languages', methods=['GET'])
+def get_languages_list():
+    config_data = load_languages_config()
+    active = session.get('active_lang', config_data.get('active_language', 'ar'))
+    langs = []
+    for code, info in config_data['languages'].items():
+        langs.append({
+            'code': code,
+            'name': info['name'],
+            'active': (code == active)
+        })
+    return jsonify({'languages': langs, 'active': active})
+
+@app.route('/auth/set-active-lang', methods=['POST'])
+def set_active_language():
+    data = request.get_json(silent=True) or {}
+    lang_code = data.get('lang_code', '')
+    config_data = load_languages_config()
+    if lang_code not in config_data['languages']:
+        return jsonify({'success': False, 'error': 'اللغة غير مدعومة'}), 400
+    session['active_lang'] = lang_code
+    logger.info("Active language updated to %s for session", lang_code)
+    return jsonify({'success': True})
+
+@app.route('/admin/add-language', methods=['POST'])
+@admin_required
+def add_new_language():
+    import re
+    import shutil
+    data = request.get_json(silent=True) or {}
+    code = data.get('code', '').strip().lower()
+    name = data.get('name', '').strip()
+    labels = data.get('labels', [])
+
+    if not code or not name or not labels:
+        return jsonify({'success': False, 'error': 'جميع الحقول مطلوبة'}), 400
+
+    if not re.match(r'^[a-z]{2,3}$', code):
+        return jsonify({'success': False, 'error': 'رمز اللغة يجب أن يكون من حرفين أو ثلاثة أحرف إنجليزية'}), 400
+
+    config_data = load_languages_config()
+    if code in config_data['languages']:
+        return jsonify({'success': False, 'error': 'اللغة مسجلة بالفعل'}), 400
+
+    # Paths
+    dataset_path = f"arabic_data/{code}_keypoints.csv"
+    model_path = f"arabic_model/{code}_sign_model.tflite"
+
+    # Create empty dataset file
+    if not os.path.exists(dataset_path):
+        os.makedirs(os.path.dirname(dataset_path), exist_ok=True)
+        with open(dataset_path, 'w', newline='', encoding='utf-8') as f:
+            pass
+
+    # Copy placeholder model
+    default_model = 'arabic_model/arabic_sign_model_2026-05-22_95.96.tflite'
+    if os.path.exists(default_model):
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        try:
+            shutil.copy2(default_model, model_path)
+            logger.info("Copied placeholder model for new language %s to %s", code, model_path)
+        except Exception as e:
+            logger.error("Failed to copy placeholder model for new language %s: %s", code, e)
+
+    # Save to config
+    config_data['languages'][code] = {
+        'code': code,
+        'name': name,
+        'labels': labels,
+        'model_path': model_path,
+        'dataset_path': dataset_path
+    }
+
+    with open(LANGUAGES_CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, ensure_ascii=False, indent=2)
+
+    # Reload interpreters
+    init_interpreters()
+
+    logger.info("Successfully added new language: %s (%s)", name, code)
+    return jsonify({'success': True})
+
+@app.route('/admin/train-active-model', methods=['POST'])
+@admin_required
+def train_active_model_route():
+    import subprocess
+    import sys
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    
+    logger.info("Starting model training process for language: %s", lang_code)
+    try:
+        res = subprocess.run([sys.executable, 'train_model.py', lang_code], capture_output=True, text=True, timeout=180)
+        if res.returncode == 0:
+            logger.info("Model training completed successfully for %s", lang_code)
+            init_interpreters()
+            return jsonify({'success': True})
+        else:
+            logger.error("Model training failed for %s. Error: %s", lang_code, res.stderr)
+            return jsonify({'success': False, 'error': f'فشل التدريب: {res.stderr[:200]}'})
+    except subprocess.TimeoutExpired:
+        logger.error("Model training timed out for %s", lang_code)
+        return jsonify({'success': False, 'error': 'انتهت مهلة التدريب (أكثر من 3 دقائق)'})
+    except Exception as e:
+        logger.error("Failed to trigger training for %s: %s", lang_code, e)
+        return jsonify({'success': False, 'error': f'حدث خطأ غير متوقع: {str(e)}'})
+
+@app.route('/admin/restart-server', methods=['POST'])
+@admin_required
+def restart_server_route():
+    import sys
+    import subprocess
+    logger.info("Restarting server programmatically as requested by Admin...")
+    
+    def restart():
+        import time
+        time.sleep(1)
+        subprocess.Popen([sys.executable] + sys.argv)
+        os._exit(0)
+        
+    threading.Thread(target=restart).start()
+    return jsonify({'success': True, 'message': 'جاري إعادة تشغيل الخادم...'})
 
 @app.route('/health')
 def health():

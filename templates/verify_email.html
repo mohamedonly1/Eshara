@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>التحقق من البريد الإلكتروني — إشارة</title>
+    <title>{{ t('title_verify_email') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -194,9 +194,9 @@
             <rect x="4" y="6" width="20" height="16" rx="2" stroke="white" stroke-width="2" fill="none"/>
         </svg>
     </div>
-    <div class="title">تأكيد البريد الإلكتروني</div>
+    <div class="title">{{ t('verify_email_title') }}</div>
     <div class="description">
-        لقد أرسلنا رمز تحقق مكون من 6 أرقام إلى:<br>
+        {{ t('verify_email_desc') }}<br>
         <span class="email-display" id="userEmail">...</span>
     </div>
 
@@ -212,18 +212,40 @@
         <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
     </div>
 
-    <button class="submit-btn" onclick="submitVerification()">تحقق من الرمز</button>
+    <button class="submit-btn" onclick="submitVerification()">{{ t('verify_email_btn') }}</button>
 
     <div class="resend-container">
-        لم يصلك الرمز؟ 
-        <button class="resend-btn" id="resendBtn" onclick="resendCode()">إعادة إرسال</button>
-        <span id="cooldownText" style="display:none"> (بعد <span id="timer">60</span> ثانية)</span>
+        {{ t('verify_email_resend_prompt') }} 
+        <button class="resend-btn" id="resendBtn" onclick="resendCode()">{{ t('verify_email_resend_btn') }}</button>
+        <span id="cooldownText" style="display:none"> ({{ t('verify_email_resend_cooldown') }} <span id="timer">60</span>)</span>
     </div>
 
-    <a href="/auth/logout" class="logout-link">تسجيل الخروج</a>
+    <a href="/auth/logout" class="logout-link">{{ t('nav_logout') }}</a>
 </div>
 
 <script>
+// CSRF Protection Helper (SEC-01)
+(function() {
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
+
     // Theme setup
     const savedTheme = localStorage.getItem('ishara-theme');
     if (savedTheme === 'dark') {
@@ -250,18 +272,23 @@
         });
     });
 
-    // Load user email on start
+    // Load user email on start — supports both registration verification and pending email change
     async function loadEmail() {
         try {
             const res = await fetch('/auth/me');
             const data = await res.json();
             if (data.logged_in) {
-                // If already verified, redirect to homepage
+                // If there is a pending_email, this page is for email change verification
+                if (data.pending_email) {
+                    document.getElementById('userEmail').textContent = data.pending_email;
+                    return;
+                }
+                // Standard registration verification — redirect if already verified
                 if (data.email_verified !== false) {
                     window.location.href = '/';
                     return;
                 }
-                document.getElementById('userEmail').textContent = data.email || 'بريدك الإلكتروني';
+                document.getElementById('userEmail').textContent = data.email || '{{ t("reg_email_label") }}';
             } else {
                 window.location.href = '/login';
             }
@@ -289,7 +316,7 @@
         let code = '';
         inputs.forEach(input => code += input.value);
         if (code.length < 6) {
-            showError('يرجى إدخال الرمز المكون من 6 أرقام كاملاً');
+            showError('{{ t("verify_email_empty_code") }}');
             return;
         }
 
@@ -301,15 +328,15 @@
             });
             const data = await res.json();
             if (data.success) {
-                showSuccess('تم التحقق بنجاح! جاري تحويلك...');
+                showSuccess('{{ t("verify_email_success") }}');
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 1500);
             } else {
-                showError(data.error || 'رمز التحقق غير صحيح');
+                showError(data.error || '{{ t("verify_email_code_invalid") }}');
             }
         } catch(e) {
-            showError('حدث خطأ أثناء الاتصال بالخادم');
+            showError('{{ t("toast_network_error") }}');
         }
     }
 
@@ -345,13 +372,13 @@
             });
             const data = await res.json();
             if (data.success) {
-                showSuccess('تم إعادة إرسال رمز التحقق إلى بريدك الإلكتروني');
+                showSuccess('{{ t("verify_email_resent_success") }}');
                 startCooldown();
             } else {
-                showError(data.error || 'تعذر إعادة إرسال الرمز');
+                showError(data.error || '{{ t("toast_error") }}');
             }
         } catch(e) {
-            showError('حدث خطأ أثناء الاتصال بالخادم');
+            showError('{{ t("toast_network_error") }}');
         }
     }
 

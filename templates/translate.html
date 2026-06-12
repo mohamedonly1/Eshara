@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ترجمة إلى لغة الإشارة ثلاثية الأبعاد</title>
+    <title>{{ t('title_translate') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
@@ -247,33 +247,33 @@
 <div class="page-content">
     <div class="inner">
         <div class="card">
-            <div class="section-title"><span>النص العربي</span></div>
-            <textarea id="textInput" class="text-input" placeholder="اكتب جملة بالعربية لترجمتها إلى لغة الإشارة..."></textarea>
+            <div class="section-title"><span>{{ t('translate_input_title') }}</span></div>
+            <textarea id="textInput" class="text-input" placeholder="{{ t('translate_input_placeholder') }}"></textarea>
             <div class="input-actions">
                 <div class="left-actions">
                     <button id="micBtn" class="btn btn-mic" type="button">
-                        <span>تسجيل صوت</span>
+                        <span>{{ t('translate_voice_btn') }}</span>
                     </button>
                     <div class="speed-control">
-                        <span class="label">السرعة:</span>
-                        <span>بطيئة</span>
+                        <span class="label">{{ t('translate_speed_label') }}:</span>
+                        <span>{{ t('translate_speed_slow') }}</span>
                         <input id="speedSlider" class="speed-slider" type="range" min="1" max="3" step="1" value="2">
-                        <span>سريعة</span>
-                        <span id="speedTag" class="tag">متوسطة</span>
+                        <span>{{ t('translate_speed_fast') }}</span>
+                        <span id="speedTag" class="tag">{{ t('translate_speed_medium') }}</span>
                     </div>
                 </div>
                 <button id="translateBtn" class="btn btn-translate" type="button">
-                    <span>ترجم</span>
+                    <span>{{ t('translate_btn') }}</span>
                 </button>
             </div>
             <div class="hint">
-                يمكن للتطبيق عرض اليد لكل حرف من الحروف العربية المدعومة. الأحرف غير المدعومة سيتم تجاهلها تلقائيًا.
+                {{ t('translate_hint') }}
             </div>
         </div>
 
         <div class="three-card">
             <div class="three-wrap">
-                <div class="three-overlay-label">يد ثلاثية الأبعاد - لغة الإشارة</div>
+                <div class="three-overlay-label">{{ t('translate_canvas_label') }}</div>
                 <div id="threeContainer">
                     <canvas id="threeCanvas"></canvas>
                 </div>
@@ -281,7 +281,7 @@
             <div class="card" style="padding:10px 12px;">
                 <div class="status-row">
                     <div class="current-letter">
-                        <span style="font-size:11px;color:var(--text-dim);">الحرف الحالي:</span>
+                        <span style="font-size:11px;color:var(--text-dim);">{{ t('current_letter') }}:</span>
                         <div id="currentLetterPill" class="letter-pill">ـ</div>
                     </div>
                     <div style="flex:1;display:flex;align-items:center;gap:8px;">
@@ -318,7 +318,7 @@ const speedSlider = document.getElementById('speedSlider');
 const speedTag    = document.getElementById('speedTag');
 function updateSpeedTag() {
     const v = Number(speedSlider.value);
-    speedTag.textContent = v === 1 ? 'بطيئة' : v === 2 ? 'متوسطة' : 'سريعة';
+    speedTag.textContent = v === 1 ? '{{ t("translate_speed_slow") }}' : v === 2 ? '{{ t("translate_speed_medium") }}' : '{{ t("translate_speed_fast") }}';
 }
 speedSlider.addEventListener('input', updateSpeedTag);
 updateSpeedTag();
@@ -398,7 +398,7 @@ new THREE.GLTFLoader().load(
     null,
     (err) => {
         console.error('فشل تحميل الموديل:', err);
-        showToast('فشل تحميل موديل اليد', 'error');
+        showToast('{{ t("translate_load_model_failed") }}', 'error');
     }
 );
 
@@ -703,13 +703,59 @@ async function play() {
 translateBtn.addEventListener('click', () => {
     if(playing) return;
     const text = textInput.value.trim();
-    if (!text) { showToast('اكتب نص', 'error'); return; }
+    if (!text) { showToast('{{ t("toast_type_word_first") }}', 'error'); return; }
 
     activeSequence = buildSequence(text);
-    if (!activeSequence.length) { showToast('لا يوجد حروف مدعومة', 'error'); return; }
+    if (!activeSequence.length) { showToast('{{ t("translate_no_supported_letters") }}', 'error'); return; }
 
     play();
 });
+
+// ==== Mic / Voice Recognition ====
+const micBtn = document.getElementById('micBtn');
+let recognition = null;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    const lang = "{{ active_lang }}";
+    recognition.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
+
+    recognition.onstart = () => {
+        micBtn.classList.add('listening');
+        micBtn.querySelector('span').textContent = '{{ t("translate_voice_listening") }}';
+    };
+
+    recognition.onend = () => {
+        micBtn.classList.remove('listening');
+        micBtn.querySelector('span').textContent = '{{ t("translate_voice_btn") }}';
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error', event);
+        micBtn.classList.remove('listening');
+        micBtn.querySelector('span').textContent = '{{ t("translate_voice_btn") }}';
+        showToast('{{ t("toast_error") }}', 'error');
+    };
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        textInput.value = text;
+        showToast('{{ t("translate_voice_success") }}');
+    };
+
+    micBtn.addEventListener('click', () => {
+        if (micBtn.classList.contains('listening')) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    });
+} else {
+    micBtn.style.display = 'none';
+}
 </script>
 </body>
 </html>
