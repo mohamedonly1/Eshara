@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#1D9E75">
-    <title>التعرف الفوري — إشارة</title>
+    <title>{{ t('title_recognize') }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link rel="manifest" href="/manifest.json">
@@ -259,8 +259,8 @@ html, body {
             <circle cx="21" cy="10"  r="1.3" fill="white"/>
         </svg>
     </div>
-    <div class="loading-title">إشارة</div>
-    <div class="loading-sub" id="loadingSub">جاري تحميل MediaPipe...</div>
+    <div class="loading-title">{{ t('app_name') }}</div>
+    <div class="loading-sub" id="loadingSub">{{ t('loading_mediapipe') }}</div>
     <div class="spinner"></div>
 </div>
 
@@ -274,49 +274,49 @@ html, body {
         <!-- الحرف الحالي -->
         <div class="letter-block">
             <div class="status-row-top">
-                <div class="block-label" style="margin-bottom:0">الحرف الحالي</div>
+                <div class="block-label" style="margin-bottom:0">{{ t('current_letter') }}</div>
                 <div class="status-dot" id="statusDot"></div>
             </div>
             <div class="letter-row">
                 <div class="letter-big empty" id="letterDisplay">—</div>
                 <div class="letter-meta">
-                    <div class="conf-label">مستوى الثقة</div>
+                    <div class="conf-label">{{ t('confidence_level') }}</div>
                     <div class="conf-track"><div class="conf-fill" id="confBar"></div></div>
                     <div class="conf-value" id="confValue">0%</div>
                 </div>
             </div>
             <div class="confirm-row">
-                <div class="confirm-label">تأكيد الحرف</div>
+                <div class="confirm-label">{{ t('letter_confirmation') }}</div>
                 <div class="confirm-track"><div class="confirm-fill" id="confirmFill" style="width:0%"></div></div>
             </div>
         </div>
 
         <!-- النص المجمع -->
         <div class="text-block">
-            <div class="block-label">النص المجمع</div>
+            <div class="block-label">{{ t('collected_text') }}</div>
             <div class="word-box">
                 <div class="word-count" id="wordCount">0</div>
-                <div id="wordDisplay" class="word-text word-placeholder">ابدأ بالإشارة...</div>
+                <div id="wordDisplay" class="word-text word-placeholder">{{ t('start_signing') }}</div>
             </div>
             <div class="btn-grid-2">
-                <button class="btn btn-space"  onclick="addSpace()">مسافة</button>
-                <button class="btn btn-clear"  onclick="clearWord()">مسح الكل</button>
+                <button class="btn btn-space"  onclick="addSpace()">{{ t('btn_space') }}</button>
+                <button class="btn btn-clear"  onclick="clearWord()">{{ t('btn_clear_all') }}</button>
             </div>
             <div class="btn-grid-2" style="margin-bottom:7px">
-                <button class="btn btn-speak" id="speakBtn" onclick="speakWord()">نطق</button>
-                <button class="btn btn-save"  id="saveBtn"  onclick="saveToHistory()" disabled>حفظ</button>
+                <button class="btn btn-speak" id="speakBtn" onclick="speakWord()">{{ t('btn_speak') }}</button>
+                <button class="btn btn-save"  id="saveBtn"  onclick="saveToHistory()" disabled>{{ t('btn_save') }}</button>
             </div>
-            <button class="btn btn-delete btn-full" onclick="deleteLetter()">← حذف آخر حرف</button>
+            <button class="btn btn-delete btn-full" onclick="deleteLetter()">{{ t('btn_delete_last') }}</button>
         </div>
 
         <!-- السجل -->
         <div class="history-block">
             <div class="history-header">
-                <div class="history-title">السجل الأخير</div>
+                <div class="history-title">{{ t('recent_history') }}</div>
                 <div class="history-badge" id="historyBadge">0</div>
             </div>
             <div id="historyList">
-                <div class="history-empty">لا يوجد جمل محفوظة بعد</div>
+                <div class="history-empty">{{ t('no_saved_sentences') }}</div>
             </div>
         </div>
     </aside>
@@ -327,7 +327,7 @@ html, body {
         <canvas id="overlay"></canvas>
         <div class="tracking-badge">
             <div class="t-dot" id="trackingDot"></div>
-            <span id="trackingLabel">في انتظار اليد</span>
+            <span id="trackingLabel">{{ t('waiting_for_hand') }}</span>
         </div>
     </div>
 
@@ -431,7 +431,7 @@ function clearWord()        { currentWord = []; lastLetter = null; predictionHis
 function updateWordDisplay() {
     const wordEl = document.getElementById('wordDisplay');
     const word   = currentWord.join('').trim();
-    if (!word) { wordEl.textContent = 'ابدأ بالإشارة...'; wordEl.className = 'word-text word-placeholder'; document.getElementById('wordCount').textContent = '0'; }
+    if (!word) { wordEl.textContent = '{{ t("start_signing") }}'; wordEl.className = 'word-text word-placeholder'; document.getElementById('wordCount').textContent = '0'; }
     else       { wordEl.textContent = currentWord.join(''); wordEl.className = 'word-text'; document.getElementById('wordCount').textContent = word.length; }
     checkSaveBtn();
 }
@@ -447,14 +447,14 @@ function initMediaPipe() {
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             noHandCount = 0;
             document.getElementById('statusDot').classList.add('active');
-            tDot.classList.add('active'); tLbl.textContent = 'TRACKING ACTIVE';
+            tDot.classList.add('active'); tLbl.textContent = '{{ t("tracking_active") }}';
             const lm = results.multiHandLandmarks[0];
             drawHand(lm);
             const now = Date.now();
             if (now - lastSend > 120) { lastSend = now; sendLandmarks(extractLandmarks(lm)); }
         } else {
             noHandCount++;
-            if (noHandCount > 3) { clearUI(); tDot.classList.remove('active'); tLbl.textContent = 'في انتظار اليد'; }
+            if (noHandCount > 3) { clearUI(); tDot.classList.remove('active'); tLbl.textContent = '{{ t("waiting_for_hand") }}'; }
             document.getElementById('statusDot').classList.remove('active');
         }
     });
@@ -469,7 +469,7 @@ function initMediaPipe() {
     });
     cam.start()
        .then(() => document.getElementById('loadingScreen').classList.add('hidden'))
-       .catch(() => { document.getElementById('loadingSub').textContent = 'تعذّر الوصول للكاميرا'; });
+       .catch(() => { document.getElementById('loadingSub').textContent = '{{ t("camera_access_failed") }}'; });
 }
 
 let toastTimer = null;
@@ -483,21 +483,22 @@ let isSpeaking = false;
 
 function speakWord() {
     const word = currentWord.join('').trim();
-    if (!word) { showToast('اكتب كلمة الأول', 'error'); return; }
+    if (!word) { showToast('{{ t("toast_type_word_first") }}', 'error'); return; }
     if (isSpeaking) { window.speechSynthesis.cancel(); return; }
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(word);
-    u.lang = 'ar-SA';
+    const lang = "{{ active_lang }}";
+    u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
     u.rate = 0.85;
     const voices = window.speechSynthesis.getVoices();
-    const arVoice = voices.find(v => v.lang.startsWith('ar'));
-    if (arVoice) u.voice = arVoice;
+    const voice = voices.find(v => v.lang.startsWith(lang));
+    if (voice) u.voice = voice;
     const btn = document.getElementById('speakBtn');
     isSpeaking = true;
-    if(btn) { btn.textContent = 'إيقاف'; btn.classList.add('speaking'); }
+    if(btn) { btn.textContent = '{{ t("translate_stop_btn") }}'; btn.classList.add('speaking'); }
     u.onend = u.onerror = () => {
         isSpeaking = false;
-        if(btn) { btn.textContent = 'نطق'; btn.classList.remove('speaking'); }
+        if(btn) { btn.textContent = '{{ t("btn_speak") }}'; btn.classList.remove('speaking'); }
     };
     window.speechSynthesis.speak(u);
 }
@@ -513,13 +514,13 @@ async function saveToHistory() {
         const res  = await fetch('/history/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text: word}) });
         const data = await res.json();
         if (data.success) {
-            showToast('تم الحفظ في سجلك'); btn.textContent = 'تم الحفظ';
+            showToast('{{ t("toast_saved") }}'); btn.textContent = '{{ t("toast_saved") }}';
             loadHistory();
-            setTimeout(() => { btn.textContent = 'حفظ'; btn.disabled = false; checkSaveBtn(); }, 2000);
+            setTimeout(() => { btn.textContent = '{{ t("btn_save") }}'; btn.disabled = false; checkSaveBtn(); }, 2000);
         } else {
-            showToast(data.error || 'فشل الحفظ', 'error'); btn.textContent = 'حفظ'; btn.disabled = false;
+            showToast(data.error || '{{ t("toast_save_failed") }}', 'error'); btn.textContent = '{{ t("btn_save") }}'; btn.disabled = false;
         }
-    } catch(e) { showToast('خطأ في الاتصال', 'error'); btn.textContent = 'حفظ'; btn.disabled = false; }
+    } catch(e) { showToast('{{ t("toast_network_error") }}', 'error'); btn.textContent = '{{ t("btn_save") }}'; btn.disabled = false; }
 }
 
 function checkSaveBtn() {
@@ -534,7 +535,7 @@ async function loadHistory() {
         document.getElementById('historyBadge').textContent = data.entries?.length || 0;
         const list = document.getElementById('historyList');
         list.replaceChildren();
-        if (!entries.length) { list.innerHTML = '<div class="history-empty">لا يوجد جمل محفوظة بعد</div>'; return; }
+        if (!entries.length) { list.innerHTML = '<div class="history-empty">{{ t("no_saved_sentences") }}</div>'; return; }
         entries.forEach(e => {
             const item = document.createElement('div');
             item.className = 'history-item';
@@ -557,9 +558,11 @@ async function loadHistory() {
 function speakHistItem(text) {
     if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ar-SA'; u.rate = 0.85;
-    const ar = window.speechSynthesis.getVoices().find(v => v.lang.startsWith('ar'));
-    if (ar) u.voice = ar;
+    const lang = "{{ active_lang }}";
+    u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
+    u.rate = 0.85;
+    const voice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith(lang));
+    if (voice) u.voice = voice;
     window.speechSynthesis.speak(u);
 }
 

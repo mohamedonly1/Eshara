@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>محرر وضعيات اليد التلقائي</title>
+    <title>{{ t('title_pose_editor') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
@@ -201,14 +201,14 @@
             <div>
                 <div class="header-row">
                     <div>
-                        <div class="title">عارض اليد ثلاثية الأبعاد</div>
-                        <div class="subtitle">تحديث فوري مع تحريك السلايدر</div>
+                        <div class="title">{{ t('translate_canvas_label') }}</div>
+                        <div class="subtitle">{{ t('pose_editor_subtitle') }}</div>
                     </div>
                     <div>
-                        <label style="font-size:12px;color:var(--text-dim);margin-left:6px;">الحرف:</label>
+                        <label style="font-size:12px;color:var(--text-dim);margin-left:6px;">{{ t('pose_editor_letter') }}:</label>
                         <button id="zoomBtn" class="btn" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); padding: 4px 10px; font-size:14px; margin-left: 8px;" title="تكبير / تقسيم الشاشة">⛶</button>
                         <select id="letterSelect" class="select-letter">
-                            {% set letters = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'] %}
+                            {% set letters = letters if letters is defined else ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'] %}
                             {% for letter in letters %}
                             <option value="{{ letter }}">{{ letter }}</option>
                             {% endfor %}
@@ -217,36 +217,36 @@
                     </div>
                 </div>
                 <div class="three-wrap">
-                    <div class="three-label">معاينة الوضعية</div>
+                    <div class="three-label">{{ t('pose_editor_preview_label') }}</div>
                     <div id="threeContainer"><canvas id="threeCanvas"></canvas></div>
                 </div>
             </div>
 
             <div class="capture-section">
-                <div class="title">التقاط ذكي من الكاميرا</div>
-                <div class="subtitle" id="camStatus">جاري تشغيل الكاميرا... يرجى الانتظار</div>
+                <div class="title">{{ t('pose_editor_cam_title') }}</div>
+                <div class="subtitle" id="camStatus">{{ t('pose_editor_cam_init') }}</div>
                 <div class="camera-preview">
                     <video id="editorVideo" autoplay playsinline></video>
                     <canvas id="editorCanvas"></canvas>
                 </div>
-                <button id="capturePoseBtn" class="btn btn-capture" style="width: 100%; justify-content: center; margin-top: 10px;">التقط وضعية الأصابع الآن</button>
+                <button id="capturePoseBtn" class="btn btn-capture" style="width: 100%; justify-content: center; margin-top: 10px;">{{ t('pose_editor_capture_btn') }}</button>
             </div>
         </div>
 
         <div class="card controls-card">
             <div class="controls-header">
                 <div>
-                    <div class="title" style="font-size:14px;">التحكم اليدوي في العظام</div>
-                    <div class="subtitle">حرّك السلايدر للتعديل الدقيق</div>
+                    <div class="title" style="font-size:14px;">{{ t('pose_editor_controls_title') }}</div>
+                    <div class="subtitle"> {{ t('pose_editor_controls_desc') }}</div>
                 </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;">
-                    <button id="resetBtn" class="btn btn-reset" type="button">إعادة تعيين</button>
-                    <button id="copyBtn" class="btn btn-copy" type="button">نسخ JSON</button>
-                    <button id="saveBtn" class="btn btn-save" type="button">حفظ الوضعية</button>
+                    <button id="resetBtn" class="btn btn-reset" type="button">{{ t('pose_editor_reset_btn') }}</button>
+                    <button id="copyBtn" class="btn btn-copy" type="button">{{ t('pose_editor_copy_btn') }}</button>
+                    <button id="saveBtn" class="btn btn-save" type="button">{{ t('pose_editor_save_btn') }}</button>
                 </div>
             </div>
             <div class="bones-grid-header">
-                <span>العظمة</span>
+                <span>{{ t('pose_editor_bone') }}</span>
                 <span>X</span>
                 <span>Y</span>
                 <span>Z</span>
@@ -258,78 +258,7 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="{{ url_for('static', filename='poses.js') }}"></script>
-<script>
-// Toast
-let toastTimer = null;
-function showToast(msg, type) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast show' + (type === 'error' ? ' error' : '');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-}
 
-// ==== Three.js Setup ====
-const container = document.getElementById('threeContainer');
-const canvas = document.getElementById('threeCanvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-renderer.setPixelRatio(window.devicePixelRatio || 1);
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x020617);
-const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-camera.position.set(0, 0.5, 6.5); // أرجعنا الكاميرا للخلف قليلاً
-camera.lookAt(0, 0, 0); // جعلنا الكاميرا تنظر للمنتصف تماماً
-
-scene.add(new THREE.HemisphereLight(0x38bdf8, 0x020617, 0.7));
-const dir1 = new THREE.DirectionalLight(0xffffff, 0.9);
-dir1.position.set(2, 3, 4);
-scene.add(dir1);
-
-let handModel = null;
-let handBonesByName = {};
-let handBoneBindQuat = {};
-
-function resizeRenderer() {
-    let w = container.clientWidth;
-    let h = container.clientHeight;
-    renderer.setSize(w, h, true);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-}
-resizeRenderer();
-window.addEventListener('resize', resizeRenderer);
-
-if (window.THREE && THREE.GLTFLoader) {
-    new THREE.GLTFLoader().load("{{ url_for('static', filename='models/hand.glb') }}", (gltf) => {
-        handModel = gltf.scene;
-        handModel.traverse(obj => {
-            if (obj.isBone) handBonesByName[obj.name] = obj;
-            <div class="controls-header">
-                <div>
-                    <div class="title" style="font-size:14px;">التحكم اليدوي في العظام</div>
-                    <div class="subtitle">حرّك السلايدر للتعديل الدقيق</div>
-                </div>
-                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end;">
-                    <button id="resetBtn" class="btn btn-reset" type="button">إعادة تعيين</button>
-                    <button id="copyBtn" class="btn btn-copy" type="button">نسخ JSON</button>
-                    <button id="saveBtn" class="btn btn-save" type="button">حفظ الوضعية</button>
-                </div>
-            </div>
-            <div class="bones-grid-header">
-                <span>العظمة</span>
-                <span>X</span>
-                <span>Y</span>
-                <span>Z</span>
-            </div>
-            <div id="bonesControls" class="bones-scroll"></div>
-        </div>
-    </div>
-</div>
-
-<div id="toast" class="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
@@ -416,13 +345,13 @@ window.addEventListener('mousemove', e => {
 
 // ==== Pose Control Logic ====
 const BONE_LIST = [
-    { id: 'global_rotation', label: 'المجسم بالكامل' },
-    { id: 'radius_ulna', label: 'المعصم (اتجاه اليد)' },
-    { id: 'thumb_meta', label: 'الإبهام - قاعدة' }, { id: 'thumb_prox', label: 'الإبهام - أول' }, { id: 'thumb_dist', label: 'الإبهام - طرف' },
-    { id: 'index_prox', label: 'السبابة - أول' }, { id: 'index_midd', label: 'السبابة - وسط' }, { id: 'index_dist', label: 'السبابة - طرف' },
-    { id: 'midd_prox', label: 'الوسطى - أول' }, { id: 'midd_midd', label: 'الوسطى - وسط' }, { id: 'midd_dist', label: 'الوسطى - طرف' },
-    { id: 'ring_prox', label: 'البنصر - أول' }, { id: 'ring_midd', label: 'البنصر - وسط' }, { id: 'ring_dist', label: 'البنصر - طرف' },
-    { id: 'pinky_prox', label: 'الخنصر - أول' }, { id: 'pinky_midd', label: 'الخنصر - وسط' }, { id: 'pinky_dist', label: 'الخنصر - طرف' }
+    { id: 'global_rotation', label: '{{ t("pose_editor_bone_global") }}' },
+    { id: 'radius_ulna', label: '{{ t("pose_editor_bone_wrist") }}' },
+    { id: 'thumb_meta', label: '{{ t("pose_editor_bone_thumb_base") }}' }, { id: 'thumb_prox', label: '{{ t("pose_editor_bone_thumb_mid") }}' }, { id: 'thumb_dist', label: '{{ t("pose_editor_bone_thumb_tip") }}' },
+    { id: 'index_prox', label: '{{ t("pose_editor_bone_index_base") }}' }, { id: 'index_midd', label: '{{ t("pose_editor_bone_index_mid") }}' }, { id: 'index_dist', label: '{{ t("pose_editor_bone_index_tip") }}' },
+    { id: 'midd_prox', label: '{{ t("pose_editor_bone_middle_base") }}' }, { id: 'midd_midd', label: '{{ t("pose_editor_bone_middle_mid") }}' }, { id: 'midd_dist', label: '{{ t("pose_editor_bone_middle_tip") }}' },
+    { id: 'ring_prox', label: '{{ t("pose_editor_bone_ring_base") }}' }, { id: 'ring_midd', label: '{{ t("pose_editor_bone_ring_mid") }}' }, { id: 'ring_dist', label: '{{ t("pose_editor_bone_ring_tip") }}' },
+    { id: 'pinky_prox', label: '{{ t("pose_editor_bone_pinky_base") }}' }, { id: 'pinky_midd', label: '{{ t("pose_editor_bone_pinky_mid") }}' }, { id: 'pinky_dist', label: '{{ t("pose_editor_bone_pinky_tip") }}' }
 ];
 
 let currentLetter = document.getElementById('letterSelect').value;
@@ -656,9 +585,9 @@ function syncUIFromPose() {
     const metaDiv = document.getElementById('poseMetaInfo');
     if (ALL_POSES[currentLetter] && ALL_POSES[currentLetter]._meta) {
         const meta = ALL_POSES[currentLetter]._meta;
-        metaDiv.innerHTML = `<span style="color:var(--accent)">✓ تم التعديل يدوياً</span><br>بواسطة: ${meta.saved_by}<br>بتاريخ: <span style="font-family:monospace">${meta.saved_at}</span>`;
+        metaDiv.innerHTML = `<span style="color:var(--accent)">✓ {{ t("pose_editor_meta_edited") }}</span><br>{{ t("pose_editor_meta_by") }}: ${meta.saved_by}<br>{{ t("pose_editor_meta_at") }}: <span style="font-family:monospace">${meta.saved_at}</span>`;
     } else {
-        metaDiv.innerHTML = `<span style="color:var(--warn)">بيانات خام (لم تُعدل يدوياً)</span>`;
+        metaDiv.innerHTML = `<span style="color:var(--warn)">{{ t("pose_editor_meta_raw") }}</span>`;
     }
 }
 
@@ -690,13 +619,13 @@ hands.setOptions({maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.
 hands.onResults((results) => {
     ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
     if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        document.getElementById('camStatus').textContent = "تم اكتشاف يد.. يمكنك التقاط الوضعية الآن";
+        document.getElementById('camStatus').textContent = "{{ t('pose_editor_cam_detected') }}";
         document.getElementById('camStatus').style.color = "var(--accent)";
         currentLandmarks = results.multiHandLandmarks[0];
         drawConnectors(ctx, currentLandmarks, HAND_CONNECTIONS, {color: '#00d4aa', lineWidth: 2});
         drawLandmarks(ctx, currentLandmarks, {color: '#f59e0b', radius: 2});
     } else {
-        document.getElementById('camStatus').textContent = "أظهر يدك أمام الكاميرا";
+        document.getElementById('camStatus').textContent = "{{ t('pose_editor_cam_show_hand') }}";
         document.getElementById('camStatus').style.color = "var(--warn)";
         currentLandmarks = null;
     }
@@ -712,7 +641,7 @@ const cameraUtils = new Camera(videoEl, {
 cameraUtils.start();
 
 function captureCurrentPose() {
-    if (!currentLandmarks) { showToast('لم يتم اكتشاف يد في الكاميرا', 'error'); return; }
+    if (!currentLandmarks) { showToast('{{ t("pose_editor_err_no_hand") }}', 'error'); return; }
     
     // الاحتفاظ باتجاه المجسم الحالي
     const oldGlobal = currentPose['global_rotation'] || { x: 0.15, y: -0.55, z: 0 };
@@ -730,7 +659,7 @@ function captureCurrentPose() {
     currentPose['global_rotation'] = oldGlobal;
 
     syncUIFromPose();
-    showToast('تم التقاط الوضعية بنجاح!', null);
+    showToast('{{ t("pose_editor_captured_success") }}', null);
 }
 
 document.getElementById('capturePoseBtn').addEventListener('click', captureCurrentPose);
@@ -753,16 +682,24 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
         const data = await res.json();
         if (data.success) {
             ALL_POSES[currentLetter] = JSON.parse(JSON.stringify(currentPose));
-            // Add local meta so UI updates immediately without reload
             ALL_POSES[currentLetter]._meta = {
-                saved_at: 'الآن',
-                saved_by: 'أنت'
+                saved_at: '{{ t("pose_editor_time_now") }}',
+                saved_by: '{{ t("pose_editor_user_you") }}'
             };
             updateLetterCheckmarks();
-            syncUIFromPose(); // To update the meta div
-            showToast('تم حفظ الوضعية بنجاح', null);
-        } else { showToast(data.error || 'فشل حفظ الوضعية', 'error'); }
-    } catch (e) { showToast('خطأ في الاتصال أثناء الحفظ', 'error'); }
+            syncUIFromPose();
+            showToast('{{ t("pose_editor_saved_success") }}', null);
+        } else { showToast(data.error || '{{ t("toast_error") }}', 'error'); }
+    } catch (e) { showToast('{{ t("toast_network_error") }}', 'error'); }
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+    const jsonStr = JSON.stringify(currentPose, null, 4);
+    navigator.clipboard.writeText(jsonStr).then(() => {
+        showToast('{{ t("pose_editor_copied") }}', null);
+    }).catch(() => {
+        showToast('{{ t("toast_error") }}', 'error');
+    });
 });
 
 buildControlsUI();

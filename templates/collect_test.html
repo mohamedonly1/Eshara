@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>جمع بيانات الاختبار — إشارة</title>
+    <title>{{ t('title_collect_test') }}</title>
     <meta name="description" content="صفحة جمع بيانات اختبار لغة الإشارة العربية من مستخدمين جدد">
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -104,18 +104,18 @@
 <!-- Name Gate -->
 <div class="name-gate" id="nameGate">
     <div class="gate-box">
-        <h1>🤟 إشارة</h1>
-        <p>ساعدنا في اختبار النموذج!<br>أدخل اسمك للبدء بتسجيل عينات الاختبار</p>
-        <input type="text" id="nameInput" placeholder="اسمك هنا..." maxlength="40" autocomplete="off">
-        <button id="startBtn" onclick="startCollecting()" disabled>ابدأ التسجيل</button>
+        <h1>{{ t('collect_test_gate_title') }}</h1>
+        <p>{{ t('collect_test_gate_desc')|safe }}</p>
+        <input type="text" id="nameInput" placeholder="{{ t('collect_test_gate_placeholder') }}" maxlength="40" autocomplete="off">
+        <button id="startBtn" onclick="startCollecting()" disabled>{{ t('collect_test_gate_btn') }}</button>
     </div>
 </div>
 
 <!-- Loading -->
 <div class="loading-screen hidden" id="loadingScreen">
     <div style="font-size:36px">🤟</div>
-    <div style="font-size:18px;font-weight:900;margin-top:10px;color:var(--accent)">جمع بيانات الاختبار</div>
-    <div style="font-size:12px;color:var(--text-dim);margin-top:6px" id="loadingSub">جاري تحميل MediaPipe...</div>
+    <div style="font-size:18px;font-weight:900;margin-top:10px;color:var(--accent)">{{ t('title_collect_test') }}</div>
+    <div style="font-size:12px;color:var(--text-dim);margin-top:6px" id="loadingSub">{{ t('loading_mediapipe') }}</div>
     <div class="spinner"></div>
 </div>
 
@@ -124,22 +124,22 @@
 <div class="page-wrap" id="pageWrap" style="display:none">
     <!-- Top Bar -->
     <div class="top-bar">
-        <span class="logo">🤟 اختبار إشارة</span>
+        <span class="logo">{{ t('collect_test_top_title') }}</span>
         <span class="tester-badge" id="testerBadge"></span>
     </div>
 
     <!-- Overall Progress -->
     <div class="overall-progress">
         <div class="overall-row">
-            <span>التقدم الكلي</span>
-            <span id="overallText">0 / 29 حرف</span>
+            <span>{{ t('collect_test_progress_title') }}</span>
+            <span id="overallText">0 / {{ letters|length }} {{ t('collect_test_progress_desc', done=0, total=letters|length) }}</span>
         </div>
         <div class="overall-track"><div class="overall-fill" id="overallFill" style="width:0%"></div></div>
     </div>
 
     <div class="completion-banner" id="completionBanner">
-        <h3>🎉 أحسنت! اكتمل التسجيل</h3>
-        <p>يمكنك تصدير البيانات الآن أو الاستمرار بإضافة عينات إضافية</p>
+        <h3>{{ t('collect_test_completion_title') }}</h3>
+        <p>{{ t('collect_test_completion_desc') }}</p>
     </div>
 
     <!-- Camera -->
@@ -148,7 +148,7 @@
         <canvas id="overlay"></canvas>
         <div class="bracket tl"></div><div class="bracket tr"></div>
         <div class="bracket bl"></div><div class="bracket br"></div>
-        <div class="hand-status" id="handStatus">في انتظار اليد...</div>
+        <div class="hand-status" id="handStatus">{{ t('collect_test_waiting_hand') }}</div>
         <div class="confidence-badge" id="confBadge"></div>
         <div class="flash-overlay" id="flashOverlay"></div>
     </div>
@@ -158,8 +158,8 @@
         <div class="letter-nav">
             <div class="letter-display" id="letterDisplay">أ</div>
             <div class="letter-info">
-                <div class="letter-label" id="letterLabel">حرف: أ (1 من 29)</div>
-                <div class="letter-count-text" id="letterCountText">0 / 10 عينات</div>
+                <div class="letter-label" id="letterLabel">أ (1 من {{ letters|length }})</div>
+                <div class="letter-count-text" id="letterCountText">0 / 10</div>
                 <div class="letter-track"><div class="letter-fill" id="letterFill" style="width:0%"></div></div>
             </div>
             <div class="nav-arrows">
@@ -168,14 +168,36 @@
             </div>
         </div>
         <div class="btns-row">
-            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>سجّل (مسافة)</button>
-            <button class="export-btn" id="exportBtn" onclick="exportData()" disabled>📥 تصدير</button>
+            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>{{ t('collect_test_record_btn') }}</button>
+            <button class="export-btn" id="exportBtn" onclick="exportData()" disabled>{{ t('collect_test_export_btn') }}</button>
         </div>
     </div>
 </div>
 
 <script>
-const LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+// CSRF Protection Helper (SEC-01)
+(function() {
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
+
+const LETTERS = {{ letters | tojson | safe }};
 const TARGET = 10;
 const CONF_THRESHOLD = 0.8;
 
@@ -223,18 +245,18 @@ function updateUI() {
     const letter = LETTERS[currentIdx];
     const count = counts[currentIdx] || 0;
     document.getElementById('letterDisplay').textContent = letter;
-    document.getElementById('letterLabel').textContent = `حرف: ${letter} (${currentIdx + 1} من 29)`;
-    document.getElementById('letterCountText').textContent = `${count} / ${TARGET} عينات`;
+    document.getElementById('letterLabel').textContent = `{{ t("collect_test_letter_label") }}`.replace('{letter}', letter).replace('{index}', currentIdx + 1).replace('{total}', LETTERS.length);
+    document.getElementById('letterCountText').textContent = `{{ t("collect_test_letter_samples") }}`.replace('{count}', count).replace('{target}', TARGET);
     document.getElementById('letterFill').style.width = Math.min(count / TARGET * 100, 100) + '%';
 
     // Overall
     let done = 0;
     LETTERS.forEach((_, i) => { if ((counts[i] || 0) >= TARGET) done++; });
-    document.getElementById('overallText').textContent = `${done} / 29 حرف`;
-    document.getElementById('overallFill').style.width = (done / 29 * 100) + '%';
+    document.getElementById('overallText').textContent = `{{ t("collect_test_progress_desc") }}`.replace('{done}', done).replace('{total}', LETTERS.length);
+    document.getElementById('overallFill').style.width = (done / LETTERS.length * 100) + '%';
 
     const banner = document.getElementById('completionBanner');
-    if (done >= 29) { banner.classList.add('show'); } else { banner.classList.remove('show'); }
+    if (done >= LETTERS.length) { banner.classList.add('show'); } else { banner.classList.remove('show'); }
 
     document.getElementById('exportBtn').disabled = totalSamples < 1;
 }
@@ -243,7 +265,7 @@ function updateUI() {
 async function recordSample() {
     if (!currentLandmarks || isRecording) return;
     if (currentConfidence < CONF_THRESHOLD) {
-        showToast('ثقة الكشف منخفضة، حرّك يدك', true);
+        showToast('{{ t("collect_test_toast_low_conf") }}', true);
         return;
     }
     isRecording = true;
@@ -269,20 +291,20 @@ async function recordSample() {
             btn.className = 'record-btn success';
             btn.textContent = '✓ تم';
             if (navigator.vibrate) navigator.vibrate(30);
-            if (counts[currentIdx] === TARGET) showToast('🎉 اكتمل حرف ' + LETTERS[currentIdx]);
+            if (counts[currentIdx] === TARGET) showToast('🎉 ' + `{{ t("toast_completed") }}`.replace('{letter}', LETTERS[currentIdx]));
             setTimeout(() => {
                 btn.className = 'record-btn';
-                btn.textContent = 'سجّل (مسافة)';
+                btn.textContent = '{{ t("collect_test_record_btn") }}';
                 btn.disabled = false;
                 isRecording = false;
             }, 400);
         } else {
-            showToast(data.error || 'فشل', true);
+            showToast(data.error || '{{ t("toast_record_failed") }}', true);
             btn.disabled = false;
             isRecording = false;
         }
     } catch(e) {
-        showToast('خطأ في الاتصال', true);
+        showToast('{{ t("toast_network_error") }}', true);
         btn.disabled = false;
         isRecording = false;
     }
@@ -304,7 +326,7 @@ async function exportData() {
         const res = await fetch('/collect-test/export');
         if (!res.ok) {
             const d = await res.json().catch(() => ({}));
-            showToast(d.error || 'فشل التصدير', true);
+            showToast(d.error || '{{ t("collect_test_toast_export_failed") }}', true);
             return;
         }
         const blob = await res.blob();
@@ -314,9 +336,9 @@ async function exportData() {
         a.download = 'test_keypoints.csv';
         a.click();
         URL.revokeObjectURL(url);
-        showToast('تم تحميل الملف');
+        showToast('{{ t("collect_test_toast_export_success") }}');
     } catch(e) {
-        showToast('فشل التصدير', true);
+        showToast('{{ t("collect_test_toast_export_failed") }}', true);
     }
 }
 
@@ -364,7 +386,7 @@ function drawHand(landmarks, videoW, videoH) {
 
 // ── MediaPipe ──
 function initMediaPipe() {
-    document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
+    document.getElementById('loadingSub').textContent = '{{ t("loading_mediapipe") }}';
     const hands = new Hands({locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f});
     hands.setOptions({maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5});
 
@@ -389,30 +411,30 @@ function initMediaPipe() {
             confBadge.textContent = Math.round(currentConfidence * 100) + '%';
             confBadge.classList.add('show');
 
-            document.getElementById('handStatus').textContent = 'يد مكتشفة ✋';
+            document.getElementById('handStatus').textContent = '{{ t("collect_test_hand_detected") }}';
             document.getElementById('handStatus').className = 'hand-status detected';
-
+ 
             const btn = document.getElementById('recordBtn');
             if (!isRecording) {
                 btn.disabled = false;
-                btn.textContent = 'سجّل (مسافة)';
+                btn.textContent = '{{ t("collect_test_record_btn") }}';
             }
         } else {
             currentLandmarks = null;
             currentConfidence = 0;
             overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-            document.getElementById('handStatus').textContent = 'في انتظار اليد...';
+            document.getElementById('handStatus').textContent = '{{ t("collect_test_waiting_hand") }}';
             document.getElementById('handStatus').className = 'hand-status';
             confBadge.classList.remove('show');
             if (!isRecording) {
                 document.getElementById('recordBtn').disabled = true;
-                document.getElementById('recordBtn').textContent = 'أظهر يدك أمام الكاميرا';
+                document.getElementById('recordBtn').textContent = '{{ t("collect_test_show_hand") }}';
             }
         }
     });
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        document.getElementById('loadingSub').textContent = 'متصفحك لا يدعم الكاميرا';
+        document.getElementById('loadingSub').textContent = '{{ t("camera_browser_error") }}';
         return;
     }
 
@@ -430,7 +452,7 @@ function initMediaPipe() {
     camera.start().then(() => {
         document.getElementById('loadingScreen').classList.add('hidden');
     }).catch(err => {
-        document.getElementById('loadingSub').textContent = 'تعذّر الوصول للكاميرا: ' + (err.message || err);
+        document.getElementById('loadingSub').textContent = '{{ t("camera_access_failed") }}';
     });
 }
 </script>

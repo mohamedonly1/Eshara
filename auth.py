@@ -9,7 +9,7 @@ import hmac
 import json
 import os
 import re
-import random
+import secrets
 import smtplib
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
@@ -31,6 +31,10 @@ os.makedirs(USERS_DIR, exist_ok=True)
 
 # Central Logger setup for emails
 email_logger = config.get_file_logger('email', config.SERVER_LOG)
+
+def generate_secure_otp(length: int = 6) -> str:
+    """Generates a cryptographically secure numeric OTP using the secrets module."""
+    return ''.join(secrets.choice('0123456789') for _ in range(length))
 
 def hash_password(password: str) -> str:
     """Hashes a password using PBKDF2 with SHA-256."""
@@ -161,7 +165,8 @@ def register_user(name: str, email: str, password: str, ip: str = None, user_age
             return None, 'البريد الإلكتروني مستخدم بالفعل'
 
     now = datetime.now().strftime('%Y-%m-%d %H:%M')
-    verification_code = f"{random.randint(100000, 999999)}"
+    verification_code = generate_secure_otp()
+    verification_expires = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M')
 
     user = {
         'id': user_id,
@@ -169,6 +174,7 @@ def register_user(name: str, email: str, password: str, ip: str = None, user_age
         'email': email,
         'email_verified': False,
         'verification_code': verification_code,
+        'verification_code_expires': verification_expires,
         'password': hash_password(password),
         'created': now,
         'role': 'user',
@@ -283,8 +289,8 @@ def update_profile(
 
     users = load_users()
     
-    # Check email changes
-    email_changed = False
+    # Check email changes — use pending_email pattern (SEC-05)
+    email_change_requested = False
     if new_email:
         new_email = new_email.strip().lower()
         if new_email != user.get('email', '').lower():
@@ -295,10 +301,11 @@ def update_profile(
             for uid, uinfo in users.items():
                 if uid != user_id and uinfo.get('email', '').lower() == new_email:
                     return None, 'البريد الإلكتروني مستخدم بالفعل'
-            user['email'] = new_email
-            user['email_verified'] = False
-            user['verification_code'] = f"{random.randint(100000, 999999)}"
-            email_changed = True
+            # Store as pending — do NOT change the active email yet
+            user['pending_email'] = new_email
+            user['verification_code'] = generate_secure_otp()
+            user['verification_code_expires'] = (datetime.now() + timedelta(hours=24)).strftime('%Y-%m-%d %H:%M')
+            email_change_requested = True
 
     # Check password changes
     if new_password:
@@ -328,9 +335,6 @@ def update_profile(
         # Update users.json index
         users[new_user_id] = users.pop(user_id)
         users[new_user_id]['name'] = new_name
-        if new_email:
-            users[new_user_id]['email'] = new_email
-            users[new_user_id]['email_verified'] = not email_changed
         save_users(users)
         
         # Save to new file path
@@ -353,16 +357,12 @@ def update_profile(
             except Exception as e:
                 email_logger.error("Failed to delete old user file %s: %s", old_path, e)
     else:
-        # Just update email if changed
-        if new_email:
-            users[user_id]['email'] = new_email
-            users[user_id]['email_verified'] = not email_changed
         save_users(users)
         save_user(user)
 
-    # If email changed, trigger email sending
-    if email_changed:
-        send_verification_email(user['email'], user['name'], user['verification_code'])
+    # If email change was requested, send verification to the PENDING address
+    if email_change_requested:
+        send_verification_email(user['pending_email'], user['name'], user['verification_code'])
 
     return new_user_id, None
 
@@ -420,13 +420,30 @@ def parse_browser(ua: Optional[str]) -> str:
     return 'Other'
 
 # ===== Data Recording helpers =====
-def record_sample(user_id: str, label: int) -> bool:
-    """Records an accepted data sample in the user statistics file."""
+def record_sample(user_id: str, label: int, lang_code: str = 'ar') -> bool:
+    """Records an accepted data sample in the user statistics file for a specific language."""
     user = load_user(user_id)
     if not user:
         return False
     label_str = str(label)
-    user['samples'][label_str] = user['samples'].get(label_str, 0) + 1
+    
+    if 'samples' not in user:
+        user['samples'] = {}
+        
+    # Migrate flat dicts to lang-structured dicts
+    has_flat = False
+    for k in list(user['samples'].keys()):
+        if k.isdigit():
+            has_flat = True
+            break
+    if has_flat:
+        old_samples = user['samples']
+        user['samples'] = {'ar': {k: v for k, v in old_samples.items() if k.isdigit()}}
+        
+    if lang_code not in user['samples']:
+        user['samples'][lang_code] = {}
+        
+    user['samples'][lang_code][label_str] = user['samples'][lang_code].get(label_str, 0) + 1
     user['total_accepted'] = user.get('total_accepted', 0) + 1
     user['last_active'] = datetime.now().strftime('%Y-%m-%d %H:%M')
     save_user(user)
@@ -440,8 +457,8 @@ def record_rejected(user_id: str) -> None:
     user['rejected'] = user.get('rejected', 0) + 1
     save_user(user)
 
-def get_all_users_stats() -> List[Dict[str, Any]]:
-    """Compiles statistics for all registered users."""
+def get_all_users_stats(lang_code: str = 'ar') -> List[Dict[str, Any]]:
+    """Compiles statistics for all registered users, filtered by active language."""
     users = load_users()
     stats = []
     for user_id in users:
@@ -451,6 +468,21 @@ def get_all_users_stats() -> List[Dict[str, Any]]:
             rejected = user.get('rejected', 0)
             quality = round(total / (total + rejected) * 100) if (total + rejected) > 0 else 0
             device = user.get('device_info', {})
+            
+            # Extract language specific samples
+            all_samples = user.get('samples', {})
+            has_flat = False
+            for k in list(all_samples.keys()):
+                if k.isdigit():
+                    has_flat = True
+                    break
+            if has_flat:
+                all_samples = {'ar': {k: v for k, v in all_samples.items() if k.isdigit()}}
+                user['samples'] = all_samples
+                save_user(user)
+                
+            lang_samples = all_samples.get(lang_code, {})
+            
             stats.append({
                 'id': user_id,
                 'name': user['name'],
@@ -459,13 +491,13 @@ def get_all_users_stats() -> List[Dict[str, Any]]:
                 'profile_pic': user.get('profile_pic', ''),
                 'role': get_user_role(user),
                 'status': user.get('status', 'active'),
-                'total': total,
+                'total': sum(lang_samples.values()),
                 'rejected': rejected,
                 'quality': quality,
-                'letters_count': len(user.get('samples', {})),
+                'letters_count': len(lang_samples),
                 'last_active': user.get('last_active', '-'),
                 'created': user.get('created', '-'),
-                'samples': user.get('samples', {}),
+                'samples': lang_samples,
                 'device': {
                     'ip': device.get('ip', 'unknown'),
                     'device_type': device.get('device_type', 'unknown'),
@@ -583,8 +615,8 @@ def request_password_reset(identifier: str) -> Tuple[bool, Optional[str]]:
     if not email:
         return False, 'الحساب لا يحتوي على بريد إلكتروني مسجل. يرجى التواصل مع الإدارة لإعادة تعيين كلمة المرور.'
 
-    # Generate 6-digit reset code
-    reset_code = f"{random.randint(100000, 999999)}"
+    # Generate cryptographically secure 6-digit reset code
+    reset_code = generate_secure_otp()
     expires_at = (datetime.now() + timedelta(minutes=15)).strftime('%Y-%m-%d %H:%M')
     
     user['reset_code'] = reset_code

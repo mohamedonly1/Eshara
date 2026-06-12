@@ -17,7 +17,7 @@
             <circle cx="18" cy="7.5" r="1.2" fill="white"/>
             <circle cx="21" cy="10" r="1.2" fill="white"/>
         </svg>
-        <span class="nav-logo">إشارة</span>
+        <span class="nav-logo">{{ t('app_name') }}</span>
     </a>
 
     <button class="hamburger" id="hamburgerBtn" aria-label="Menu">
@@ -31,7 +31,14 @@
 
         <div class="nav-user" id="navUser">
             
-            <button id="themeToggle" class="theme-toggle-btn" aria-label="تبديل المظهر">
+            <!-- مغير اللغات -->
+            <div style="position: relative; display: flex; align-items: center; margin-left: 4px;">
+                <select id="langSelector" onchange="changeLanguage(this.value)" style="background: var(--surface2); border: 1px solid var(--border); color: var(--text); padding: 5px 8px; border-radius: 8px; font-family:'Cairo'; font-size:12px; font-weight:700; outline:none; cursor:pointer;">
+                    <option value="ar">العربية (AR)</option>
+                </select>
+            </div>
+
+            <button id="themeToggle" class="theme-toggle-btn" aria-label="{{ t('nav_theme_toggle') }}">
                 <span class="icon-moon">&#9790;</span>
                 <span class="icon-sun" style="display:none;">&#9788;</span>
             </button>
@@ -40,7 +47,7 @@
                 <div class="nav-avatar" id="navAvatar">؟</div>
                 <div class="nav-name" id="navName">...</div>
             </a>
-            <button class="nav-logout" onclick="doLogout()">خروج</button>
+            <button class="nav-logout" onclick="doLogout()">{{ t('nav_logout') }}</button>
         </div>
     </div>
 </nav>
@@ -189,6 +196,31 @@
 </style>
 
 <script>
+// =============================================
+// CSRF Protection Helper (SEC-01)
+// Automatically attaches X-CSRFToken header to all non-GET fetch requests
+// =============================================
+(function() {
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
+
     // نظام الوضع الليلي (Dark Mode)
 // 1. فحص التفضيلات المحفوظة فوراً قبل تحميل الصفحة
 const savedTheme = localStorage.getItem('ishara-theme');
@@ -255,12 +287,12 @@ async function initNavbar() {
     }
     const path = window.location.pathname;
 const links = [
-        { href: '/',             icon: '', label: 'التعرف',       roles: ['user','admin'] },
-        { href: '/translate',    icon: '', label: 'ترجمة',        roles: ['user','admin'] },
-        { href: '/collect-data', icon: '', label: 'تسجيل بيانات', roles: ['user','admin'] },
-        { href: '/profile',      icon: '', label: 'حسابي',        roles: ['user','admin'] },
-        { href: '/pose-editor',  icon: '', label: 'المحرر',       roles: ['admin'] },
-        { href: '/admin',        icon: '', label: 'الأدمن',       roles: ['admin'], cls: 'admin-link' },
+        { href: '/',             icon: '', label: '{{ t("nav_recognize") }}',       roles: ['user','admin'] },
+        { href: '/translate',    icon: '', label: '{{ t("nav_translate") }}',        roles: ['user','admin'] },
+        { href: '/collect-data', icon: '', label: '{{ t("nav_collect") }}', roles: ['user','admin'] },
+        { href: '/profile',      icon: '', label: '{{ t("nav_profile") }}',        roles: ['user','admin'] },
+        { href: '/pose-editor',  icon: '', label: '{{ t("nav_editor") }}',       roles: ['admin'] },
+        { href: '/admin',        icon: '', label: '{{ t("nav_admin") }}',       roles: ['admin'], cls: 'admin-link' },
     ];
     const role = user.is_admin ? 'admin' : 'user';
     document.getElementById('navLinks').innerHTML = links
@@ -277,6 +309,42 @@ async function doLogout() {
 }
 
 initNavbar();
+
+async function loadLanguagesSelector() {
+    try {
+        const res = await fetch('/auth/languages');
+        const data = await res.json();
+        const select = document.getElementById('langSelector');
+        if (!select) return;
+        select.innerHTML = data.languages.map(lang => `
+            <option value="${lang.code}" ${lang.code === data.active ? 'selected' : ''}>
+                ${lang.name} (${lang.code.toUpperCase()})
+            </option>
+        `).join('');
+    } catch (e) {
+        console.error("Failed to load languages in selector", e);
+    }
+}
+
+async function changeLanguage(langCode) {
+    try {
+        const res = await fetch('/auth/set-active-lang', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lang_code: langCode })
+        });
+        const data = await res.json();
+        if (data.success) {
+            window.location.reload();
+        } else {
+            alert(data.error || '{{ t("toast_error") }}');
+        }
+    } catch(e) {
+        alert('{{ t("toast_network_error") }}');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadLanguagesSelector);
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

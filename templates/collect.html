@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تسجيل البيانات</title>
+    <title>{{ t('title_collect') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
@@ -299,8 +299,8 @@
 
 <div class="loading-screen" id="loadingScreen">
     <div style="font-size:36px"></div>
-    <div style="font-size:18px;font-weight:900;margin-top:10px;color:#f59e0b">تسجيل البيانات</div>
-    <div style="font-size:12px;color:#6b7280;margin-top:6px" id="loadingSub">جاري تحميل MediaPipe...</div>
+    <div style="font-size:18px;font-weight:900;margin-top:10px;color:#f59e0b">{{ t('title_collect') }}</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:6px" id="loadingSub">{{ t('loading_mediapipe') }}</div>
     <div class="spinner"></div>
 </div>
 
@@ -313,11 +313,11 @@
         <div class="bracket tr"></div>
         <div class="bracket bl"></div>
         <div class="bracket br"></div>
-        <div class="hand-status" id="handStatus">في انتظار اليد...</div>
+        <div class="hand-status" id="handStatus">{{ t('waiting_for_hand_dots') }}</div>
         <div class="reject-msg" id="rejectMsg"></div>
     </div> <div class="letter-selector collapsed" id="letterSelector">
         <div class="selector-toggle" onclick="toggleLetterPanel()">
-            <span class="selector-label">اختر الحرف للتسجيل</span>
+            <span class="selector-label">{{ t('select_letter_to_record') }}</span>
             <span class="selector-toggle-icon">▲</span>
         </div>
         <div class="letters-grid" id="lettersGrid"></div>
@@ -328,7 +328,7 @@
             <div class="progress-letter" id="currentLetterDisplay">—</div>
             <div class="progress-info">
                 <div class="progress-nums">
-                    <span id="progressLabel">اختر حرفاً</span>
+                    <span id="progressLabel">{{ t('choose_letter_first') }}</span>
                     <span id="progressCount">0/200</span>
                 </div>
                 <div class="progress-track">
@@ -340,8 +340,8 @@
             <div class="auto-bar" id="autoBar"></div>
         </div>
         <div class="btns-row">
-            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>اختر حرفاً أولاً</button>
-            <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()"><br>تلقائي</button>
+            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>{{ t('choose_letter_first') }}</button>
+            <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()"><br>{{ t('auto_mode') }}</button>
         </div>
     </div>
 </div>
@@ -349,7 +349,7 @@
 <script>
 const TARGET_SAMPLES = 200;
 const AUTO_CONFIRM_FRAMES = 5;
-const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+const ARABIC_LETTERS = {{ letters | tojson | safe }};
 
 let selectedLetter = null;
 let selectedIdx = null;
@@ -408,16 +408,16 @@ function selectLetter(idx, letter) {
     document.getElementById('lbtn_' + idx).classList.add('selected');
     document.getElementById('currentLetterDisplay').textContent = letter;
     const count = sampleCounts[idx] || 0;
-    document.getElementById('progressLabel').textContent = 'حرف: ' + letter;
+    document.getElementById('progressLabel').textContent = '{{ t("current_letter") }}: ' + letter;
     document.getElementById('progressCount').textContent = count + '/' + TARGET_SAMPLES;
     document.getElementById('progressFill').style.width = Math.min(count / TARGET_SAMPLES * 100, 100) + '%';
     const btn = document.getElementById('recordBtn');
     btn.disabled = false;
-    btn.textContent = 'سجّل ' + letter;
+    btn.textContent = '{{ t("btn_record_letter") }}'.replace('{letter}', letter);
     btn.className = 'record-btn';
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
-    showToast('تم اختيار: ' + letter);
+    showToast('{{ t("toast_selected") }}'.replace('{letter}', letter));
     document.getElementById('letterSelector').classList.add('collapsed');
 }
 
@@ -445,30 +445,30 @@ async function recordSample(auto) {
             if (countEl) countEl.textContent = count >= TARGET_SAMPLES ? '✓' : count;
             if (count >= TARGET_SAMPLES) {
                 document.getElementById('lbtn_' + selectedIdx).classList.add('complete');
-                showToast('اكتمل ' + selectedLetter + '!');
+                showToast('{{ t("toast_completed") }}'.replace('{letter}', selectedLetter));
             }
             btn.className = 'record-btn success';
-            btn.textContent = count + ' تم';
+            btn.textContent = '{{ t("toast_recorded_done") }}'.replace('{count}', count);
             if (navigator.vibrate) navigator.vibrate(30);
             setTimeout(() => {
                 btn.className = 'record-btn';
-                btn.textContent = 'سجّل ' + selectedLetter;
+                btn.textContent = '{{ t("btn_record_letter") }}'.replace('{letter}', selectedLetter);
                 btn.disabled = false;
                 isRecording = false;
             }, auto ? 100 : 500);
 
         } else if (data.rejected) {
             // رسالة الرفض داخل الكاميرا
-            showReject(data.error || 'إيماءة غلط، جرّب تاني');
+            showReject(data.error || '{{ t("toast_gesture_rejected") }}');
             btn.disabled = false;
             isRecording = false;
         } else {
-            showToast((data.error || 'فشل'));
+            showToast((data.error || '{{ t("toast_record_failed") }}'));
             btn.disabled = false;
             isRecording = false;
         }
     } catch(e) {
-        showToast('خطأ');
+        showToast('{{ t("toast_error") }}');
         btn.disabled = false;
         isRecording = false;
     }
@@ -478,8 +478,8 @@ function toggleAuto() {
     autoMode = !autoMode;
     const btn = document.getElementById('autoToggle');
     btn.className = autoMode ? 'auto-toggle active' : 'auto-toggle';
-    btn.innerHTML = autoMode ? '<br>تلقائي' : '<br>تلقائي';
-    showToast(autoMode ? 'تلقائي مفعّل' : 'تلقائي متوقف');
+    btn.innerHTML = '<br>' + '{{ t("auto_mode") }}';
+    showToast(autoMode ? '{{ t("auto_mode_enabled") }}' : '{{ t("auto_mode_disabled") }}');
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
 }
@@ -548,7 +548,7 @@ function showReject(msg) {
 
 // ===== MediaPipe =====
 function initMediaPipe() {
-    document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
+    document.getElementById('loadingSub').textContent = '{{ t("loading_mediapipe") }}';
     const hands = new Hands({
         locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f
     });
@@ -566,7 +566,7 @@ function initMediaPipe() {
             landmarks.forEach(lm => raw.push(lm.x, lm.y));
             currentLandmarks = raw;
 
-            document.getElementById('handStatus').textContent = 'يد مكتشفة';
+            document.getElementById('handStatus').textContent = '{{ t("hand_detected") }}';
             document.getElementById('handStatus').className = 'hand-status detected';
 
             if (autoMode && selectedLetter && !isRecording) {
@@ -581,14 +581,14 @@ function initMediaPipe() {
         } else {
             currentLandmarks = null;
             overlayCtx.clearRect(0, 0, w, h);
-            document.getElementById('handStatus').textContent = 'في انتظار اليد...';
+            document.getElementById('handStatus').textContent = '{{ t("waiting_for_hand_dots") }}';
             document.getElementById('handStatus').className = 'hand-status';
             if (autoMode) { autoFrameCount = 0; document.getElementById('autoBar').style.width = '0%'; }
         }
     });
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        document.getElementById('loadingSub').textContent = 'متصفحك لا يدعم الكاميرا';
+        document.getElementById('loadingSub').textContent = '{{ t("camera_browser_error") }}';
         console.error('Camera init failed: getUserMedia not supported');
         return;
     }
@@ -612,8 +612,8 @@ function initMediaPipe() {
     }).catch((err) => {
         console.error('Failed to start camera', err);
         const cameraError = err?.message || err?.name || String(err);
-        document.getElementById('loadingSub').textContent = `تعذّر الوصول للكاميرا: ${cameraError}`;
-        showToast('فشل تشغيل الكاميرا: ' + cameraError, 'error');
+        document.getElementById('loadingSub').textContent = `{{ t("camera_access_failed") }}: ${cameraError}`;
+        showToast('{{ t("camera_access_failed") }}: ' + cameraError, 'error');
     });
 }
 

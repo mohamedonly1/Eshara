@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم</title>
+    <title>{{ t('title_admin') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/static/pwa/manifest.json">
@@ -287,9 +287,9 @@ window._adminPage = true;
 <div class="gate" id="gate">
     <div class="gate-card">
         <div style="font-size:40px"></div>
-        <div style="font-size:17px;font-weight:900;margin-top:10px;color:var(--warn)">لوحة التحكم</div>
-        <input type="password" id="adminPass" placeholder="كلمة مرور الأدمن" onkeydown="if(event.key==='Enter')checkAdmin()">
-        <button class="gate-btn" onclick="checkAdmin()">دخول</button>
+        <div style="font-size:17px;font-weight:900;margin-top:10px;color:var(--warn)">{{ t('title_admin') }}</div>
+        <input type="password" id="adminPass" placeholder="{{ t('admin_pass_placeholder') }}" onkeydown="if(event.key==='Enter')checkAdmin()">
+        <button class="gate-btn" onclick="checkAdmin()">{{ t('admin_login_btn') }}</button>
         <div class="gate-err" id="gateErr"></div>
     </div>
 </div>
@@ -297,10 +297,10 @@ window._adminPage = true;
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard">
     <div class="dash-header">
-        <div class="dash-title">لوحة التحكم</div>
+        <div class="dash-title">{{ t('title_admin') }}</div>
         <div class="header-actions">
-            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')"> تصدير</button>
-            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)"> تحديث</button>
+            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')">{{ t('admin_export_btn') }}</button>
+            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)">{{ t('admin_refresh_btn') }}</button>
         </div>
     </div>
 
@@ -309,18 +309,18 @@ window._adminPage = true;
     <!-- فلتر الجودة -->
     <div class="filter-card">
         <div class="filter-info">
-            <div class="filter-title">فلتر جودة العينات</div>
-            <div class="filter-desc">لما يكون مفعّل، الموديل بيرفض العينات الغلط. عطّله لو المستخدمين بيسجّلوا حروف جديدة.</div>
+            <div class="filter-title">{{ t('admin_quality_filter') }}</div>
+            <div class="filter-desc">{{ t('admin_quality_filter_desc') }}</div>
         </div>
         <div class="filter-controls">
             <div class="threshold-wrap" id="thresholdWrap">
-                <span class="threshold-label">حساسية الرفض</span>
+                <span class="threshold-label">{{ t('admin_quality_threshold') }}</span>
                 <input type="range" class="slider" id="thresholdSlider" min="50" max="99" value="95"
                        oninput="updateThreshold(this.value)">
                 <span class="threshold-val" id="thresholdVal">95%</span>
             </div>
             <div class="toggle-wrap">
-                <span class="toggle-label" id="filterToggleLabel">مفعّل</span>
+                <span class="toggle-label" id="filterToggleLabel">{{ t('admin_enabled') }}</span>
                 <label class="toggle">
                     <input type="checkbox" id="filterToggle" checked onchange="toggleFilter(this.checked)">
                     <div class="toggle-track"></div>
@@ -330,30 +330,74 @@ window._adminPage = true;
         </div>
     </div>
 
+    <!-- إدارة اللغات ونظام الذكاء الاصطناعي -->
+    <div class="filter-card" style="margin-top: 15px; display: block;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px;">
+            <div class="filter-title">{{ t('admin_ai_lang_title') }}</div>
+            <div style="font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-lt); padding:4px 10px; border-radius:12px;">{{ t('admin_active_lang') }}: {{ active_lang.upper() }}</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- القسم الأول: تدريب وإعادة تشغيل الخادم -->
+            <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_model_server_control') }}</h4>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px; line-height: 1.5;">
+                        {{ t('admin_model_server_control_desc') }}
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="trainBtn" class="action-btn" onclick="trainActiveModel()" style="flex:1; background:var(--purple); color:#fff; border-color:var(--purple); padding:10px 0; font-size:12px; font-weight:bold;">
+                         {{ t('admin_train_model_btn') }}
+                    </button>
+                    <button id="restartBtn" class="action-btn" onclick="restartServer()" style="flex:1; color:var(--danger); border-color:rgba(163,45,45,0.3); padding:10px 0; font-size:12px; font-weight:bold;">
+                         {{ t('admin_restart_server_btn') }}
+                    </button>
+                </div>
+                <div id="trainStatus" style="font-size: 11px; margin-top: 8px; color: var(--text-dim); text-align: center;"></div>
+            </div>
+
+            <!-- القسم الثاني: إضافة لغة جديدة -->
+            <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px;">
+                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_add_lang_title') }}</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="newLangCode" placeholder="{{ t('admin_add_lang_code_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
+                        <input type="text" id="newLangName" placeholder="{{ t('admin_add_lang_name_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
+                    </div>
+                    <textarea id="newLangLabels" placeholder="{{ t('admin_add_lang_labels_placeholder') }}" rows="2" style="background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none; resize: none;"></textarea>
+                    <button class="action-btn" onclick="addNewLanguage()" style="width: 100%; background: var(--accent); color: #fff; border-color: var(--accent); padding: 8px 0; font-size: 12px; font-weight: bold;">
+                        {{ t('admin_add_lang_btn') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Orientation control removed. Moved to Pose Editor per-letter -->
 
     <div class="section">
-        <div class="section-title">عينات كل حرف (إجمالي الكل)</div>
+        <div class="section-title">{{ t('admin_letter_samples_total') }}</div>
         <div class="letters-grid" id="lettersOverview"></div>
     </div>
 
     <div class="section">
         <div class="section-title" style="justify-content: space-between;">
-            <div>المستخدمون</div>
+            <div>{{ t('admin_users_title') }}</div>
             <div class="tabs-header">
-                <button class="tab-btn active" id="tabActiveBtn" onclick="switchUsersTab('active')">نشطة</button>
-                <button class="tab-btn" id="tabDisabledBtn" onclick="switchUsersTab('disabled')">معطلة</button>
+                <button class="tab-btn active" id="tabActiveBtn" onclick="switchUsersTab('active')">{{ t('admin_tab_active') }}</button>
+                <button class="tab-btn" id="tabDisabledBtn" onclick="switchUsersTab('disabled')">{{ t('admin_tab_disabled') }}</button>
             </div>
         </div>
         <div class="users-table">
             <div class="table-head">
-                <span>الاسم</span>
-                <span>مقبول</span>
-                <span>مرفوض</span>
-                <span>حروف</span>
-                <span>جودة</span>
-                <span>الجهاز</span>
-                <span>إجراءات</span>
+                <span>{{ t('admin_col_name') }}</span>
+                <span>{{ t('admin_col_accepted') }}</span>
+                <span>{{ t('admin_col_rejected') }}</span>
+                <span>{{ t('admin_col_letters') }}</span>
+                <span>{{ t('admin_col_quality') }}</span>
+                <span>{{ t('admin_col_device') }}</span>
+                <span>{{ t('admin_col_actions') }}</span>
             </div>
             <div id="usersBody"></div>
         </div>
@@ -375,16 +419,16 @@ window._adminPage = true;
 <div class="export-modal" id="exportModal">
     <div class="export-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-            <div style="font-size:16px;font-weight:900">تصدير البيانات</div>
+            <div style="font-size:16px;font-weight:900">{{ t('admin_export_title') }}</div>
             <button class="close-btn" onclick="document.getElementById('exportModal').classList.remove('show')">✕</button>
         </div>
         <div class="export-option" onclick="exportJSON()">
             <div class="export-icon"></div>
-            <div><div class="export-title">تصدير JSON</div><div class="export-sub">كل بيانات المستخدمين والإحصائيات</div></div>
+            <div><div class="export-title">{{ t('admin_export_json') }}</div><div class="export-sub">{{ t('admin_export_json_desc') }}</div></div>
         </div>
         <div class="export-option" onclick="exportCSV()">
             <div class="export-icon"></div>
-            <div><div class="export-title">تصدير CSV</div><div class="export-sub">جدول المستخدمين لـ Excel</div></div>
+            <div><div class="export-title">{{ t('admin_export_csv') }}</div><div class="export-sub">{{ t('admin_export_csv_desc') }}</div></div>
         </div>
     </div>
 </div>
@@ -393,7 +437,7 @@ window._adminPage = true;
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+const ARABIC_LETTERS = {{ letters | tojson | safe }};
 let allStats = [];
 let currentUsersTab = 'active';
 
@@ -418,14 +462,14 @@ async function loadFilterSettings() {
         document.getElementById('filterToggle').checked = isOn;
         document.getElementById('thresholdSlider').value = threshold;
         document.getElementById('thresholdVal').textContent = threshold + '%';
-        document.getElementById('filterToggleLabel').textContent = isOn ? 'مفعّل' : 'معطّل';
+        document.getElementById('filterToggleLabel').textContent = isOn ? '{{ t("admin_enabled") }}' : '{{ t("admin_disabled") }}';
         document.getElementById('thresholdWrap').style.opacity = isOn ? '1' : '0.4';
         document.getElementById('thresholdWrap').style.pointerEvents = isOn ? 'auto' : 'none';
     } catch(e) {}
 }
 
 async function toggleFilter(checked) {
-    document.getElementById('filterToggleLabel').textContent = checked ? 'مفعّل' : 'معطّل';
+    document.getElementById('filterToggleLabel').textContent = checked ? '{{ t("admin_enabled") }}' : '{{ t("admin_disabled") }}';
     document.getElementById('thresholdWrap').style.opacity = checked ? '1' : '0.4';
     document.getElementById('thresholdWrap').style.pointerEvents = checked ? 'auto' : 'none';
     await fetch('/admin/settings', {
@@ -463,7 +507,7 @@ async function checkAdmin() {
         loadFilterSettings();
         oResize();
     } else {
-        document.getElementById('gateErr').textContent = 'كلمة المرور غلط';
+        document.getElementById('gateErr').textContent = '{{ t("admin_incorrect_password") }}';
     }
 }
 
@@ -497,11 +541,11 @@ async function loadDashboard() {
     const doneLetters = Object.values(completedLetters).filter(v => v >= 200).length;
 
     document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${allStats.length}</div><div class="stat-label">مستخدم</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${totalSamples}</div><div class="stat-label">عينة مقبولة</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${totalRejected}</div><div class="stat-label">عينة مرفوضة</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${avgQuality}%</div><div class="stat-label">متوسط الجودة</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--purple)">${doneLetters}/29</div><div class="stat-label">حرف مكتمل</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${allStats.length}</div><div class="stat-label">{{ t("admin_stat_users") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${totalSamples}</div><div class="stat-label">{{ t("admin_stat_accepted") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${totalRejected}</div><div class="stat-label">{{ t("admin_stat_rejected") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${avgQuality}%</div><div class="stat-label">{{ t("admin_stat_avg_quality") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--purple)">${doneLetters}/${ARABIC_LETTERS.length}</div><div class="stat-label">{{ t("admin_stat_letters_completed") }}</div></div>
     `;
 
     // حروف
@@ -534,20 +578,20 @@ function renderUsersTable() {
         const dev = u.device || {};
         const role = u.role === 'admin' ? 'admin' : 'user';
         const nextRole = role === 'admin' ? 'user' : 'admin';
-        const roleLabel = role === 'admin' ? 'أدمن' : 'عادي';
-        const roleBtnLabel = role === 'admin' ? 'جعله عادي' : 'جعله أدمن';
+        const roleLabel = role === 'admin' ? '{{ t("admin_role_admin") }}' : '{{ t("admin_role_user") }}';
+        const roleBtnLabel = role === 'admin' ? '{{ t("admin_make_user") }}' : '{{ t("admin_make_admin") }}';
         
         let actionsHtml = '';
         if (currentUsersTab === 'active') {
             actionsHtml = `
                 <button class="role-btn" onclick="event.stopPropagation();setUserRoleByIndex(${userIndex}, '${nextRole}')">${roleBtnLabel}</button>
-                <button class="del-btn" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); color: var(--warn);" onclick="event.stopPropagation();disableUserByIndex(${userIndex})">تعطيل</button>
-                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف</button>
+                <button class="del-btn" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); color: var(--warn);" onclick="event.stopPropagation();disableUserByIndex(${userIndex})">{{ t("admin_btn_disable") }}</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">{{ t("admin_btn_delete") }}</button>
             `;
         } else {
             actionsHtml = `
-                <button class="role-btn" style="color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.1);" onclick="event.stopPropagation();enableUserByIndex(${userIndex})">تفعيل</button>
-                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف نهائي</button>
+                <button class="role-btn" style="color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.1);" onclick="event.stopPropagation();enableUserByIndex(${userIndex})">{{ t("admin_btn_enable") }}</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">{{ t("admin_btn_delete_permanently") }}</button>
             `;
         }
 
@@ -562,7 +606,7 @@ function renderUsersTable() {
                 ${actionsHtml}
             </div></span>
         </div>`;
-    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">لا يوجد مستخدمون هنا</div>';
+    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">{{ t("admin_no_users") }}</div>';
 }
 
 function getLetterTotals() {
@@ -584,26 +628,26 @@ function showUserByIndex(userIndex) {
     document.getElementById('modalTitle').textContent = u.name;
     document.getElementById('modalContent').innerHTML = `
         <div class="info-grid">
-            <div class="info-card"><div class="info-label">العينات المقبولة</div><div class="info-val" style="color:var(--accent)">${safeNumber(u.total)}</div></div>
-            <div class="info-card"><div class="info-label">العينات المرفوضة</div><div class="info-val" style="color:var(--danger)">${safeNumber(u.rejected)}</div></div>
-            <div class="info-card"><div class="info-label">الحروف المسجّلة</div><div class="info-val">${safeNumber(u.letters_count)} / 29</div></div>
-            <div class="info-card"><div class="info-label">الجودة</div><div class="info-val">${safeNumber(u.quality)}%</div></div>
-            <div class="info-card"><div class="info-label">نوع الحساب</div><div class="info-val"><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'user'}">${u.role === 'admin' ? 'أدمن' : 'عادي'}</span></div></div>
+            <div class="info-card"><div class="info-label">{{ t("profile_accepted_samples") }}</div><div class="info-val" style="color:var(--accent)">${safeNumber(u.total)}</div></div>
+            <div class="info-card"><div class="info-label">{{ t("profile_rejected_samples") }}</div><div class="info-val" style="color:var(--danger)">${safeNumber(u.rejected)}</div></div>
+            <div class="info-card"><div class="info-label">{{ t("admin_modal_registered_letters") }}</div><div class="info-val">${safeNumber(u.letters_count)} / ${ARABIC_LETTERS.length}</div></div>
+            <div class="info-card"><div class="info-label">{{ t("admin_col_quality") }}</div><div class="info-val">${safeNumber(u.quality)}%</div></div>
+            <div class="info-card"><div class="info-label">{{ t("admin_modal_account_type") }}</div><div class="info-val"><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'user'}">${u.role === 'admin' ? '{{ t("admin_role_admin") }}' : '{{ t("admin_role_user") }}'}</span></div></div>
         </div>
 
         <div class="device-section">
-            <div class="device-title">معلومات الجهاز</div>
-            <div class="device-row"><span class="device-key">عنوان IP</span><span style="font-family:monospace">${escapeHTML(dev.ip || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">نوع الجهاز</span><span>${escapeHTML(dev.device_type || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">نظام التشغيل</span><span>${escapeHTML(dev.os || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">المتصفح</span><span>${escapeHTML(dev.browser || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">تاريخ التسجيل</span><span>${escapeHTML(u.created || '-')}</span></div>
-            <div class="device-row"><span class="device-key">آخر نشاط</span><span>${escapeHTML(u.last_active || '-')}</span></div>
+            <div class="device-title">{{ t("admin_modal_device_info") }}</div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_ip") }}</span><span style="font-family:monospace">${escapeHTML(dev.ip || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_device_type") }}</span><span>${escapeHTML(dev.device_type || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_os") }}</span><span>${escapeHTML(dev.os || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_browser") }}</span><span>${escapeHTML(dev.browser || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_created") }}</span><span>${escapeHTML(u.created || '-')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_last_active") }}</span><span>${escapeHTML(u.last_active || '-')}</span></div>
         </div>
 
         ${history.length ? `
         <div class="login-history">
-            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">سجل تسجيلات الدخول (آخر ${history.length})</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">{{ t("admin_modal_login_history") }} ({{ t("admin_modal_last") }} ${history.length})</div>
             ${[...history].reverse().map(h => `
                 <div class="login-item">
                     <span>${escapeHTML(h.time)}</span>
@@ -615,7 +659,7 @@ function showUserByIndex(userIndex) {
 
         ${(u.edit_history && u.edit_history.length) ? `
         <div class="login-history">
-            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">سجل تعديلات الأصابع (آخر ${u.edit_history.length})</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">{{ t("admin_modal_edit_history") }} ({{ t("admin_modal_last") }} ${u.edit_history.length})</div>
             ${u.edit_history.map(h => `
                 <div class="login-item">
                     <span style="min-width: 120px">${escapeHTML(h.time)}</span>
@@ -624,7 +668,7 @@ function showUserByIndex(userIndex) {
             `).join('')}
         </div>` : ''}
 
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">عينات كل حرف:</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">{{ t("admin_modal_letter_samples") }}:</div>
         <div class="modal-letters">
             ${ARABIC_LETTERS.map((l, idx) => {
                 const c = u.samples[idx] || 0;
@@ -647,7 +691,7 @@ function deleteUserByIndex(userIndex) {
 async function disableUserByIndex(userIndex) {
     const u = allStats[userIndex];
     if (!u) return;
-    if (!confirm('تعطيل المستخدم: ' + u.name + '؟ (لن يتمكن من الدخول)')) return;
+    if (!confirm('{{ t("admin_confirm_disable") }} ' + u.name + '?')) return;
     await fetch('/admin/disable_user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -659,7 +703,7 @@ async function disableUserByIndex(userIndex) {
 async function enableUserByIndex(userIndex) {
     const u = allStats[userIndex];
     if (!u) return;
-    if (!confirm('تفعيل المستخدم: ' + u.name + '؟')) return;
+    if (!confirm('{{ t("admin_confirm_enable") }} ' + u.name + '?')) return;
     await fetch('/admin/enable_user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -671,8 +715,8 @@ async function enableUserByIndex(userIndex) {
 async function setUserRoleByIndex(userIndex, role) {
     const u = allStats[userIndex];
     if (!u) return;
-    const roleName = role === 'admin' ? 'أدمن' : 'عادي';
-    if (!confirm('تغيير نوع حساب ' + u.name + ' إلى ' + roleName + '؟')) return;
+    const roleName = role === 'admin' ? '{{ t("admin_role_admin") }}' : '{{ t("admin_role_user") }}';
+    if (!confirm('{{ t("admin_confirm_role_change") }} ' + u.name + ' {{ t("admin_to") }} ' + roleName + '?')) return;
 
     const res = await fetch('/admin/set_user_role', {
         method: 'POST',
@@ -681,14 +725,14 @@ async function setUserRoleByIndex(userIndex, role) {
     });
     const data = await res.json();
     if (!data.ok) {
-        alert(data.error || 'تعذّر تغيير نوع الحساب');
+        alert(data.error || '{{ t("toast_error") }}');
         return;
     }
     loadDashboard();
 }
 
 async function deleteUser(userId, name) {
-    if (!confirm('حذف المستخدم: ' + name + '؟')) return;
+    if (!confirm('{{ t("admin_confirm_delete") }} ' + name + '?')) return;
     await fetch('/admin/delete_user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -704,7 +748,19 @@ function exportJSON() {
 }
 
 function exportCSV() {
-    const rows = [['الاسم','ID','العينات المقبولة','المرفوضة','الجودة%','الحروف','IP','الجهاز','نظام التشغيل','المتصفح','آخر نشاط']];
+    const rows = [[
+        '{{ t("admin_col_name") }}',
+        'ID',
+        '{{ t("admin_col_accepted") }}',
+        '{{ t("admin_col_rejected") }}',
+        '{{ t("admin_col_quality") }}%',
+        '{{ t("admin_col_letters") }}',
+        'IP',
+        '{{ t("admin_modal_device_type") }}',
+        '{{ t("admin_modal_os") }}',
+        '{{ t("admin_modal_browser") }}',
+        '{{ t("admin_modal_last_active") }}'
+    ]];
     allStats.forEach(u => {
         const dev = u.device || {};
         rows.push([u.name, u.id, u.total, u.rejected, u.quality, u.letters_count, dev.ip||'', dev.device_type||'', dev.os||'', dev.browser||'', u.last_active||'']);
@@ -720,6 +776,90 @@ function download(filename, content, type) {
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
+}
+
+async function trainActiveModel() {
+    const btn = document.getElementById('trainBtn');
+    const status = document.getElementById('trainStatus');
+    btn.disabled = true;
+    btn.textContent = '{{ t("admin_training_in_progress") }}';
+    status.textContent = '{{ t("admin_training_started_desc") }}';
+    
+    try {
+        const res = await fetch('/admin/train-active-model', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = '{{ t("admin_training_success") }}';
+            status.style.color = 'var(--accent)';
+            setTimeout(() => { window.location.reload(); }, 2000);
+        } else {
+            status.textContent = '{{ t("admin_training_failed") }}: ' + (data.error || '{{ t("toast_error") }}');
+            status.style.color = 'var(--danger)';
+        }
+    } catch(e) {
+        status.textContent = '{{ t("toast_network_error") }}';
+        status.style.color = 'var(--danger)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '{{ t("admin_train_model_btn") }}';
+    }
+}
+
+async function restartServer() {
+    if (!confirm('{{ t("admin_confirm_restart_server") }}')) return;
+    const btn = document.getElementById('restartBtn');
+    btn.disabled = true;
+    btn.textContent = '{{ t("admin_restarting_in_progress") }}';
+    
+    try {
+        const res = await fetch('/admin/restart-server', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_restart_sent") }}');
+            setTimeout(() => { window.location.href = '/admin'; }, 3000);
+        } else {
+            alert('{{ t("admin_restart_failed") }}');
+            btn.disabled = false;
+            btn.textContent = '{{ t("admin_restart_server_btn") }}';
+        }
+    } catch(e) {
+        alert('{{ t("admin_restarting_now") }}');
+        setTimeout(() => { window.location.href = '/admin'; }, 3000);
+    }
+}
+
+async function addNewLanguage() {
+    const code = document.getElementById('newLangCode').value.trim();
+    const name = document.getElementById('newLangName').value.trim();
+    const labelsStr = document.getElementById('newLangLabels').value.trim();
+    
+    if (!code || !name || !labelsStr) {
+        alert('{{ t("admin_all_lang_fields_required") }}');
+        return;
+    }
+    
+    const labels = labelsStr.split(',').map(l => l.trim()).filter(l => l.length > 0);
+    if (labels.length === 0) {
+        alert('{{ t("admin_at_least_one_label_required") }}');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/admin/add-language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, name, labels })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_add_lang_success") }}');
+            window.location.reload();
+        } else {
+            alert('{{ t("admin_add_lang_failed") }}: ' + (data.error || '{{ t("toast_error") }}'));
+        }
+    } catch(e) {
+        alert('{{ t("toast_network_error") }}');
+    }
 }
 </script>
 </body>

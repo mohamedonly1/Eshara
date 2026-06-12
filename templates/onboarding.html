@@ -2,8 +2,8 @@
 <!-- templates/onboarding.html -->
 <div id="ishara-tour" class="ishara-tour-wrapper" style="display: none;">
   <div class="ishara-tour-backdrop" onclick="closeTour()"></div>
-  <div class="ishara-tour-modal" dir="rtl">
-    <button class="ishara-tour-close" onclick="closeTour()" aria-label="إغلاق">&times;</button>
+  <div class="ishara-tour-modal" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
+    <button class="ishara-tour-close" onclick="closeTour()" aria-label="{{ t('tour_close') }}">&times;</button>
     
     <div class="ishara-tour-body">
       <div id="ishara-tour-step-content" class="ishara-tour-step-content">
@@ -12,11 +12,11 @@
     </div>
     
     <div class="ishara-tour-footer">
-      <button id="ishara-tour-back" class="ishara-tour-btn-secondary" onclick="prevStep()">السابق</button>
+      <button id="ishara-tour-back" class="ishara-tour-btn-secondary" onclick="prevStep()">{{ t('tour_back') }}</button>
       <div id="ishara-tour-dots" class="ishara-tour-dots">
         <!-- Dots will be generated here -->
       </div>
-      <button id="ishara-tour-next" class="ishara-tour-btn-primary" onclick="nextStep()">التالي</button>
+      <button id="ishara-tour-next" class="ishara-tour-btn-primary" onclick="nextStep()">{{ t('tour_next') }}</button>
     </div>
   </div>
 </div>
@@ -282,29 +282,29 @@
 const steps = [
   { 
     icon: '🤟', 
-    title: 'مرحباً بك في إشارة!', 
-    text: 'تتيح لك إشارة التواصل باستخدام لغة الإشارة العربية - ترجم إيماءات اليد فورياً إلى نصوص، أو اكتب نصاً لمشاهدته مترجماً إلى لغة الإشارة.' 
+    title: '{{ t("tour_step1_title") }}', 
+    text: '{{ t("tour_step1_text") }}' 
   },
   { 
     icon: '📷', 
-    title: 'ترجمة الإشارات إلى نصوص', 
-    text: 'افتح الكاميرا، وضع يدك أمامها، وستتعرف إشارة على كل حرف عربي في الوقت الفعلي - لتصنع الكلمات تلقائياً أثناء الإشارة.',
+    title: '{{ t("tour_step2_title") }}', 
+    text: '{{ t("tour_step2_text") }}',
     gif: '/static/gifs/sign_to_text.gif',
-    fallback: 'عرض توضيحي: إشارة ← نص',
-    caption: 'التعرف الفوري على الإشارات'
+    fallback: '{{ t("tour_step2_fallback") }}',
+    caption: '{{ t("tour_step2_caption") }}'
   },
   { 
     icon: '✍️', 
-    title: 'ترجمة النصوص إلى لغة الإشارة', 
-    text: 'اكتب أي كلمة أو جملة عربية، وستعرض لك إشارة إيماءات لغة الإشارة الصحيحة لكل حرف - وهي ممتازة للتعلم.',
+    title: '{{ t("tour_step3_title") }}', 
+    text: '{{ t("tour_step3_text") }}',
     gif: '/static/gifs/text_to_sign.gif',
-    fallback: 'عرض توضيحي: نص ← إشارة',
-    caption: 'دليل الحروف الإشارية خطوة بخطوة'
+    fallback: '{{ t("tour_step3_fallback") }}',
+    caption: '{{ t("tour_step3_caption") }}'
   },
   { 
     icon: '✅', 
-    title: 'كل شيء جاهز!', 
-    text: 'يمكنك الآن الترجمة في كلا الاتجاهين. كلما استخدمت إشارة أكثر، أصبحت أكثر ذكاءً. ابدأ الترجمة الآن!', 
+    title: '{{ t("tour_step4_title") }}', 
+    text: '{{ t("tour_step4_text") }}', 
     cta: true 
   }
 ];
@@ -367,11 +367,11 @@ function renderStep(i) {
     const nextBtn = document.getElementById('ishara-tour-next');
     if (nextBtn) {
       if (step.cta) {
-        nextBtn.textContent = 'ابدأ الترجمة الآن ←';
+        nextBtn.textContent = '{{ t("tour_start_btn") }}';
         nextBtn.onclick = onCtaClick;
         nextBtn.className = 'ishara-tour-btn-primary ishara-tour-btn-cta';
       } else {
-        nextBtn.textContent = 'التالي';
+        nextBtn.textContent = '{{ t("tour_next") }}';
         nextBtn.onclick = nextStep;
         nextBtn.className = 'ishara-tour-btn-primary';
       }
@@ -410,6 +410,21 @@ function openTour() {
   }
 }
 
+// Check direction to adjust close button position if needed
+function adjustCloseBtnAlign() {
+  const closeBtn = document.querySelector('.ishara-tour-close');
+  if (closeBtn) {
+    const isRtl = "{{ active_lang }}" === "ar";
+    if (isRtl) {
+      closeBtn.style.left = '16px';
+      closeBtn.style.right = 'auto';
+    } else {
+      closeBtn.style.right = '16px';
+      closeBtn.style.left = 'auto';
+    }
+  }
+}
+
 function closeTour() {
   localStorage.setItem('ishara_tour_done', '1');
   const tourEl = document.getElementById('ishara-tour');
@@ -433,6 +448,8 @@ window.addEventListener('DOMContentLoaded', () => {
     return;
   }
   
+  adjustCloseBtnAlign();
+
   if (!localStorage.getItem('ishara_tour_done')) {
     openTour();
   }

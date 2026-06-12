@@ -30,28 +30,41 @@ logger.info("=" * 50)
 logger.info("  تدريب موديل لغة الإشارة العربية - Training Started")
 logger.info("=" * 50)
 
-# 1. Loading Labels
-labels_dict = {}
-if not os.path.exists(config.LABELS_CSV):
-    logger.error("Labels CSV file not found: %s", config.LABELS_CSV)
-    raise FileNotFoundError(f"Labels file not found: {config.LABELS_CSV}")
+# 1. Loading Languages Config and Labels
+import sys
 
-with open(config.LABELS_CSV, 'r', encoding='utf-8') as f:
-    reader = csv.reader(f)
-    for row in reader:
-        if row:
-            labels_dict[int(row[0])] = row[1]
+LANGUAGES_CONFIG_PATH = 'arabic_data/languages.json'
+lang_code = 'ar'
+if len(sys.argv) > 1:
+    lang_code = sys.argv[1].strip().lower()
 
+logger.info("Training language: %s", lang_code.upper())
+
+if not os.path.exists(LANGUAGES_CONFIG_PATH):
+    logger.error("languages.json not found: %s", LANGUAGES_CONFIG_PATH)
+    raise FileNotFoundError(f"languages.json not found: {LANGUAGES_CONFIG_PATH}")
+
+with open(LANGUAGES_CONFIG_PATH, 'r', encoding='utf-8') as f:
+    languages_config = json.load(f)
+
+lang_info = languages_config['languages'].get(lang_code)
+if not lang_info:
+    logger.error("Language code '%s' not found in languages.json", lang_code)
+    raise ValueError(f"Language code '{lang_code}' not found in languages.json")
+
+labels_dict = {idx: label for idx, label in enumerate(lang_info['labels'])}
 logger.info("Letters available: %d", len(labels_dict))
+
+train_csv_path = lang_info['dataset_path']
 
 # 2. Loading Dataset (Robust auto-detection for dual format)
 X, y_raw = [], []
-if not os.path.exists(config.TRAIN_CSV):
-    logger.error("Training CSV dataset not found: %s", config.TRAIN_CSV)
-    raise FileNotFoundError(f"Training dataset not found: {config.TRAIN_CSV}")
+if not os.path.exists(train_csv_path):
+    logger.error("Training CSV dataset not found: %s", train_csv_path)
+    raise FileNotFoundError(f"Training dataset not found: {train_csv_path}")
 
-logger.info("Loading training dataset from: %s", config.TRAIN_CSV)
-with open(config.TRAIN_CSV, 'r', encoding='utf-8') as f:
+logger.info("Loading training dataset from: %s", train_csv_path)
+with open(train_csv_path, 'r', encoding='utf-8') as f:
     reader = csv.reader(f)
     for row_idx, row in enumerate(reader):
         if not row:
@@ -148,7 +161,7 @@ model.compile(
 model.summary(print_fn=lambda x: logger.info(x))
 
 # Callbacks
-best_model_path = os.path.join(config.MODEL_DIR, 'best_model.h5')
+best_model_path = os.path.join(config.MODEL_DIR, f'{lang_code}_best_model.h5')
 callbacks = [
     keras.callbacks.EarlyStopping(
         monitor='val_accuracy', patience=20,
@@ -191,9 +204,13 @@ precision, recall, f1, _ = precision_recall_fscore_support(y_test, y_pred, avera
 
 # Save Classification Report
 cls_report_str = classification_report(y_test, y_pred, target_names=letter_names, zero_division=0)
-with open(config.CLASSIFICATION_REPORT_TXT, 'w', encoding='utf-8') as f:
+lang_cls_report_path = os.path.join(config.REPORTS_DIR, f"{lang_code}_classification_report.txt")
+with open(lang_cls_report_path, 'w', encoding='utf-8') as f:
     f.write(cls_report_str)
-logger.info("Saved text classification report to: %s", config.CLASSIFICATION_REPORT_TXT)
+logger.info("Saved text classification report to: %s", lang_cls_report_path)
+if lang_code == 'ar':
+    with open(config.CLASSIFICATION_REPORT_TXT, 'w', encoding='utf-8') as f:
+        f.write(cls_report_str)
 
 # Save Confusion Matrices
 cm = confusion_matrix(y_test, y_pred)
@@ -201,22 +218,28 @@ cm = confusion_matrix(y_test, y_pred)
 # Standard Confusion Matrix
 plt.figure(figsize=(16, 14))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=letter_names, yticklabels=letter_names)
-plt.title('Confusion Matrix - لغة الإشارة العربية', fontsize=16)
+plt.title(f'Confusion Matrix - {lang_code.upper()}', fontsize=16)
 plt.ylabel('Actual')
 plt.xlabel('Predicted')
 plt.tight_layout()
-plt.savefig(config.CONFUSION_MATRIX_PNG, dpi=150)
+lang_cm_path = os.path.join(config.REPORTS_DIR, f"{lang_code}_confusion_matrix.png")
+plt.savefig(lang_cm_path, dpi=150)
+if lang_code == 'ar':
+    plt.savefig(config.CONFUSION_MATRIX_PNG, dpi=150)
 plt.close()
 
 # Normalized Confusion Matrix
 cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
 plt.figure(figsize=(16, 14))
 sns.heatmap(cm_norm, annot=True, fmt='.2f', cmap='Blues', xticklabels=letter_names, yticklabels=letter_names)
-plt.title('Normalized Confusion Matrix - لغة الإشارة العربية', fontsize=16)
+plt.title(f'Normalized Confusion Matrix - {lang_code.upper()}', fontsize=16)
 plt.ylabel('Actual')
 plt.xlabel('Predicted')
 plt.tight_layout()
-plt.savefig(config.NORMALIZED_CONFUSION_MATRIX_PNG, dpi=150)
+lang_cm_norm_path = os.path.join(config.REPORTS_DIR, f"{lang_code}_normalized_confusion_matrix.png")
+plt.savefig(lang_cm_norm_path, dpi=150)
+if lang_code == 'ar':
+    plt.savefig(config.NORMALIZED_CONFUSION_MATRIX_PNG, dpi=150)
 plt.close()
 
 logger.info("Saved confusion matrix plots to reports/ directory.")
@@ -231,32 +254,36 @@ training_report = {
     'f1_score': float(f1),
     'classification_report': cls_report_dict
 }
-with open(config.TRAINING_REPORT_JSON, 'w', encoding='utf-8') as f:
+lang_report_json_path = os.path.join(config.REPORTS_DIR, f"{lang_code}_training_report.json")
+with open(lang_report_json_path, 'w', encoding='utf-8') as f:
     json.dump(training_report, f, indent=2, ensure_ascii=False)
-logger.info("Saved JSON metrics report to: %s", config.TRAINING_REPORT_JSON)
+if lang_code == 'ar':
+    with open(config.TRAINING_REPORT_JSON, 'w', encoding='utf-8') as f:
+        json.dump(training_report, f, indent=2, ensure_ascii=False)
+logger.info("Saved JSON metrics report to: %s", lang_report_json_path)
 
 # 9. Model Saving and Versioning (Phase 5)
 logger.info("Executing model saving and versioning...")
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 
 # Versioned names
-timestamped_keras_name = f"arabic_sign_model_{timestamp}.keras"
+timestamped_keras_name = f"{lang_code}_sign_model_{timestamp}.keras"
 timestamped_keras_path = os.path.join(config.MODEL_DIR, timestamped_keras_name)
-timestamped_tflite_name = f"arabic_sign_model_{timestamp}.tflite"
+timestamped_tflite_name = f"{lang_code}_sign_model_{timestamp}.tflite"
 timestamped_tflite_path = os.path.join(config.MODEL_DIR, timestamped_tflite_name)
 
-# Legacy naming for server.py backward compatibility
-legacy_tflite_name = f"arabic_sign_model_{datetime.now().strftime('%Y-%m-%d')}_{test_acc*100:.2f}.tflite"
+# Legacy naming for backward compatibility
+legacy_tflite_name = f"{lang_code}_sign_model_{datetime.now().strftime('%Y-%m-%d')}_{test_acc*100:.2f}.tflite"
 legacy_tflite_path = os.path.join(config.MODEL_DIR, legacy_tflite_name)
 
 # Load best weights from checkpoint if checkpoint exists
 if os.path.exists(best_model_path):
     best_model = keras.models.load_model(best_model_path)
     # Save standard backup
-    best_model.save(config.MODEL_PATH_H5)
+    best_model.save(os.path.join(config.MODEL_DIR, f"{lang_code}_best_model.h5"))
 else:
     best_model = model
-    best_model.save(config.MODEL_PATH_H5)
+    best_model.save(os.path.join(config.MODEL_DIR, f"{lang_code}_best_model.h5"))
 
 # Save timestamped Keras model
 best_model.save(timestamped_keras_path)
@@ -268,28 +295,30 @@ converter.optimizations = [tf.lite.Optimize.DEFAULT]
 tflite_model = converter.convert()
 
 # Write TFLite files
-with open(config.MODEL_PATH_TFLITE, 'wb') as f:
-    f.write(tflite_model)
 with open(timestamped_tflite_path, 'wb') as f:
     f.write(tflite_model)
 with open(legacy_tflite_path, 'wb') as f:
     f.write(tflite_model)
 
+# For backward compatibility if lang_code is 'ar'
+if lang_code == 'ar':
+    with open(config.MODEL_PATH_TFLITE, 'wb') as f:
+        f.write(tflite_model)
+
 logger.info("Exported TFLite models: %s and %s", timestamped_tflite_path, legacy_tflite_path)
 
-# Update latest links (saving copies to maintain windows compatibility without symlink privilege errors)
-shutil.copy2(timestamped_keras_path, config.LATEST_MODEL_KERAS)
-shutil.copy2(timestamped_tflite_path, config.LATEST_MODEL_TFLITE)
-logger.info("Updated latest model pointers: %s and %s", config.LATEST_MODEL_KERAS, config.LATEST_MODEL_TFLITE)
+# Update languages.json with the new model path
+try:
+    with open(LANGUAGES_CONFIG_PATH, 'r', encoding='utf-8') as f:
+        config_data = json.load(f)
+    config_data['languages'][lang_code]['model_path'] = f"arabic_model/{legacy_tflite_name}"
+    with open(LANGUAGES_CONFIG_PATH, 'w', encoding='utf-8') as f:
+        json.dump(config_data, f, ensure_ascii=False, indent=2)
+    logger.info("Successfully updated languages.json model_path to: arabic_model/%s", legacy_tflite_name)
+except Exception as e:
+    logger.error("Failed to update languages.json: %s", e)
 
-# 10. Update labels mapping file
-with open(config.LABELS_CSV, 'w', newline='', encoding='utf-8') as f:
-    writer = csv.writer(f)
-    for new_idx, letter in encoded_labels.items():
-        writer.writerow([new_idx, letter])
-logger.info("Labels file updated: %s (%d classes)", config.LABELS_CSV, num_classes)
-
-# 11. Automatically Update server.py Model Reference (Non-interactive)
+# 10. Automatically Update server.py Model Reference (Non-interactive) for active Arabic lang
 def update_server_model_path(new_model_name):
     server_path = 'server.py'
     if not os.path.exists(server_path):
@@ -317,7 +346,7 @@ def update_server_model_path(new_model_name):
         logger.error("Failed to update server.py: %s", e)
         return False
 
-# Trigger update
-update_server_model_path(legacy_tflite_name)
+if lang_code == 'ar':
+    update_server_model_path(legacy_tflite_name)
 
 logger.info("Training pipeline complete! Final Test Accuracy: %0.2f%%", test_acc * 100)

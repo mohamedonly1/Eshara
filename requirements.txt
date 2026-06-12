@@ -4,6 +4,7 @@ scikit-learn
 matplotlib
 seaborn
 flask
+flask-wtf
 python-dotenv
 flask-limiter
 opencv-python
