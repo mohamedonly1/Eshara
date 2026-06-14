@@ -224,8 +224,15 @@
 </div>
 
 <script>
-// CSRF Protection Helper (SEC-01)
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
 (function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية الجلسة من هجمات الاختراقات.
+     */
     function getCsrfToken() {
         const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
         return match ? decodeURIComponent(match[1]) : '';
@@ -246,15 +253,18 @@
     };
 })();
 
-    // Theme setup
+    // تهيئة الوضع الليلي بناء على تفضيلات المستخدم
     const savedTheme = localStorage.getItem('ishara-theme');
     if (savedTheme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
     }
 
-    // Input fields logic (auto-focus next)
+    // =========================================================================
+    // 2. التحكم التلقائي في صناديق الإدخال الستة (Auto-focus & Siblings navigation)
+    // =========================================================================
     const inputs = document.querySelectorAll('.code-input');
     inputs.forEach((input, index) => {
+        // عند كتابة رقم في الصندوق، ينتقل التركيز تلقائياً للصندوق التالي
         input.addEventListener('input', (e) => {
             if (e.target.value.length === 1) {
                 if (index < inputs.length - 1) {
@@ -263,6 +273,7 @@
             }
         });
 
+        // عند الضغط على زر Backspace والصندوق فارغ، يرجع التركيز للصندوق السابق
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace' && e.target.value.length === 0) {
                 if (index > 0) {
@@ -272,18 +283,21 @@
         });
     });
 
-    // Load user email on start — supports both registration verification and pending email change
+    // =========================================================================
+    // 3. جلب البريد الإلكتروني للمستخدم وعرضه (Load User Email)
+    // =========================================================================
     async function loadEmail() {
+        /** جلب بيانات الحساب الجاري للتفريق بين تأكيد الحساب وتغيير البريد */
         try {
             const res = await fetch('/auth/me');
             const data = await res.json();
             if (data.logged_in) {
-                // If there is a pending_email, this page is for email change verification
+                // إذا كان هناك بريد معلق (pending_email)، فهذا يعني أن المستخدم يحاول تأكيد بريده الجديد
                 if (data.pending_email) {
                     document.getElementById('userEmail').textContent = data.pending_email;
                     return;
                 }
-                // Standard registration verification — redirect if already verified
+                // التحقق الأساسي عند التسجيل لأول مرة
                 if (data.email_verified !== false) {
                     window.location.href = '/';
                     return;
@@ -298,6 +312,9 @@
     }
     loadEmail();
 
+    // =========================================================================
+    // 4. عرض التنبيهات
+    // =========================================================================
     function showError(msg) {
         document.getElementById('successMsg').classList.remove('show');
         const el = document.getElementById('errorMsg');
@@ -312,7 +329,11 @@
         el.classList.add('show');
     }
 
+    // =========================================================================
+    // 5. إرسال طلب التحقق من رمز الـ OTP (Submit Verification)
+    // =========================================================================
     async function submitVerification() {
+        // تجميع أرقام الصناديق الستة لبناء الرمز كاملاً
         let code = '';
         inputs.forEach(input => code += input.value);
         if (code.length < 6) {
@@ -329,6 +350,7 @@
             const data = await res.json();
             if (data.success) {
                 showSuccess('{{ t("verify_email_success") }}');
+                // بعد ثانية ونصف يتم توجيه المستخدم للصفحة الرئيسية
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 1500);
@@ -340,10 +362,14 @@
         }
     }
 
+    // =========================================================================
+    // 6. مؤقت إعادة الإرسال (Resend Cooldown Timer)
+    // =========================================================================
     let cooldown = 0;
     let timerInterval = null;
 
     function startCooldown() {
+        /** منع المستخدم من إرسال طلبات متكررة وتعطيل الزر لمدة دقيقة */
         cooldown = 60;
         const resendBtn = document.getElementById('resendBtn');
         const cooldownText = document.getElementById('cooldownText');
@@ -365,6 +391,7 @@
     }
 
     async function resendCode() {
+        /** إعادة إرسال رمز تحقق جديد إلى بريد المستخدم */
         if (cooldown > 0) return;
         try {
             const res = await fetch('/auth/resend-code', {
@@ -382,7 +409,7 @@
         }
     }
 
-    // Auto submit if last input is filled
+    // إرسال الطلب تلقائياً للملقم عند تعبئة الصندوق السادس والأخير مباشرة
     inputs[5].addEventListener('input', () => {
         setTimeout(submitVerification, 100);
     });

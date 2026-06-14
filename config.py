@@ -1,84 +1,255 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-Central configuration for the Ishara sign language recognition system.
-Defines all dataset, model, log paths, and default threshold values.
+أهلاً بك يا صديقي في قلب إعدادات المشروع! 
+
+هذا الملف (config.py) هو "مركز التحكم والتهيئة" لكل المشروع. 
+بدلاً من كتابة مسارات المجلدات وقيم الإعدادات وتكرارها في كل ملف برمجى، نقوم بتعريفها هنا مرة واحدة. 
+إذا أردنا مستقبلاً تغيير مسار مجلد أو تعديل إعداد معين، نقوم بتغييره هنا فقط، وسيتحدث تلقائياً في كل مكان آخر!
+
+دعنا نقرأ الكود البسيط والمنظم:
 """
-import os
-import logging
 
-# Base directories
-DATA_DIR = 'arabic_data'
-MODEL_DIR = 'arabic_model'
-USERS_DIR = os.path.join(DATA_DIR, 'users')
-LOG_DIR = 'logs'
-REPORTS_DIR = 'reports'
+import os        # مكتبة للتعامل مع نظام التشغيل لإنشاء المجلدات والربط بين المسارات
+import logging   # مكتبة لتسجيل الأحداث والتقارير (Logs) بدلاً من مجرد استخدام print العادية
 
-# Create directories if they do not exist
+# =========================================================================
+# 1. المجلدات الأساسية للمشروع (Base Directories)
+# =========================================================================
+DATA_DIR = 'arabic_data'              # المجلد الرئيسي لحفظ كافة البيانات (ملفات CSV، بيانات المستخدمين، إلخ)
+MODEL_DIR = 'arabic_model'            # المجلد الذي سنخزن فيه نماذج الذكاء الاصطناعي المدربة
+USERS_DIR = os.path.join(DATA_DIR, 'users')  # مجلد فرعي داخل arabic_data لتخزين ملفات المستخدمين المستقلة
+LOG_DIR = 'logs'                      # مجلد لحفظ ملفات السجلات اليومية للنظام (Logs)
+REPORTS_DIR = 'reports'                # مجلد لحفظ تقارير التدريب ورسوم مصفوفة الالتباس (Confusion Matrix)
+
+# للتسهيل على المستخدم، نقوم بإنشاء هذه المجلدات برمجياً فوراً إذا لم تكن موجودة لمنع حدوث أي أخطاء
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(MODEL_DIR, exist_ok=True)
 os.makedirs(USERS_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
-# Dataset paths
+# =========================================================================
+# 2. مسارات ملفات البيانات والترجمة (Dataset & Translation Paths)
+# =========================================================================
+# ملف حفظ نقاط اليد الخاصة ببيانات التدريب
 TRAIN_CSV = os.path.join(DATA_DIR, 'arabic_keypoints.csv')
+
+# ملف حفظ نقاط اليد الخاصة ببيانات الاختبار
 TEST_CSV = os.path.join(DATA_DIR, 'test_keypoints.csv')
+
+# ملف جدول الحروف العربية الموحدة وأرقامها التعريفية
 LABELS_CSV = os.path.join(DATA_DIR, 'arabic_labels.csv')
+
+# ملف حفظ إعدادات النظام بصيغة JSON
 SETTINGS_JSON = os.path.join(DATA_DIR, 'settings.json')
+
+# ملف الجافا سكريبت الخاص بالوضعيات ثلاثية الأبعاد لتحريك اليد الافتراضية (GLB Model) في صفحة الترجمة
 POSES_JS = os.path.join('static', 'poses.js')
 
-# Model paths
-# The production TFLite model currently used in server.py
+# =========================================================================
+# 3. مسارات نماذج الذكاء الاصطناعي (Model Paths)
+# =========================================================================
+# النموذج الفعلي المستخدم حالياً في خادم الويب (Server) للتنبؤ المباشر
 PRODUCTION_MODEL_TFLITE = os.path.join(MODEL_DIR, 'arabic_sign_model_2026-05-22_95.96.tflite')
 
-# Versioned model locations
+# مسارات النماذج القياسية للتدريب
 MODEL_PATH_H5 = os.path.join(MODEL_DIR, 'arabic_sign_model.h5')
 MODEL_PATH_TFLITE = os.path.join(MODEL_DIR, 'arabic_sign_model.tflite')
 
-# Pointer files to latest models (Phase 5)
+# مسارات تشير دوماً إلى آخر نسخة نموذج قمنا بتدريبها (Latest Models)
 LATEST_MODEL_KERAS = os.path.join(MODEL_DIR, 'latest.keras')
 LATEST_MODEL_TFLITE = os.path.join(MODEL_DIR, 'latest.tflite')
 
-# Log paths (Phase 6)
-TRAINING_LOG = os.path.join(LOG_DIR, 'training.log')
-SERVER_LOG = os.path.join(LOG_DIR, 'server.log')
-COLLECTION_LOG = os.path.join(LOG_DIR, 'collection.log')
+# =========================================================================
+# 4. مسارات ملفات السجلات اليومية (Log Paths)
+# =========================================================================
+TRAINING_LOG = os.path.join(LOG_DIR, 'training.log')      # سجل عملية التدريب وسير العمل فيها
+SERVER_LOG = os.path.join(LOG_DIR, 'server.log')          # سجل طلبات الويب للمستخدمين والأخطاء إن وجدت
+COLLECTION_LOG = os.path.join(LOG_DIR, 'collection.log')  # سجل عمليات جمع البيانات والتحقق منها
 
-# Report outputs (Phase 4)
-TRAINING_REPORT_JSON = os.path.join(REPORTS_DIR, 'training_report.json')
-CLASSIFICATION_REPORT_TXT = os.path.join(REPORTS_DIR, 'classification_report.txt')
-CONFUSION_MATRIX_PNG = os.path.join(REPORTS_DIR, 'confusion_matrix.png')
-NORMALIZED_CONFUSION_MATRIX_PNG = os.path.join(REPORTS_DIR, 'normalized_confusion_matrix.png')
+# =========================================================================
+# 5. تقارير التدريب والرسومات البيانية (Reports & Evaluation)
+# =========================================================================
+TRAINING_REPORT_JSON = os.path.join(REPORTS_DIR, 'training_report.json')  # تقرير يحتوي على أرقام دقة الموديل
+CLASSIFICATION_REPORT_TXT = os.path.join(REPORTS_DIR, 'classification_report.txt')  # تقرير نصي مفصل لكل حرف
+CONFUSION_MATRIX_PNG = os.path.join(REPORTS_DIR, 'confusion_matrix.png')  # رسم بياني يوضح أين يخطئ الموديل
+NORMALIZED_CONFUSION_MATRIX_PNG = os.path.join(REPORTS_DIR, 'normalized_confusion_matrix.png')  # رسم بياني بنسب مئوية
 
-# Default parameters
-DEFAULT_QUALITY_FILTER = True
-DEFAULT_FILTER_THRESHOLD = 0.85
-DEFAULT_HAND_YAW = -0.55
-DEFAULT_HAND_PITCH = 0.15
+# =========================================================================
+# 6. القيم الافتراضية وفلاتر الجودة (Default Parameters)
+# =========================================================================
+DEFAULT_QUALITY_FILTER = True          # تفعيل فلتر جودة البيانات تلقائياً لمنع النقاط المشوهة
+DEFAULT_FILTER_THRESHOLD = 0.85        # عتبة القبول للجودة (كلما زادت، تطلّب النظام دقة ووضوحاً أعلى لليد)
+DEFAULT_HAND_YAW = -0.55               # زاوية الدوران الافتراضية لليد (Yaw)
+DEFAULT_HAND_PITCH = 0.15              # زاوية الميل الافتراضية لليد (Pitch)
 
+# =========================================================================
+# 7. دالة إنشاء وإعداد مسجل التقارير (Logger Generator)
+# =========================================================================
 def get_file_logger(name: str, log_file: str, level=logging.INFO) -> logging.Logger:
     """
-    Creates a logger that outputs to both a file and standard output.
-    Ensures safe handling of console encoding and unicode logs.
+    هذه الدالة تقوم بإنشاء "مسجل تقارير" (Logger) ذكي جداً.
+    بدلاً من طباعة التقارير على الشاشة فقط واختفائها عند إغلاق البرنامج،
+    هذا المسجل يقوم بطباعة التقارير على الشاشة (Console) وفي نفس الوقت يكتبها في ملف نصي على الهارد ديسك للرجوع إليها لاحقاً.
+    وهو يتعامل بأمان مع الحروف العربية والترميز الموحد (UTF-8).
     """
     logger = logging.getLogger(name)
     logger.setLevel(level)
     
+    # نتحقق إذا كان المسجل يحتوي بالفعل على أدوات كتابة مسبقاً لمنع تكرار المخرجات
     if not logger.handlers:
+        # تحديد التنسيق: [الوقت والتاريخ] [مستوى الخطورة] [اسم الملف] الرسالة
         formatter = logging.Formatter(
             fmt='%(asctime)s [%(levelname)s] [%(name)s] %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         
-        # File handler
+        # 1. أداة الكتابة في الملف (File Handler)
         file_handler = logging.FileHandler(log_file, encoding='utf-8')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
         
-        # Console handler
+        # 2. أداة الطباعة في الشاشة السوداء (Console Handler)
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
         
     return logger
+
+# =========================================================================
+# 8. استخراج الميزات الإضافية لليد (Feature Extraction)
+# =========================================================================
+# نحدد نمط معالجة البيانات: 
+# "legacy" يعني استخدام نقاط اليد الـ 42 فقط مباشرة.
+# "enhanced" يعني حساب علاقات هندسية إضافية (أطوال الأصابع، الزوايا، إلخ) لمساعدة الموديل على التعرف بدقة أعلى.
+FEATURE_MODE = os.getenv("FEATURE_MODE", "legacy")
+
+def extract_derived_features(coords):
+    """
+    هذه هي الدالة الرياضية الأهم في معالجة الإشارات!
+    الـ MediaPipe يعطينا 21 نقطة لليد، وكل نقطة لها (x, y)، أي إجمالي 42 قيمة.
+    لمساعدة نموذج الذكاء الاصطناعي على التفريق بين الحروف المتشابهة (مثل حرف ر وحرف ز)،
+    نقوم برياضيات بسيطة لحساب "62 ميزة هندسية إضافية مشتقة" مثل:
+    - المسافة بين أطراف الأصابع.
+    - طول كل إصبع مقارنة بحجم الكف.
+    - زاوية انحناء كل مفصل من المفاصل.
+    
+    المدخلات: قائمة تحتوي على 42 رقماً عشرياً (نقاط اليد).
+    المخرجات: قائمة تحتوي على 62 ميزة رياضية إضافية مشتقة.
+    """
+    import math
+    
+    # إذا كانت البيانات ناقصة أو غير صحيحة، نرجع قائمة من الأصفار لتجنب توقف الكود
+    if len(coords) != 42:
+        return [0.0] * 62
+        
+    # نقوم بتجميع النقاط الثنائية (x, y) في قائمة واحدة تحتوي على 21 نقطة ثنائية الأبعاد
+    points = [(coords[i], coords[i+1]) for i in range(0, 42, 2)]
+    
+    def dist(i, j):
+        """دالة لحساب المسافة الهندسية (المسافة الإقليدية) بين نقطتين في فضاء ثنائي الأبعاد"""
+        return math.sqrt((points[i][0] - points[j][0])**2 + (points[i][1] - points[j][1])**2)
+        
+    def vec(i, j):
+        """دالة لحساب المتجه السهمي الذي ينطلق من النقطة i وينتهي في النقطة j"""
+        return (points[j][0] - points[i][0], points[j][1] - points[i][1])
+        
+    def angle_cos(v1, v2):
+        """
+        دالة لحساب جيب تمام الزاوية (Cosine Similarity) بين متجهين.
+        هذا يخبرنا هل المتجهان يسيران في نفس الاتجاه، أم متعامدان، أم متعاكسان تماماً.
+        مفيدة جداً لمعرفة زاوية انحناء الأصابع.
+        """
+        n1 = math.sqrt(v1[0]**2 + v1[1]**2)
+        n2 = math.sqrt(v2[0]**2 + v2[1]**2)
+        if n1 == 0 or n2 == 0:
+            return 0.0
+        # نستخدم دالة min و max للتأكد من أن القيمة تظل دائماً بين -1 و 1 للحسابات الرياضية السليمة
+        return max(-1.0, min(1.0, (v1[0] * v2[0] + v1[1] * v2[1]) / (n1 * n2)))
+
+    derived = []  # هذه القائمة سنملؤها بالميزات المشتقة الـ 62
+
+    # 1. أطوال عقل الأصابع (20 ميزة):
+    # نمر على كل قطعة عظمية في الأصابع الخمسة ونحسب طولها
+    segments = [
+        (0, 1), (1, 2), (2, 3), (3, 4),       # الإبهام (Thumb)
+        (0, 5), (5, 6), (6, 7), (7, 8),       # السبابة (Index)
+        (0, 9), (9, 10), (10, 11), (11, 12),  # الوسطى (Middle)
+        (0, 13), (13, 14), (14, 15), (15, 16),# البنصر (Ring)
+        (0, 17), (17, 18), (18, 19), (19, 20) # الخنصر (Pinky)
+    ]
+    for u, v in segments:
+        derived.append(dist(u, v))
+
+    # 2. المسافة الكلية من المعصم (Wrist) إلى أطراف الأصابع الخمسة (5 ميزات)
+    tips = [4, 8, 12, 16, 20]
+    for tip in tips:
+        derived.append(dist(0, tip))
+
+    # 3. المسافات المتبادلة بين أطراف الأصابع وبعضها البعض (10 ميزات)
+    # هذا يوضح مثلاً هل السبابة والوسطى متلامسان أم متباعدان
+    for i in range(len(tips)):
+        for j in range(i + 1, len(tips)):
+            derived.append(dist(tips[i], tips[j]))
+
+    # 4. مدى تباعد الأصابع المتجاورة (4 ميزات)
+    spreads = [(4, 8), (8, 12), (12, 16), (16, 20)]
+    for u, v in spreads:
+        derived.append(dist(u, v))
+
+    # 5. عرض الكف (Palm Width) (ميزة واحدة)
+    # نقيس المسافة بين قاعدة السبابة وقاعدة الخنصر
+    palm_w = dist(5, 17)
+    derived.append(palm_w)
+
+    # 6. ارتفاع الكف (Palm Height) (ميزة واحدة)
+    # نقيس المسافة بين المعصم وقاعدة الإصبع الأوسط
+    palm_h = dist(0, 9)
+    derived.append(palm_h)
+
+    # 7. نسبة طول كل إصبع إلى ارتفاع الكف (5 ميزات)
+    # هذا يجعل الميزات غير متأثرة ببعد اليد عن الكاميرا (يعني لو يدك قريبة أو بعيدة تظل النسبة ثابتة)
+    f_lengths = [
+        dist(1, 4),   # الإبهام
+        dist(5, 8),   # السبابة
+        dist(9, 12),  # الوسطى
+        dist(13, 16), # البنصر
+        dist(17, 20)  # الخنصر
+    ]
+    denom = palm_h if palm_h > 0 else 1.0
+    for fl in f_lengths:
+        derived.append(fl / denom)
+
+    # 8. زوايا الأصابع مقارنة باتجاه الكف (5 ميزات)
+    # نحدد سهم اتجاه الكف (من المعصم 0 للوسطى 9) ونقيس زاوية ميلان كل إصبع بالنسبة له
+    v_palm = vec(0, 9)
+    f_vecs = [
+        vec(1, 4),
+        vec(5, 8),
+        vec(9, 12),
+        vec(13, 16),
+        vec(17, 20)
+    ]
+    for fv in f_vecs:
+        derived.append(angle_cos(v_palm, fv))
+
+    # 9. زوايا انحناء المفاصل الداخلية للأصابع (10 ميزات)
+    # تفيد جداً في معرفة هل الإصبع منثني كلياً أم مفرود بالكامل
+    joint_chains = [
+        (1, 2, 3), (2, 3, 4),       # مفاصل الإبهام
+        (5, 6, 7), (6, 7, 8),       # مفاصل السبابة
+        (9, 10, 11), (10, 11, 12),  # مفاصل الوسطى
+        (13, 14, 15), (14, 15, 16), # مفاصل البنصر
+        (17, 18, 19), (18, 19, 20)  # مفاصل الخنصر
+    ]
+    for a, b, c in joint_chains:
+        v1 = vec(b, a)  # المتجه الأول من المفصل الأوسط للنقطة السابقة
+        v2 = vec(b, c)  # المتجه الثاني من المفصل الأوسط للنقطة اللاحقة
+        derived.append(angle_cos(v1, v2))
+
+    # 10. النسبة بين عرض وارتفاع كف اليد (Hand Aspect Ratio) (ميزة واحدة)
+    aspect = palm_w / denom
+    derived.append(aspect)
+
+    # نرجع الميزات الـ 62 المشتقة كاملة
+    return derived

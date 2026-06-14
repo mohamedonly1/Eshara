@@ -189,7 +189,7 @@
         <div class="form-group">
             <label>{{ t('login_pass_label') }}</label>
             <input type="password" id="loginPass" placeholder="{{ t('login_pass_placeholder') }}" autocomplete="current-password">
-            <div style="text-align: left; margin-top: 6px;">
+            <div style="text-align: start; margin-top: 6px;">
                 <a href="/forgot-password" style="font-size: 12px; color: #1D9E75; text-decoration: none; font-weight: 600;">{{ t('forgot_password_link') }}</a>
             </div>
         </div>
@@ -223,8 +223,15 @@
 </div>
 
 <script>
-// CSRF Protection Helper (SEC-01)
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
 (function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية الجلسة من هجمات الاختراقات.
+     */
     function getCsrfToken() {
         const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
         return match ? decodeURIComponent(match[1]) : '';
@@ -245,56 +252,88 @@
     };
 })();
 
+// =========================================================================
+// 2. تفعيل التابز وإخفاء/إظهار النماذج (Tab Switching)
+// =========================================================================
 function showTab(tab) {
+    /** التبديل بين واجهة "تسجيل الدخول" و واجهة "إنشاء حساب جديد" */
     document.getElementById('loginForm').style.display    = tab === 'login'    ? 'block' : 'none';
     document.getElementById('registerForm').style.display = tab === 'register' ? 'block' : 'none';
     document.getElementById('loginTab').className    = 'tab' + (tab === 'login'    ? ' active' : '');
     document.getElementById('registerTab').className = 'tab' + (tab === 'register' ? ' active' : '');
-    hideError();
+    hideError(); // مسح أي رسالة خطأ سابقة عند التبديل
 }
 
+// =========================================================================
+// 3. عرض وإخفاء رسائل الخطأ والتنبيهات
+// =========================================================================
 function showError(msg) {
+    /** إظهار شريط الخطأ الأحمر أعلى النموذج وكتابة الرسالة المخصصة له */
     const el = document.getElementById('errorMsg');
     el.textContent = msg;
     el.classList.add('show');
 }
 
 function hideError() {
+    /** إخفاء شريط الخطأ */
     document.getElementById('errorMsg').classList.remove('show');
 }
 
+// =========================================================================
+// 4. دالة إرسال طلب تسجيل الدخول (POST Login API)
+// =========================================================================
 async function doLogin() {
     const name = document.getElementById('loginName').value.trim();
     const pass = document.getElementById('loginPass').value;
+    
+    // التحقق الأساسي من كتابة كافة البيانات المطلوبة
     if (!name || !pass) { showError('{{ t("error_empty_fields") }}'); return; }
+    
     const res = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, password: pass })
     });
     const data = await res.json();
-    if (data.success) { window.location.href = '/'; }
-    else { showError(data.error || '{{ t("error_login_failed") }}'); }
+    
+    if (data.success) { 
+        // إعادة توجيه المستخدم لصفحة الويب الرئيسية عند نجاح تسجيل الدخول
+        window.location.href = '/'; 
+    } else { 
+        // عرض سبب الفشل الراجع من السيرفر للمستخدم
+        showError(data.error || '{{ t("error_login_failed") }}'); 
+    }
 }
 
+// =========================================================================
+// 5. دالة إرسال طلب تسجيل حساب جديد (POST Register API)
+// =========================================================================
 async function doRegister() {
     const name  = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const pass  = document.getElementById('regPass').value;
     const pass2 = document.getElementById('regPass2').value;
+    
+    // التحقق من صحة المدخلات وتطابق كلمتي المرور وطول الكلمة
     if (!name || !email || !pass) { showError('{{ t("error_all_fields_required") }}'); return; }
     if (pass !== pass2) { showError('{{ t("error_passwords_mismatch") }}'); return; }
     if (pass.length < 4) { showError('{{ t("error_password_too_short") }}'); return; }
+    
     const res = await fetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password: pass })
     });
     const data = await res.json();
-    if (data.success) { window.location.href = '/'; }
-    else { showError(data.error || '{{ t("error_register_failed") }}'); }
+    
+    if (data.success) { 
+        window.location.href = '/'; 
+    } else { 
+        showError(data.error || '{{ t("error_register_failed") }}'); 
+    }
 }
 
+// تشغيل الطلب تلقائياً عند ضغط المستخدم على زر الإدخال (Enter) بالوحة المفاتيح
 document.addEventListener('keydown', e => {
     if (e.key === 'Enter') {
         if (document.getElementById('loginForm').style.display !== 'none') doLogin();

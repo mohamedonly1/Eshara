@@ -196,11 +196,15 @@
 </style>
 
 <script>
-// =============================================
-// CSRF Protection Helper (SEC-01)
-// Automatically attaches X-CSRFToken header to all non-GET fetch requests
-// =============================================
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
 (function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية حسابات المستخدمين من الاختراقات الخبيثة.
+     */
     function getCsrfToken() {
         const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
         return match ? decodeURIComponent(match[1]) : '';
@@ -221,28 +225,29 @@
     };
 })();
 
-    // نظام الوضع الليلي (Dark Mode)
-// 1. فحص التفضيلات المحفوظة فوراً قبل تحميل الصفحة
+// =========================================================================
+// 2. نظام الوضع الداكن/النهاري (Dark Mode System)
+// =========================================================================
+// فحص التفضيل المحفوظ مسبقاً في متصفح المستخدم وتطبيقه فوراً لتفادي وميض الشاشة الأبيض
 const savedTheme = localStorage.getItem('ishara-theme');
 if (savedTheme === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
 }
 
-// 2. تشغيل الزرار بعد تحميل الـ DOM
 document.addEventListener('DOMContentLoaded', () => {
     const themeBtn = document.getElementById('themeToggle');
     const iconMoon = document.querySelector('.icon-moon');
     const iconSun = document.querySelector('.icon-sun');
 
     if (themeBtn) {
-        // ظبط شكل الأيقونة أول ما الصفحة تفتح
+        // ضبط الأيقونة الحالية لتتوافق مع الوضع المطبق
         const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         if (isDark) {
             iconMoon.style.display = 'none';
             iconSun.style.display = 'block';
         }
 
-        // تفاعل الزرار عند الضغط
+        // تفاعل زر التبديل عند الضغط عليه
         themeBtn.addEventListener('click', () => {
             const currentTheme = document.documentElement.getAttribute('data-theme');
             if (currentTheme === 'dark') {
@@ -260,57 +265,79 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// تشغيل زرار البرجر
+// =========================================================================
+// 3. التحكم في القائمة المنسدلة للهواتف (Hamburger Menu)
+// =========================================================================
 document.addEventListener('DOMContentLoaded', () => {
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const navMenuWrapper = document.getElementById('navMenuWrapper');
     
     if (hamburgerBtn && navMenuWrapper) {
         hamburgerBtn.addEventListener('click', () => {
-            navMenuWrapper.classList.toggle('active');
+            navMenuWrapper.classList.toggle('active'); // إظهار أو إخفاء القائمة في الهواتف
         });
     }
 });
 
+// =========================================================================
+// 4. تحميل بيانات المستخدم الحالي والروابط حسب الصلاحيات (User Roles & Menu)
+// =========================================================================
 async function initNavbar() {
-    const res = await fetch('/auth/me');
-    const user = await res.json();
-    if (!user.logged_in) {
-        if (!window._adminPage) window.location.href = '/login';
-        return;
+    try {
+        const res = await fetch('/auth/me');
+        const user = await res.json();
+        
+        // إذا كان المستخدم غير مسجل دخول، يتم توجيهه لصفحة تسجيل الدخول
+        if (!user.logged_in) {
+            if (!window._adminPage) window.location.href = '/login';
+            return;
+        }
+        
+        // عرض اسم المستخدم وصورته الشخصية في الهيدر
+        document.getElementById('navName').textContent = user.name;
+        if (user.profile_pic) {
+            document.getElementById('navAvatar').innerHTML = `<img src="${user.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
+        } else {
+            // استخدام الحرف الأول من الاسم كرمز تعبيري افتراضي في حال عدم وجود صورة
+            document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
+        }
+        
+        // بناء قائمة الروابط ديناميكياً بناءً على دور المستخدم (أدمن أو مستخدم عادي)
+        const path = window.location.pathname;
+        const links = [
+            { href: '/',             icon: '', label: '{{ t("nav_recognize") }}',       roles: ['user','admin'] },
+            { href: '/translate',    icon: '', label: '{{ t("nav_translate") }}',        roles: ['user','admin'] },
+            { href: '/collect-data', icon: '', label: '{{ t("nav_collect") }}', roles: ['user','admin'] },
+            { href: '/profile',      icon: '', label: '{{ t("nav_profile") }}',        roles: ['user','admin'] },
+            { href: '/pose-editor',  icon: '', label: '{{ t("nav_editor") }}',       roles: ['admin'] },
+            { href: '/admin',        icon: '', label: '{{ t("nav_admin") }}',       roles: ['admin'], cls: 'admin-link' },
+        ];
+        
+        const role = user.is_admin ? 'admin' : 'user';
+        document.getElementById('navLinks').innerHTML = links
+            .filter(l => l.roles.includes(role))
+            .map(l => `
+                <a href="${l.href}" class="nav-link ${l.cls||''} ${path===l.href?'active':''}">
+                    <span>${l.icon}</span><span>${l.label}</span>
+                </a>`).join('');
+    } catch(e) {
+        console.error("فشل تهيئة القائمة العلوية:", e);
     }
-    document.getElementById('navName').textContent = user.name;
-    if (user.profile_pic) {
-        document.getElementById('navAvatar').innerHTML = `<img src="${user.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
-    } else {
-        document.getElementById('navAvatar').textContent = user.name.charAt(0).toUpperCase();
-    }
-    const path = window.location.pathname;
-const links = [
-        { href: '/',             icon: '', label: '{{ t("nav_recognize") }}',       roles: ['user','admin'] },
-        { href: '/translate',    icon: '', label: '{{ t("nav_translate") }}',        roles: ['user','admin'] },
-        { href: '/collect-data', icon: '', label: '{{ t("nav_collect") }}', roles: ['user','admin'] },
-        { href: '/profile',      icon: '', label: '{{ t("nav_profile") }}',        roles: ['user','admin'] },
-        { href: '/pose-editor',  icon: '', label: '{{ t("nav_editor") }}',       roles: ['admin'] },
-        { href: '/admin',        icon: '', label: '{{ t("nav_admin") }}',       roles: ['admin'], cls: 'admin-link' },
-    ];
-    const role = user.is_admin ? 'admin' : 'user';
-    document.getElementById('navLinks').innerHTML = links
-        .filter(l => l.roles.includes(role))
-        .map(l => `
-            <a href="${l.href}" class="nav-link ${l.cls||''} ${path===l.href?'active':''}">
-                <span>${l.icon}</span><span>${l.label}</span>
-            </a>`).join('');
 }
 
 async function doLogout() {
+    /** تسجيل الخروج والتوجيه لصفحة تسجيل الدخول */
     await fetch('/auth/logout');
     window.location.href = '/login';
 }
 
 initNavbar();
 
+// =========================================================================
+// 5. نظام اللغات المتعددة (Localization Selector)
+// =========================================================================
 async function loadLanguagesSelector() {
+    /** جلب قائمة اللغات المتوفرة وتحديد اللغة النشطة حالياً في القائمة المنسدلة */
     try {
         const res = await fetch('/auth/languages');
         const data = await res.json();
@@ -322,11 +349,12 @@ async function loadLanguagesSelector() {
             </option>
         `).join('');
     } catch (e) {
-        console.error("Failed to load languages in selector", e);
+        console.error("فشل تحميل اللغات المتاحة:", e);
     }
 }
 
 async function changeLanguage(langCode) {
+    /** إرسال اللغة الجديدة للسيرفر لتغيير الجلسة وتحديث الصفحة لعرض الكلمات المترجمة */
     try {
         const res = await fetch('/auth/set-active-lang', {
             method: 'POST',
@@ -346,6 +374,9 @@ async function changeLanguage(langCode) {
 
 document.addEventListener('DOMContentLoaded', loadLanguagesSelector);
 
+// =========================================================================
+// 6. تسجيل الـ Service Worker لتشغيل الموقع كتطبيق ويب تقدمي (PWA) بدون إنترنت
+// =========================================================================
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/static/pwa/sw.js').catch(()=>{});

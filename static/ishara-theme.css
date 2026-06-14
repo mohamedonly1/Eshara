@@ -444,6 +444,11 @@ input[type=range].speed-slider { background: var(--surface2) !important; accent-
 [style*="color:var(--accent)"], [style*="color: var(--accent)"] { color: var(--accent) !important; }
 [style*="color:var(--warn)"],   [style*="color: var(--warn)"]   { color: var(--warn) !important; }
 [style*="color:var(--danger)"], [style*="color: var(--danger)"] { color: var(--danger) !important; }
+.add-language-btn,
+.action-btn[onclick="addNewLanguage()"] {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
 meta[name="theme-color"] { content: "#1D9E75" !important; }
 
 /* ══════════════════════════════════════════════════════
