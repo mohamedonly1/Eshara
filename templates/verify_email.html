@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>التحقق من البريد الإلكتروني — إشارة</title>
+    <title>{{ t('title_verify_email') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -194,9 +194,9 @@
             <rect x="4" y="6" width="20" height="16" rx="2" stroke="white" stroke-width="2" fill="none"/>
         </svg>
     </div>
-    <div class="title">تأكيد البريد الإلكتروني</div>
+    <div class="title">{{ t('verify_email_title') }}</div>
     <div class="description">
-        لقد أرسلنا رمز تحقق مكون من 6 أرقام إلى:<br>
+        {{ t('verify_email_desc') }}<br>
         <span class="email-display" id="userEmail">...</span>
     </div>
 
@@ -212,27 +212,59 @@
         <input type="text" class="code-input" maxlength="1" pattern="[0-9]*" inputmode="numeric">
     </div>
 
-    <button class="submit-btn" onclick="submitVerification()">تحقق من الرمز</button>
+    <button class="submit-btn" onclick="submitVerification()">{{ t('verify_email_btn') }}</button>
 
     <div class="resend-container">
-        لم يصلك الرمز؟ 
-        <button class="resend-btn" id="resendBtn" onclick="resendCode()">إعادة إرسال</button>
-        <span id="cooldownText" style="display:none"> (بعد <span id="timer">60</span> ثانية)</span>
+        {{ t('verify_email_resend_prompt') }} 
+        <button class="resend-btn" id="resendBtn" onclick="resendCode()">{{ t('verify_email_resend_btn') }}</button>
+        <span id="cooldownText" style="display:none"> ({{ t('verify_email_resend_cooldown') }} <span id="timer">60</span>)</span>
     </div>
 
-    <a href="/auth/logout" class="logout-link">تسجيل الخروج</a>
+    <a href="/auth/logout" class="logout-link">{{ t('nav_logout') }}</a>
 </div>
 
 <script>
-    // Theme setup
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
+(function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية الجلسة من هجمات الاختراقات.
+     */
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
+
+    // تهيئة الوضع الليلي بناء على تفضيلات المستخدم
     const savedTheme = localStorage.getItem('ishara-theme');
     if (savedTheme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
     }
 
-    // Input fields logic (auto-focus next)
+    // =========================================================================
+    // 2. التحكم التلقائي في صناديق الإدخال الستة (Auto-focus & Siblings navigation)
+    // =========================================================================
     const inputs = document.querySelectorAll('.code-input');
     inputs.forEach((input, index) => {
+        // عند كتابة رقم في الصندوق، ينتقل التركيز تلقائياً للصندوق التالي
         input.addEventListener('input', (e) => {
             if (e.target.value.length === 1) {
                 if (index < inputs.length - 1) {
@@ -241,6 +273,7 @@
             }
         });
 
+        // عند الضغط على زر Backspace والصندوق فارغ، يرجع التركيز للصندوق السابق
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Backspace' && e.target.value.length === 0) {
                 if (index > 0) {
@@ -250,18 +283,26 @@
         });
     });
 
-    // Load user email on start
+    // =========================================================================
+    // 3. جلب البريد الإلكتروني للمستخدم وعرضه (Load User Email)
+    // =========================================================================
     async function loadEmail() {
+        /** جلب بيانات الحساب الجاري للتفريق بين تأكيد الحساب وتغيير البريد */
         try {
             const res = await fetch('/auth/me');
             const data = await res.json();
             if (data.logged_in) {
-                // If already verified, redirect to homepage
+                // إذا كان هناك بريد معلق (pending_email)، فهذا يعني أن المستخدم يحاول تأكيد بريده الجديد
+                if (data.pending_email) {
+                    document.getElementById('userEmail').textContent = data.pending_email;
+                    return;
+                }
+                // التحقق الأساسي عند التسجيل لأول مرة
                 if (data.email_verified !== false) {
                     window.location.href = '/';
                     return;
                 }
-                document.getElementById('userEmail').textContent = data.email || 'بريدك الإلكتروني';
+                document.getElementById('userEmail').textContent = data.email || '{{ t("reg_email_label") }}';
             } else {
                 window.location.href = '/login';
             }
@@ -271,6 +312,9 @@
     }
     loadEmail();
 
+    // =========================================================================
+    // 4. عرض التنبيهات
+    // =========================================================================
     function showError(msg) {
         document.getElementById('successMsg').classList.remove('show');
         const el = document.getElementById('errorMsg');
@@ -285,11 +329,15 @@
         el.classList.add('show');
     }
 
+    // =========================================================================
+    // 5. إرسال طلب التحقق من رمز الـ OTP (Submit Verification)
+    // =========================================================================
     async function submitVerification() {
+        // تجميع أرقام الصناديق الستة لبناء الرمز كاملاً
         let code = '';
         inputs.forEach(input => code += input.value);
         if (code.length < 6) {
-            showError('يرجى إدخال الرمز المكون من 6 أرقام كاملاً');
+            showError('{{ t("verify_email_empty_code") }}');
             return;
         }
 
@@ -301,22 +349,27 @@
             });
             const data = await res.json();
             if (data.success) {
-                showSuccess('تم التحقق بنجاح! جاري تحويلك...');
+                showSuccess('{{ t("verify_email_success") }}');
+                // بعد ثانية ونصف يتم توجيه المستخدم للصفحة الرئيسية
                 setTimeout(() => {
                     window.location.href = '/';
                 }, 1500);
             } else {
-                showError(data.error || 'رمز التحقق غير صحيح');
+                showError(data.error || '{{ t("verify_email_code_invalid") }}');
             }
         } catch(e) {
-            showError('حدث خطأ أثناء الاتصال بالخادم');
+            showError('{{ t("toast_network_error") }}');
         }
     }
 
+    // =========================================================================
+    // 6. مؤقت إعادة الإرسال (Resend Cooldown Timer)
+    // =========================================================================
     let cooldown = 0;
     let timerInterval = null;
 
     function startCooldown() {
+        /** منع المستخدم من إرسال طلبات متكررة وتعطيل الزر لمدة دقيقة */
         cooldown = 60;
         const resendBtn = document.getElementById('resendBtn');
         const cooldownText = document.getElementById('cooldownText');
@@ -338,6 +391,7 @@
     }
 
     async function resendCode() {
+        /** إعادة إرسال رمز تحقق جديد إلى بريد المستخدم */
         if (cooldown > 0) return;
         try {
             const res = await fetch('/auth/resend-code', {
@@ -345,17 +399,17 @@
             });
             const data = await res.json();
             if (data.success) {
-                showSuccess('تم إعادة إرسال رمز التحقق إلى بريدك الإلكتروني');
+                showSuccess('{{ t("verify_email_resent_success") }}');
                 startCooldown();
             } else {
-                showError(data.error || 'تعذر إعادة إرسال الرمز');
+                showError(data.error || '{{ t("toast_error") }}');
             }
         } catch(e) {
-            showError('حدث خطأ أثناء الاتصال بالخادم');
+            showError('{{ t("toast_network_error") }}');
         }
     }
 
-    // Auto submit if last input is filled
+    // إرسال الطلب تلقائياً للملقم عند تعبئة الصندوق السادس والأخير مباشرة
     inputs[5].addEventListener('input', () => {
         setTimeout(submitVerification, 100);
     });

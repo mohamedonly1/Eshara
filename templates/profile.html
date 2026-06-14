@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>حسابي</title>
+    <title>{{ t('title_profile') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/static/pwa/manifest.json">
@@ -89,8 +89,8 @@
 
         <!-- Edit Profile Section -->
         <div class="section-title" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>إعدادات الحساب</span>
-            <button onclick="toggleEditProfile()" style="background:none; border:none; color:var(--accent); font-family:'Cairo'; font-size:12px; font-weight:700; cursor:pointer;">تعديل البيانات</button>
+            <span>{{ t('profile_settings_title') }}</span>
+            <button onclick="toggleEditProfile()" style="background:none; border:none; color:var(--accent); font-family:'Cairo'; font-size:12px; font-weight:700; cursor:pointer;">{{ t('profile_settings_edit_btn') }}</button>
         </div>
 
         <div id="editProfileCard" style="display:none; background:var(--surface); border-radius:var(--radius); padding:20px; border:1px solid rgba(255,255,255,0.06); margin-bottom:20px;">
@@ -98,48 +98,48 @@
             <div id="editSuccessMsg" class="success-msg" style="background:#EAFDF7; border:1px solid rgba(29,158,117,0.2); color:#1D9E75; padding:10px 14px; border-radius:10px; font-size:13px; margin-bottom:16px; display:none;"></div>
             
             <div class="form-group" style="margin-bottom:14px;">
-                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">الاسم</label>
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">{{ t('reg_name_label') }}</label>
                 <input type="text" id="editName" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
             </div>
 
             <div class="form-group" style="margin-bottom:14px;">
-                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">البريد الإلكتروني</label>
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">{{ t('reg_email_label') }}</label>
                 <input type="email" id="editEmail" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
-                <span style="font-size:10px; color:var(--warn); display:block; margin-top:4px;">* تغيير البريد الإلكتروني سيتطلب إعادة التحقق منه.</span>
+                <span style="font-size:10px; color:var(--warn); display:block; margin-top:4px;">* {{ t('profile_settings_email_notice') }}</span>
             </div>
 
             <div class="form-group" style="margin-bottom:14px;">
-                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">كلمة المرور الجديدة (اختياري)</label>
-                <input type="password" id="editNewPass" placeholder="اتركه فارغاً للاحتفاظ بالحالية" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">{{ t('profile_settings_new_pass_label') }}</label>
+                <input type="password" id="editNewPass" placeholder="{{ t('profile_settings_new_pass_placeholder') }}" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
             </div>
 
             <div class="form-group" style="margin-bottom:18px;">
-                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">كلمة المرور الحالية (مطلوب لحفظ التعديلات)</label>
-                <input type="password" id="editCurrentPass" placeholder="أدخل كلمة المرور الحالية لتأكيد التغييرات" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
+                <label style="display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; font-weight:600;">{{ t('profile_settings_curr_pass_label') }}</label>
+                <input type="password" id="editCurrentPass" placeholder="{{ t('profile_settings_curr_pass_placeholder') }}" style="width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 12px; color:var(--text); outline:none; font-family:'Cairo';">
             </div>
 
-            <button onclick="saveProfileChanges()" style="width:100%; padding:12px; border-radius:10px; border:none; font-family:'Cairo'; font-size:14px; font-weight:700; cursor:pointer; background:var(--accent); color:#fff;">حفظ التغييرات</button>
+            <button onclick="saveProfileChanges()" style="width:100%; padding:12px; border-radius:10px; border:none; font-family:'Cairo'; font-size:14px; font-weight:700; cursor:pointer; background:var(--accent); color:#fff;">{{ t('profile_settings_save_btn') }}</button>
         </div>
 
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-num" style="color:var(--accent)" id="statTotal">0</div>
-                <div class="stat-label">عينة مقبولة</div>
+                <div class="stat-label">{{ t('profile_stats_accepted') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-num" style="color:var(--danger)" id="statRejected">0</div>
-                <div class="stat-label">مرفوضة</div>
+                <div class="stat-label">{{ t('profile_stats_rejected') }}</div>
             </div>
             <div class="stat-card">
                 <div class="stat-num" style="color:var(--warn)" id="statLetters">0</div>
-                <div class="stat-label">حرف مسجّل</div>
+                <div class="stat-label">{{ t('profile_stats_letters') }}</div>
             </div>
         </div>
 
-        <div class="section-title">تقدمك في تسجيل الحروف</div>
+        <div class="section-title">{{ t('profile_progress_title') }}</div>
         <div class="overall-bar-wrap">
             <div class="overall-label">
-                <span>الإجمالي</span>
+                <span>{{ t('profile_progress_total') }}</span>
                 <span id="overallPct" style="color:var(--accent);font-weight:700">0%</span>
             </div>
             <div class="overall-track">
@@ -147,13 +147,13 @@
             </div>
         </div>
 
-        <div class="section-title">تفاصيل كل حرف</div>
+        <div class="section-title">{{ t('profile_details_title') }}</div>
         <div class="letters-grid" id="lettersGrid"></div>
     </div>
     <div class="history-section">
         <div class="history-header">
-            <div class="history-title">سجل الجمل</div>
-            <div class="history-count" id="historyCount">0 جملة</div>
+            <div class="history-title">{{ t('profile_history_title') }}</div>
+            <div class="history-count" id="historyCount">0 {{ t('profile_history_unit') }}</div>
         </div>
         <div id="historyList"></div>
     </div>
@@ -162,24 +162,59 @@
 </div>
 
 <script>
-const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
-const TARGET = 200;
+// تحديد الثوابت وتدفق الحروف المستهدفة
+const ARABIC_LETTERS = {{ letters | tojson | safe }};
+const TARGET = 200; // الهدف المطلوب لكل حرف ليكون مكتمل البيانات
 
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
+(function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية الجلسة من هجمات الاختراقات.
+     */
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
+
+// =========================================================================
+// 2. تحميل الملف الشخصي وعرض الإحصائيات (Load Profile & Stats)
+// =========================================================================
 async function loadProfile() {
+    /** جلب بيانات المستخدم وعرض تقدمه الإجمالي وحالة الحروف المكتملة */
     const res = await fetch('/auth/me');
     const user = await res.json();
     if (!user.logged_in) return;
 
+    // عرض الصورة الشخصية أو الحرف الأول من الاسم كخيار افتراضي
     if (user.profile_pic) {
         document.getElementById('profileAvatar').innerHTML = `<img src="${user.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     } else {
         document.getElementById('profileAvatar').textContent = user.name.charAt(0).toUpperCase();
     }
     document.getElementById('profileName').textContent = user.name;
-    document.getElementById('profileSince').textContent = 'عضو منذ: ' + (user.created || '');
+    document.getElementById('profileSince').textContent = '{{ t("profile_member_since") }}: ' + (user.created || '');
     document.getElementById('profileEmail').textContent = user.email || '';
     
-    // Set edit form defaults
+    // إدخال القيم الحالية في حقول نموذج تعديل البيانات الافتراضية
     document.getElementById('editName').value = user.name;
     document.getElementById('editEmail').value = user.email || '';
     document.getElementById('editNewPass').value = '';
@@ -188,18 +223,19 @@ async function loadProfile() {
     document.getElementById('statTotal').textContent = user.total || 0;
     document.getElementById('statRejected').textContent = user.rejected || 0;
 
+    // فحص عدد الحروف التي شارك المستخدم فيها
     const samples = user.samples || {};
     const lettersWithSamples = Object.keys(samples).filter(k => (samples[k] || 0) > 0).length;
     document.getElementById('statLetters').textContent = lettersWithSamples;
 
-    // إجمالي التقدم
+    // حساب نسبة التقدم الإجمالي (Total Progress)
     const totalPossible = ARABIC_LETTERS.length * TARGET;
     const totalDone = Object.values(samples).reduce((s,v) => s + Math.min(v, TARGET), 0);
     const pct = Math.round(totalDone / totalPossible * 100);
     document.getElementById('overallPct').textContent = pct + '%';
     document.getElementById('overallFill').style.width = pct + '%';
 
-    // شبكة الحروف
+    // بناء شبكة الحروف العربية وعرض خط التقدم لكل حرف على حدة
     document.getElementById('lettersGrid').innerHTML = ARABIC_LETTERS.map((l, idx) => {
         const count = samples[idx] || 0;
         const barPct = Math.min(count / TARGET * 100, 100);
@@ -214,11 +250,16 @@ async function loadProfile() {
 
 loadProfile();
 
+// =========================================================================
+// 3. رفع وتحديث الصورة الشخصية (Avatar Upload)
+// =========================================================================
 function triggerAvatarUpload() {
+    /** فتح نافذة اختيار الملفات من جهاز المستخدم بالنقر على الصورة */
     document.getElementById('avatarInput').click();
 }
 
 async function uploadAvatar(event) {
+    /** إرسال الصورة المحددة إلى السيرفر وتحديثها مباشرة بالصفحة */
     const file = event.target.files[0];
     if (!file) return;
 
@@ -238,14 +279,18 @@ async function uploadAvatar(event) {
                 navAv.innerHTML = `<img src="${data.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block;">`;
             }
         } else {
-            alert(data.error || 'فشل تحميل الصورة');
+            alert(data.error || '{{ t("toast_error") }}');
         }
     } catch(e) {
-        alert('حدث خطأ أثناء تحميل الصورة');
+        alert('{{ t("toast_error") }}');
     }
 }
 
+// =========================================================================
+// 4. تعديل الإعدادات وكلمة المرور (Edit Profile)
+// =========================================================================
 function toggleEditProfile() {
+    /** إظهار أو إخفاء نموذج التعديل */
     const card = document.getElementById('editProfileCard');
     const isHidden = card.style.display === 'none';
     card.style.display = isHidden ? 'block' : 'none';
@@ -255,6 +300,7 @@ function toggleEditProfile() {
 }
 
 async function saveProfileChanges() {
+    /** إرسال طلب تحديث الاسم أو البريد أو كلمة المرور والتحقق منها */
     const name = document.getElementById('editName').value.trim();
     const email = document.getElementById('editEmail').value.trim();
     const newPassword = document.getElementById('editNewPass').value;
@@ -267,7 +313,7 @@ async function saveProfileChanges() {
     successEl.style.display = 'none';
 
     if (!name || !currentPassword) {
-        errorEl.textContent = 'الاسم وكلمة المرور الحالية مطلوبين';
+        errorEl.textContent = '{{ t("profile_settings_err_required") }}';
         errorEl.style.display = 'block';
         return;
     }
@@ -285,34 +331,41 @@ async function saveProfileChanges() {
         });
         const data = await res.json();
         if (data.success) {
-            successEl.textContent = 'تم تحديث البيانات بنجاح!';
-            successEl.style.display = 'block';
-            
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // إذا قمنا بتعديل البريد، سنطلب منه التحقق من البريد الجديد أولاً
+            if (data.pending_email_verification) {
+                successEl.textContent = '{{ t("profile_settings_success_email_pending") }}';
+                successEl.style.display = 'block';
+                setTimeout(() => { window.location.href = '/verify-email'; }, 1500);
+            } else {
+                successEl.textContent = '{{ t("profile_settings_success_updated") }}';
+                successEl.style.display = 'block';
+                setTimeout(() => { window.location.reload(); }, 1000);
+            }
         } else {
-            errorEl.textContent = data.error || 'حدث خطأ أثناء التحديث';
+            errorEl.textContent = data.error || '{{ t("toast_error") }}';
             errorEl.style.display = 'block';
         }
     } catch(e) {
-        errorEl.textContent = 'حدث خطأ في الاتصال بالخادم';
+        errorEl.textContent = '{{ t("toast_network_error") }}';
         errorEl.style.display = 'block';
     }
 }
 
-// ===== سجل الجمل =====
+// =========================================================================
+// 5. سجل الجمل المترجمة ونطق الكلمات (Saved History & TTS)
+// =========================================================================
 async function loadHistory() {
+    /** جلب قائمة الجمل المحفوظة وتوليد عناصرها في الصفحة */
     const res = await fetch('/history/list');
     const data = await res.json();
     const entries = data.entries || [];
 
-    document.getElementById('historyCount').textContent = entries.length + ' جملة';
+    document.getElementById('historyCount').textContent = entries.length + ' ' + (entries.length === 1 ? '{{ t("profile_history_unit_single") }}' : '{{ t("profile_history_unit") }}');
 
     const list = document.getElementById('historyList');
     list.replaceChildren();
     if (!entries.length) {
-        list.innerHTML = '<div class="history-empty">لا يوجد جمل محفوظة بعد<br><span style="font-size:11px;margin-top:4px;display:block">ابدأ بالإشارة في التطبيق واحفظ جملك</span></div>';
+        list.innerHTML = `<div class="history-empty">{{ t("no_saved_sentences") }}<br><span style="font-size:11px;margin-top:4px;display:block">{{ t("profile_history_empty_hint") }}</span></div>`;
         return;
     }
 
@@ -338,13 +391,13 @@ async function loadHistory() {
         const speakBtn = document.createElement('button');
         speakBtn.className = 'btn-speak-hist';
         speakBtn.type = 'button';
-        speakBtn.textContent = 'نطق';
+        speakBtn.textContent = '{{ t("btn_speak") }}';
         speakBtn.addEventListener('click', () => speakText(e.text || ''));
 
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-del-hist';
         delBtn.type = 'button';
-        delBtn.textContent = 'حذف';
+        delBtn.textContent = '{{ t("profile_history_delete") }}';
         delBtn.addEventListener('click', () => deleteEntry(e.id));
 
         actions.append(speakBtn, delBtn);
@@ -355,17 +408,19 @@ async function loadHistory() {
 }
 
 function speakText(text) {
+    /** تحويل النص إلى صوت ونطقه باستخدام محرك نطق النصوص المدمج بالمتصفح (TTS) */
     if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'ar-SA';
+    const lang = "{{ active_lang }}";
+    u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
     u.rate = 0.85;
-    const voices = window.speechSynthesis.getVoices();
-    const ar = voices.find(v => v.lang.startsWith('ar'));
-    if (ar) u.voice = ar;
+    const voice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith(lang));
+    if (voice) u.voice = voice;
     window.speechSynthesis.speak(u);
 }
 
 async function deleteEntry(id) {
+    /** حذف جملة من السجل نهائياً وتحديث الشاشة */
     await fetch('/history/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -373,12 +428,11 @@ async function deleteEntry(id) {
     });
     document.getElementById('hitem_' + id)?.remove();
     const remaining = document.querySelectorAll('[id^="hitem_"]').length;
-    document.getElementById('historyCount').textContent = remaining + ' جملة';
+    document.getElementById('historyCount').textContent = remaining + ' ' + (remaining === 1 ? '{{ t("profile_history_unit_single") }}' : '{{ t("profile_history_unit") }}');
     if (!remaining) loadHistory();
 }
 
 loadHistory();
-
 </script>
 </body>
 </html>

@@ -2,8 +2,8 @@
 <!-- templates/onboarding.html -->
 <div id="ishara-tour" class="ishara-tour-wrapper" style="display: none;">
   <div class="ishara-tour-backdrop" onclick="closeTour()"></div>
-  <div class="ishara-tour-modal" dir="rtl">
-    <button class="ishara-tour-close" onclick="closeTour()" aria-label="إغلاق">&times;</button>
+  <div class="ishara-tour-modal" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
+    <button class="ishara-tour-close" onclick="closeTour()" aria-label="{{ t('tour_close') }}">&times;</button>
     
     <div class="ishara-tour-body">
       <div id="ishara-tour-step-content" class="ishara-tour-step-content">
@@ -12,11 +12,11 @@
     </div>
     
     <div class="ishara-tour-footer">
-      <button id="ishara-tour-back" class="ishara-tour-btn-secondary" onclick="prevStep()">السابق</button>
+      <button id="ishara-tour-back" class="ishara-tour-btn-secondary" onclick="prevStep()">{{ t('tour_back') }}</button>
       <div id="ishara-tour-dots" class="ishara-tour-dots">
         <!-- Dots will be generated here -->
       </div>
-      <button id="ishara-tour-next" class="ishara-tour-btn-primary" onclick="nextStep()">التالي</button>
+      <button id="ishara-tour-next" class="ishara-tour-btn-primary" onclick="nextStep()">{{ t('tour_next') }}</button>
     </div>
   </div>
 </div>
@@ -282,36 +282,37 @@
 const steps = [
   { 
     icon: '🤟', 
-    title: 'مرحباً بك في إشارة!', 
-    text: 'تتيح لك إشارة التواصل باستخدام لغة الإشارة العربية - ترجم إيماءات اليد فورياً إلى نصوص، أو اكتب نصاً لمشاهدته مترجماً إلى لغة الإشارة.' 
+    title: '{{ t("tour_step1_title") }}', 
+    text: '{{ t("tour_step1_text") }}' 
   },
   { 
     icon: '📷', 
-    title: 'ترجمة الإشارات إلى نصوص', 
-    text: 'افتح الكاميرا، وضع يدك أمامها، وستتعرف إشارة على كل حرف عربي في الوقت الفعلي - لتصنع الكلمات تلقائياً أثناء الإشارة.',
+    title: '{{ t("tour_step2_title") }}', 
+    text: '{{ t("tour_step2_text") }}',
     gif: '/static/gifs/sign_to_text.gif',
-    fallback: 'عرض توضيحي: إشارة ← نص',
-    caption: 'التعرف الفوري على الإشارات'
+    fallback: '{{ t("tour_step2_fallback") }}',
+    caption: '{{ t("tour_step2_caption") }}'
   },
   { 
     icon: '✍️', 
-    title: 'ترجمة النصوص إلى لغة الإشارة', 
-    text: 'اكتب أي كلمة أو جملة عربية، وستعرض لك إشارة إيماءات لغة الإشارة الصحيحة لكل حرف - وهي ممتازة للتعلم.',
+    title: '{{ t("tour_step3_title") }}', 
+    text: '{{ t("tour_step3_text") }}',
     gif: '/static/gifs/text_to_sign.gif',
-    fallback: 'عرض توضيحي: نص ← إشارة',
-    caption: 'دليل الحروف الإشارية خطوة بخطوة'
+    fallback: '{{ t("tour_step3_fallback") }}',
+    caption: '{{ t("tour_step3_caption") }}'
   },
   { 
     icon: '✅', 
-    title: 'كل شيء جاهز!', 
-    text: 'يمكنك الآن الترجمة في كلا الاتجاهين. كلما استخدمت إشارة أكثر، أصبحت أكثر ذكاءً. ابدأ الترجمة الآن!', 
+    title: '{{ t("tour_step4_title") }}', 
+    text: '{{ t("tour_step4_text") }}', 
     cta: true 
   }
 ];
 
-let current = 0;
+let current = 0; // الخطوة النشطة حالياً بالمحرر (تبدأ من صفر)
 
 function handleGifError(imgEl, fallbackText) {
+  /** وظيفتها عرض نص بديل جميل وجذاب للمستخدم في حال فشل تحميل الـ GIF التوضيحي */
   const wrapper = imgEl.parentElement;
   if (wrapper) {
     wrapper.innerHTML = `<div class="ishara-tour-gif-fallback">${fallbackText}</div>`;
@@ -319,10 +320,11 @@ function handleGifError(imgEl, fallbackText) {
 }
 
 function renderStep(i) {
+  /** بناء وتصيير الخطوة المحددة رقم (i) داخل المودال ديناميكياً مع تأثير التلاشي (fade effect) */
   const contentEl = document.getElementById('ishara-tour-step-content');
   if (!contentEl) return;
 
-  // Add fade-out transition class
+  // إضافة كلاس الاختفاء (fade-out) لبدء الحركة الانتقالية
   contentEl.classList.add('fade-out');
 
   setTimeout(() => {
@@ -349,7 +351,7 @@ function renderStep(i) {
       ${demoHtml}
     `;
 
-    // Render dot indicators
+    // رسم وتلوين نقاط الانتقال السفلية (Navigation Dots Indicators)
     const dotsContainer = document.getElementById('ishara-tour-dots');
     if (dotsContainer) {
       dotsContainer.innerHTML = steps.map((_, idx) => `
@@ -357,32 +359,33 @@ function renderStep(i) {
       `).join('');
     }
 
-    // Toggle Back button visibility
+    // إخفاء زر الرجوع "السابق" إذا كنا في الخطوة الأولى
     const backBtn = document.getElementById('ishara-tour-back');
     if (backBtn) {
       backBtn.style.visibility = (i === 0) ? 'hidden' : 'visible';
     }
 
-    // Next / CTA button handling
+    // تخصيص زر الاستمرار (إما يعرض "التالي" أو يعرض زر إنهاء الجولة والبدء)
     const nextBtn = document.getElementById('ishara-tour-next');
     if (nextBtn) {
       if (step.cta) {
-        nextBtn.textContent = 'ابدأ الترجمة الآن ←';
+        nextBtn.textContent = '{{ t("tour_start_btn") }}';
         nextBtn.onclick = onCtaClick;
         nextBtn.className = 'ishara-tour-btn-primary ishara-tour-btn-cta';
       } else {
-        nextBtn.textContent = 'التالي';
+        nextBtn.textContent = '{{ t("tour_next") }}';
         nextBtn.onclick = nextStep;
         nextBtn.className = 'ishara-tour-btn-primary';
       }
     }
 
-    // Fade in
+    // إزالة كلاس الاختفاء (Fade-in) لتنعيم ظهور المحتوى الجديد
     contentEl.classList.remove('fade-out');
   }, 250);
 }
 
 function nextStep() {
+  /** الانتقال للخطوة التالية */
   if (current < steps.length - 1) {
     current++;
     renderStep(current);
@@ -390,6 +393,7 @@ function nextStep() {
 }
 
 function prevStep() {
+  /** الرجوع للخطوة السابقة */
   if (current > 0) {
     current--;
     renderStep(current);
@@ -397,11 +401,13 @@ function prevStep() {
 }
 
 function goToStep(idx) {
+  /** الانتقال لخطوة محددة مباشرة عند الضغط على نقطة الفهرس السفلية */
   current = idx;
   renderStep(current);
 }
 
 function openTour() {
+  /** إظهار مودال الجولة الترحيبية وتثبيت شاشة المتصفح خلفه */
   const tourEl = document.getElementById('ishara-tour');
   if (tourEl) {
     tourEl.style.display = 'flex';
@@ -410,7 +416,23 @@ function openTour() {
   }
 }
 
+function adjustCloseBtnAlign() {
+  /** تعديل محاذاة زر الإغلاق ليدعم اتجاه الصفحة للعربية (RTL) أو الإنجليزية (LTR) */
+  const closeBtn = document.querySelector('.ishara-tour-close');
+  if (closeBtn) {
+    const isRtl = "{{ active_lang }}" === "ar";
+    if (isRtl) {
+      closeBtn.style.left = '16px';
+      closeBtn.style.right = 'auto';
+    } else {
+      closeBtn.style.right = '16px';
+      closeBtn.style.left = 'auto';
+    }
+  }
+}
+
 function closeTour() {
+  /** إغلاق الجولة وحفظ إشعار الإتمام في المتصفح حتى لا تظهر الجولة للمستخدم مرة أخرى */
   localStorage.setItem('ishara_tour_done', '1');
   const tourEl = document.getElementById('ishara-tour');
   if (tourEl) {
@@ -420,6 +442,7 @@ function closeTour() {
 }
 
 function onCtaClick() {
+  /** حدث البدء الفعلي عند إتمام الجولة */
   closeTour();
   if (window.location.pathname !== '/') {
     window.location.href = '/';
@@ -428,11 +451,15 @@ function onCtaClick() {
 
 window.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
-  // Ignore login, admin, and pose editor pages
+  
+  // لا نريد عرض الجولة الترحيبية في صفحات الإدارة، تعديل الحركة، أو تسجيل الدخول
   if (path === '/login' || path.startsWith('/admin') || path.startsWith('/pose-editor')) {
     return;
   }
   
+  adjustCloseBtnAlign();
+
+  // فحص ما إذا كان المستخدم قد أتم الجولة من قبل أم لا
   if (!localStorage.getItem('ishara_tour_done')) {
     openTour();
   }

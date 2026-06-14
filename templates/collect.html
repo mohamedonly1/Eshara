@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>تسجيل البيانات</title>
+    <title>{{ t('title_collect') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="/static/mediapipe/hands.js"></script>
+    <script src="/static/mediapipe/camera_utils.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
@@ -299,8 +299,8 @@
 
 <div class="loading-screen" id="loadingScreen">
     <div style="font-size:36px"></div>
-    <div style="font-size:18px;font-weight:900;margin-top:10px;color:#f59e0b">تسجيل البيانات</div>
-    <div style="font-size:12px;color:#6b7280;margin-top:6px" id="loadingSub">جاري تحميل MediaPipe...</div>
+    <div style="font-size:18px;font-weight:900;margin-top:10px;color:#f59e0b">{{ t('title_collect') }}</div>
+    <div style="font-size:12px;color:#6b7280;margin-top:6px" id="loadingSub">{{ t('loading_mediapipe') }}</div>
     <div class="spinner"></div>
 </div>
 
@@ -313,11 +313,11 @@
         <div class="bracket tr"></div>
         <div class="bracket bl"></div>
         <div class="bracket br"></div>
-        <div class="hand-status" id="handStatus">في انتظار اليد...</div>
+        <div class="hand-status" id="handStatus">{{ t('waiting_for_hand_dots') }}</div>
         <div class="reject-msg" id="rejectMsg"></div>
     </div> <div class="letter-selector collapsed" id="letterSelector">
         <div class="selector-toggle" onclick="toggleLetterPanel()">
-            <span class="selector-label">اختر الحرف للتسجيل</span>
+            <span class="selector-label">{{ t('select_letter_to_record') }}</span>
             <span class="selector-toggle-icon">▲</span>
         </div>
         <div class="letters-grid" id="lettersGrid"></div>
@@ -328,7 +328,7 @@
             <div class="progress-letter" id="currentLetterDisplay">—</div>
             <div class="progress-info">
                 <div class="progress-nums">
-                    <span id="progressLabel">اختر حرفاً</span>
+                    <span id="progressLabel">{{ t('choose_letter_first') }}</span>
                     <span id="progressCount">0/200</span>
                 </div>
                 <div class="progress-track">
@@ -340,36 +340,44 @@
             <div class="auto-bar" id="autoBar"></div>
         </div>
         <div class="btns-row">
-            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>اختر حرفاً أولاً</button>
-            <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()"><br>تلقائي</button>
+            <button class="record-btn" id="recordBtn" onclick="recordSample()" disabled>{{ t('choose_letter_first') }}</button>
+            <button class="auto-toggle" id="autoToggle" onclick="toggleAuto()"><br>{{ t('auto_mode') }}</button>
         </div>
     </div>
 </div>
 
 <script>
-const TARGET_SAMPLES = 200;
-const AUTO_CONFIRM_FRAMES = 5;
-const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
+// =========================================================================
+// 1. الإعدادات والمتغيرات العامة لمجمّع البيانات
+// =========================================================================
+const TARGET_SAMPLES = 200;       // العدد المطلوب تجميعه لكل حرف (200 لقطة لضمان دقة تدريب النموذج)
+const AUTO_CONFIRM_FRAMES = 5;    // عدد الإطارات المتتالية التي يجب ثبات اليد فيها لتسجيل لقطة تلقائياً
+const ARABIC_LETTERS = {{ letters | tojson | safe }}; // جلب قائمة الحروف العربية من الباك إند كـ JSON
 
-let selectedLetter = null;
-let selectedIdx = null;
-let sampleCounts = {};
-let autoMode = false;
-let autoFrameCount = 0;
-let isRecording = false;
-let currentLandmarks = null;
+let selectedLetter = null;   // الحرف العربي المختار حالياً للتسجيل
+let selectedIdx = null;      // رقم الـ index الخاص بالحرف المختار (0، 1، 2...)
+let sampleCounts = {};       // مخزن لعدد اللقطات التي تم جمعها لكل حرف
+let autoMode = false;        // حالة وضع التسجيل التلقائي (مفعل / معطل)
+let autoFrameCount = 0;      // عداد الإطارات لتأكيد الثبات في الوضع التلقائي
+let isRecording = false;     // مؤشر لمنع إرسال طلبات متعددة للسيرفر في نفس اللحظة
+let currentLandmarks = null; // إحداثيات نقاط اليد الـ 21 الملتقطة حالياً
 
+// عناصر واجهة المستخدم (DOM Elements)
 const video = document.getElementById('video');
 const overlayCanvas = document.getElementById('overlay');
 const overlayCtx = overlayCanvas.getContext('2d');
 const cameraWrap = document.querySelector('.camera-wrap');
 
-// ===== شبكة الحروف =====
+// =========================================================================
+// 2. التحكم في شبكة اختيار الحروف
+// =========================================================================
 function toggleLetterPanel() {
+    /** إظهار أو إخفاء لوحة اختيار الحروف عند الضغط على العنوان السفلي */
     document.getElementById('letterSelector').classList.toggle('collapsed');
 }
 
 function buildLettersGrid() {
+    /** إنشاء أزرار الحروف ديناميكياً داخل الصفحة وربطها بحدث الاختيار */
     const grid = document.getElementById('lettersGrid');
 
     ARABIC_LETTERS.forEach((letter, idx) => {
@@ -383,15 +391,19 @@ function buildLettersGrid() {
 }
 
 async function loadCounts() {
+    /** جلب عدد اللقطات المسجلة سابقاً من قاعدة البيانات لتحديث العدادات للمستخدم */
     try {
         const res = await fetch('/sample_counts');
         const data = await res.json();
         sampleCounts = data.counts || {};
         updateAllCounts();
-    } catch(e) {}
+    } catch(e) {
+        console.error("فشل جلب عدادات اللقطات:", e);
+    }
 }
 
 function updateAllCounts() {
+    /** تحديث النصوص على أزرار الحروف وتلوينها بالأخضر إذا اكتمل العدد المطلوبة (200) */
     ARABIC_LETTERS.forEach((_, idx) => {
         const count = sampleCounts[idx] || 0;
         const countEl = document.getElementById('lcount_' + idx);
@@ -402,27 +414,31 @@ function updateAllCounts() {
 }
 
 function selectLetter(idx, letter) {
+    /** دالة تُستدعى عند اختيار حرف لتجهيز النظام لتسجيله وتحديث البار التقديمي */
     if (selectedIdx !== null) document.getElementById('lbtn_' + selectedIdx)?.classList.remove('selected');
     selectedIdx = idx;
     selectedLetter = letter;
     document.getElementById('lbtn_' + idx).classList.add('selected');
     document.getElementById('currentLetterDisplay').textContent = letter;
     const count = sampleCounts[idx] || 0;
-    document.getElementById('progressLabel').textContent = 'حرف: ' + letter;
+    document.getElementById('progressLabel').textContent = '{{ t("current_letter") }}: ' + letter;
     document.getElementById('progressCount').textContent = count + '/' + TARGET_SAMPLES;
     document.getElementById('progressFill').style.width = Math.min(count / TARGET_SAMPLES * 100, 100) + '%';
     const btn = document.getElementById('recordBtn');
     btn.disabled = false;
-    btn.textContent = 'سجّل ' + letter;
+    btn.textContent = '{{ t("btn_record_letter") }}'.replace('{letter}', letter);
     btn.className = 'record-btn';
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
-    showToast('تم اختيار: ' + letter);
-    document.getElementById('letterSelector').classList.add('collapsed');
+    showToast('{{ t("toast_selected") }}'.replace('{letter}', letter));
+    document.getElementById('letterSelector').classList.add('collapsed'); // إغلاق لوحة الاختيار تلقائياً
 }
 
-// ===== تسجيل =====
+// =========================================================================
+// 3. منطق تسجيل وإرسال اللقطات (Record Logic)
+// =========================================================================
 async function recordSample(auto) {
+    /** التقاط إحداثيات اليد الحالية وإرسالها للسيرفر لحفظها في ملف الـ CSV */
     if (!selectedLetter || !currentLandmarks || isRecording) return;
     isRecording = true;
     const btn = document.getElementById('recordBtn');
@@ -437,55 +453,62 @@ async function recordSample(auto) {
         const data = await res.json();
 
         if (data.success) {
+            // تحديث العداد بعد الحفظ الناجح
             sampleCounts[selectedIdx] = (sampleCounts[selectedIdx] || 0) + 1;
             const count = sampleCounts[selectedIdx];
             document.getElementById('progressCount').textContent = count + '/' + TARGET_SAMPLES;
             document.getElementById('progressFill').style.width = Math.min(count / TARGET_SAMPLES * 100, 100) + '%';
             const countEl = document.getElementById('lcount_' + selectedIdx);
             if (countEl) countEl.textContent = count >= TARGET_SAMPLES ? '✓' : count;
+            
             if (count >= TARGET_SAMPLES) {
                 document.getElementById('lbtn_' + selectedIdx).classList.add('complete');
-                showToast('اكتمل ' + selectedLetter + '!');
+                showToast('{{ t("toast_completed") }}'.replace('{letter}', selectedLetter));
             }
             btn.className = 'record-btn success';
-            btn.textContent = count + ' تم';
-            if (navigator.vibrate) navigator.vibrate(30);
+            btn.textContent = '{{ t("toast_recorded_done") }}'.replace('{count}', count);
+            if (navigator.vibrate) navigator.vibrate(30); // اهتزاز خفيف بالهاتف للتنبيه
+            
             setTimeout(() => {
                 btn.className = 'record-btn';
-                btn.textContent = 'سجّل ' + selectedLetter;
+                btn.textContent = '{{ t("btn_record_letter") }}'.replace('{letter}', selectedLetter);
                 btn.disabled = false;
                 isRecording = false;
             }, auto ? 100 : 500);
 
         } else if (data.rejected) {
-            // رسالة الرفض داخل الكاميرا
-            showReject(data.error || 'إيماءة غلط، جرّب تاني');
+            // تم رفض اللقطة بسبب قيود التصفية البرمجية (مثل يد قريبة جداً أو مائلة بشكل خاطئ)
+            showReject(data.error || '{{ t("toast_gesture_rejected") }}');
             btn.disabled = false;
             isRecording = false;
         } else {
-            showToast((data.error || 'فشل'));
+            showToast((data.error || '{{ t("toast_record_failed") }}'));
             btn.disabled = false;
             isRecording = false;
         }
     } catch(e) {
-        showToast('خطأ');
+        showToast('{{ t("toast_error") }}');
         btn.disabled = false;
         isRecording = false;
     }
 }
 
 function toggleAuto() {
+    /** تفعيل أو إلغاء تفعيل وضع التسجيل التلقائي المريح */
     autoMode = !autoMode;
     const btn = document.getElementById('autoToggle');
     btn.className = autoMode ? 'auto-toggle active' : 'auto-toggle';
-    btn.innerHTML = autoMode ? '<br>تلقائي' : '<br>تلقائي';
-    showToast(autoMode ? 'تلقائي مفعّل' : 'تلقائي متوقف');
+    btn.innerHTML = '<br>' + '{{ t("auto_mode") }}';
+    showToast(autoMode ? '{{ t("auto_mode_enabled") }}' : '{{ t("auto_mode_disabled") }}');
     autoFrameCount = 0;
     document.getElementById('autoBar').style.width = '0%';
 }
 
-// ===== رسم اليد =====
+// =========================================================================
+// 4. رسم هيكل اليد وتطبيع الإبعاد (Hand Drawing Engine)
+// =========================================================================
 function drawHand(landmarks, videoW, videoH) {
+    /** رسم الـ 21 نقطة وتوصيل الخطوط بين الأصابع على الكانفاس الشفاف */
     overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
     const canvasW = overlayCanvas.width;
@@ -493,6 +516,7 @@ function drawHand(landmarks, videoW, videoH) {
     const videoAspect = videoW / videoH;
     const canvasAspect = canvasW / canvasH;
 
+    // حساب الأبعاد والـ offsets لضمان بقاء الرسم متطابقاً تماماً مع كاميرا الفيديو
     let renderW, renderH, offsetX = 0, offsetY = 0;
     if (videoAspect > canvasAspect) {
         renderW = canvasW;
@@ -507,10 +531,12 @@ function drawHand(landmarks, videoW, videoH) {
     const px = lm => lm.x * renderW + offsetX;
     const py = lm => lm.y * renderH + offsetY;
 
+    // توصيلات المفاصل الافتراضية لليد من المعصم وحتى أطراف الأصابع الخمسة
     const conns = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],
                    [0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],
                    [0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
-    overlayCtx.strokeStyle = 'rgba(245,158,11,0.75)';
+                   
+    overlayCtx.strokeStyle = 'rgba(245,158,11,0.75)'; // لون الخطوط برتقالي شفاف
     overlayCtx.lineWidth = 2;
     conns.forEach(([a, b]) => {
         overlayCtx.beginPath();
@@ -518,6 +544,8 @@ function drawHand(landmarks, videoW, videoH) {
         overlayCtx.lineTo(px(landmarks[b]), py(landmarks[b]));
         overlayCtx.stroke();
     });
+    
+    // رسم النقاط الدائرية الصغيرة فوق المفاصل
     overlayCtx.fillStyle = '#f59e0b';
     landmarks.forEach(lm => {
         overlayCtx.beginPath();
@@ -526,7 +554,9 @@ function drawHand(landmarks, videoW, videoH) {
     });
 }
 
-// ===== Toast و Reject =====
+// =========================================================================
+// 5. التنبيهات ورسائل التحذير المنبثقة
+// =========================================================================
 let toastTimer = null;
 function showToast(msg) {
     const t = document.getElementById('toast');
@@ -538,61 +568,77 @@ function showToast(msg) {
 
 let rejectTimer = null;
 function showReject(msg) {
+    /** إظهار رسالة باللون الأحمر في وسط الكاميرا عند فشل اختبارات جودة الإشارة */
     const el = document.getElementById('rejectMsg');
     el.textContent = msg;
     el.classList.add('show');
     clearTimeout(rejectTimer);
     rejectTimer = setTimeout(() => el.classList.remove('show'), 2500);
-    if (navigator.vibrate) navigator.vibrate([50, 50, 50]);
+    if (navigator.vibrate) navigator.vibrate([50, 50, 50]); // اهتزاز متقطع للتنبيه بالخطأ
 }
 
-// ===== MediaPipe =====
+// =========================================================================
+// 6. تشغيل وتكامل مكتبة MediaPipe Hands مع الكاميرا
+// =========================================================================
 function initMediaPipe() {
-    document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
+    document.getElementById('loadingSub').textContent = '{{ t("loading_mediapipe") }}';
+    
+    // تهيئة كلاس تتبع اليد من MediaPipe
     const hands = new Hands({
-        locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' + f
+        locateFile: f => '/static/mediapipe/' + f
     });
-    hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+    
+    // ضبط خيارات التتبع (يد واحدة كحد أقصى، وثقة عالية للتصفية والسرعة)
+    hands.setOptions({ 
+        maxNumHands: 1, 
+        modelComplexity: 1, 
+        minDetectionConfidence: 0.7, 
+        minTrackingConfidence: 0.5 
+    });
 
+    // استقبال نتائج المعالجة من خادم MediaPipe
     hands.onResults(results => {
         const w = video.videoWidth || overlayCanvas.width;
         const h = video.videoHeight || overlayCanvas.height;
 
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const landmarks = results.multiHandLandmarks[0];
-            drawHand(landmarks, w, h);
+            drawHand(landmarks, w, h); // رسم خطوط ونقاط اليد
 
             const raw = [];
             landmarks.forEach(lm => raw.push(lm.x, lm.y));
             currentLandmarks = raw;
 
-            document.getElementById('handStatus').textContent = 'يد مكتشفة';
+            document.getElementById('handStatus').textContent = '{{ t("hand_detected") }}';
             document.getElementById('handStatus').className = 'hand-status detected';
 
+            // إذا كان المستخدم مفعل الوضع التلقائي وكان هناك ثبات لليد
             if (autoMode && selectedLetter && !isRecording) {
                 autoFrameCount++;
                 document.getElementById('autoBar').style.width = Math.min(autoFrameCount / AUTO_CONFIRM_FRAMES * 100, 100) + '%';
                 if (autoFrameCount >= AUTO_CONFIRM_FRAMES) {
                     autoFrameCount = 0;
                     document.getElementById('autoBar').style.width = '0%';
-                    recordSample(true);
+                    recordSample(true); // تسجيل اللقطة تلقائياً!
                 }
             }
         } else {
+            // مسح الكانفاس وعداد الثبات إذا اختفت اليد من أمام الكاميرا
             currentLandmarks = null;
             overlayCtx.clearRect(0, 0, w, h);
-            document.getElementById('handStatus').textContent = 'في انتظار اليد...';
+            document.getElementById('handStatus').textContent = '{{ t("waiting_for_hand_dots") }}';
             document.getElementById('handStatus').className = 'hand-status';
             if (autoMode) { autoFrameCount = 0; document.getElementById('autoBar').style.width = '0%'; }
         }
     });
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        document.getElementById('loadingSub').textContent = 'متصفحك لا يدعم الكاميرا';
+        document.getElementById('loadingSub').textContent = '{{ t("camera_browser_error") }}';
         console.error('Camera init failed: getUserMedia not supported');
         return;
     }
 
+    // ربط البث المباشر بدورة إطارات كاميرا الويب لتسليمها لـ MediaPipe
     const camera = new Camera(video, {
         onFrame: async () => {
             if (cameraWrap) {
@@ -608,12 +654,12 @@ function initMediaPipe() {
     });
 
     camera.start().then(() => {
-        document.getElementById('loadingScreen').classList.add('hidden');
+        document.getElementById('loadingScreen').classList.add('hidden'); // إخفاء شاشة التحميل بمجرد فتح الكاميرا
     }).catch((err) => {
-        console.error('Failed to start camera', err);
+        console.error('فشل بدء تشغيل الكاميرا:', err);
         const cameraError = err?.message || err?.name || String(err);
-        document.getElementById('loadingSub').textContent = `تعذّر الوصول للكاميرا: ${cameraError}`;
-        showToast('فشل تشغيل الكاميرا: ' + cameraError, 'error');
+        document.getElementById('loadingSub').textContent = `{{ t("camera_access_failed") }}: ${cameraError}`;
+        showToast('{{ t("camera_access_failed") }}: ' + cameraError, 'error');
     });
 }
 

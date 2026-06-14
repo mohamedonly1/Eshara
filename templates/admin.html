@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة التحكم</title>
+    <title>{{ t('title_admin') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/static/pwa/manifest.json">
@@ -287,9 +287,9 @@ window._adminPage = true;
 <div class="gate" id="gate">
     <div class="gate-card">
         <div style="font-size:40px"></div>
-        <div style="font-size:17px;font-weight:900;margin-top:10px;color:var(--warn)">لوحة التحكم</div>
-        <input type="password" id="adminPass" placeholder="كلمة مرور الأدمن" onkeydown="if(event.key==='Enter')checkAdmin()">
-        <button class="gate-btn" onclick="checkAdmin()">دخول</button>
+        <div style="font-size:17px;font-weight:900;margin-top:10px;color:var(--warn)">{{ t('title_admin') }}</div>
+        <input type="password" id="adminPass" placeholder="{{ t('admin_pass_placeholder') }}" onkeydown="if(event.key==='Enter')checkAdmin()">
+        <button class="gate-btn" onclick="checkAdmin()">{{ t('admin_login_btn') }}</button>
         <div class="gate-err" id="gateErr"></div>
     </div>
 </div>
@@ -297,10 +297,10 @@ window._adminPage = true;
 <!-- Dashboard -->
 <div class="dashboard" id="dashboard">
     <div class="dash-header">
-        <div class="dash-title">لوحة التحكم</div>
+        <div class="dash-title">{{ t('title_admin') }}</div>
         <div class="header-actions">
-            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')"> تصدير</button>
-            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)"> تحديث</button>
+            <button class="action-btn" onclick="document.getElementById('exportModal').classList.add('show')">{{ t('admin_export_btn') }}</button>
+            <button class="action-btn" onclick="loadDashboard()" style="color:var(--warn);border-color:rgba(245,158,11,0.3)">{{ t('admin_refresh_btn') }}</button>
         </div>
     </div>
 
@@ -309,18 +309,18 @@ window._adminPage = true;
     <!-- فلتر الجودة -->
     <div class="filter-card">
         <div class="filter-info">
-            <div class="filter-title">فلتر جودة العينات</div>
-            <div class="filter-desc">لما يكون مفعّل، الموديل بيرفض العينات الغلط. عطّله لو المستخدمين بيسجّلوا حروف جديدة.</div>
+            <div class="filter-title">{{ t('admin_quality_filter') }}</div>
+            <div class="filter-desc">{{ t('admin_quality_filter_desc') }}</div>
         </div>
         <div class="filter-controls">
             <div class="threshold-wrap" id="thresholdWrap">
-                <span class="threshold-label">حساسية الرفض</span>
+                <span class="threshold-label">{{ t('admin_quality_threshold') }}</span>
                 <input type="range" class="slider" id="thresholdSlider" min="50" max="99" value="95"
                        oninput="updateThreshold(this.value)">
                 <span class="threshold-val" id="thresholdVal">95%</span>
             </div>
             <div class="toggle-wrap">
-                <span class="toggle-label" id="filterToggleLabel">مفعّل</span>
+                <span class="toggle-label" id="filterToggleLabel">{{ t('admin_enabled') }}</span>
                 <label class="toggle">
                     <input type="checkbox" id="filterToggle" checked onchange="toggleFilter(this.checked)">
                     <div class="toggle-track"></div>
@@ -330,30 +330,101 @@ window._adminPage = true;
         </div>
     </div>
 
+    <!-- إدارة اللغات ونظام الذكاء الاصطناعي -->
+    <div class="filter-card" style="margin-top: 15px; display: block;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px;">
+            <div class="filter-title">{{ t('admin_ai_lang_title') }}</div>
+            <div style="font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-lt); padding:4px 10px; border-radius:12px;">{{ t('admin_active_lang') }}: {{ active_lang.upper() }}</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- القسم الأول: تدريب وإعادة تشغيل الخادم -->
+            <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_model_server_control') }}</h4>
+                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px; line-height: 1.5;">
+                        {{ t('admin_model_server_control_desc') }}
+                    </p>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button id="trainBtn" class="action-btn" onclick="trainActiveModel()" style="flex:1; background:var(--purple); color:#fff; border-color:var(--purple); padding:10px 0; font-size:12px; font-weight:bold;">
+                         {{ t('admin_train_model_btn') }}
+                    </button>
+                    <button id="restartBtn" class="action-btn" onclick="restartServer()" style="flex:1; color:var(--danger); border-color:rgba(163,45,45,0.3); padding:10px 0; font-size:12px; font-weight:bold;">
+                         {{ t('admin_restart_server_btn') }}
+                    </button>
+                </div>
+                <div id="trainStatus" style="font-size: 11px; margin-top: 8px; color: var(--text-dim); text-align: center;"></div>
+            </div>
+
+            <!-- القسم الثاني: إضافة لغة جديدة -->
+            <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px;">
+                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_add_lang_title') }}</h4>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="newLangCode" placeholder="{{ t('admin_add_lang_code_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
+                        <input type="text" id="newLangName" placeholder="{{ t('admin_add_lang_name_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
+                    </div>
+                    <textarea id="newLangLabels" placeholder="{{ t('admin_add_lang_labels_placeholder') }}" rows="2" style="background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none; resize: none;"></textarea>
+                    <button class="action-btn add-language-btn" onclick="addNewLanguage()" style="width: 100%; background: var(--accent); color: #fff; border-color: var(--accent); padding: 8px 0; font-size: 12px; font-weight: bold;">
+                        {{ t('admin_add_lang_btn') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- تفاصيل اللغات المسجلة -->
+    <div class="filter-card" style="margin-top: 15px; display: block;">
+        <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 15px;">
+            <div class="filter-title">{{ t('admin_languages_title') }}</div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: start;">
+                <thead>
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); text-align: start;">
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_name') }}</th>
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_add_lang_code_placeholder') }}</th>
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_letters') }}</th>
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_accepted') }}</th>
+                        <th style="padding: 10px; text-align: start;">Model Classes</th>
+                        <th style="padding: 10px; text-align: start;">Health</th>
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_model_path') }}</th>
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_labels_path') }}</th>
+                        <th style="padding: 10px; text-align: start;">{{ t('admin_users_table_status') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="languagesDetailBody">
+                    <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-dim);">{{ t('loading_mediapipe') }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <!-- Orientation control removed. Moved to Pose Editor per-letter -->
 
     <div class="section">
-        <div class="section-title">عينات كل حرف (إجمالي الكل)</div>
+        <div class="section-title">{{ t('admin_letter_samples_total') }}</div>
         <div class="letters-grid" id="lettersOverview"></div>
     </div>
 
     <div class="section">
         <div class="section-title" style="justify-content: space-between;">
-            <div>المستخدمون</div>
+            <div>{{ t('admin_users_title') }}</div>
             <div class="tabs-header">
-                <button class="tab-btn active" id="tabActiveBtn" onclick="switchUsersTab('active')">نشطة</button>
-                <button class="tab-btn" id="tabDisabledBtn" onclick="switchUsersTab('disabled')">معطلة</button>
+                <button class="tab-btn active" id="tabActiveBtn" onclick="switchUsersTab('active')">{{ t('admin_tab_active') }}</button>
+                <button class="tab-btn" id="tabDisabledBtn" onclick="switchUsersTab('disabled')">{{ t('admin_tab_disabled') }}</button>
             </div>
         </div>
         <div class="users-table">
             <div class="table-head">
-                <span>الاسم</span>
-                <span>مقبول</span>
-                <span>مرفوض</span>
-                <span>حروف</span>
-                <span>جودة</span>
-                <span>الجهاز</span>
-                <span>إجراءات</span>
+                <span>{{ t('admin_col_name') }}</span>
+                <span>{{ t('admin_col_accepted') }}</span>
+                <span>{{ t('admin_col_rejected') }}</span>
+                <span>{{ t('admin_col_letters') }}</span>
+                <span>{{ t('admin_col_quality') }}</span>
+                <span>{{ t('admin_col_device') }}</span>
+                <span>{{ t('admin_col_actions') }}</span>
             </div>
             <div id="usersBody"></div>
         </div>
@@ -375,16 +446,16 @@ window._adminPage = true;
 <div class="export-modal" id="exportModal">
     <div class="export-card">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
-            <div style="font-size:16px;font-weight:900">تصدير البيانات</div>
+            <div style="font-size:16px;font-weight:900">{{ t('admin_export_title') }}</div>
             <button class="close-btn" onclick="document.getElementById('exportModal').classList.remove('show')">✕</button>
         </div>
         <div class="export-option" onclick="exportJSON()">
             <div class="export-icon"></div>
-            <div><div class="export-title">تصدير JSON</div><div class="export-sub">كل بيانات المستخدمين والإحصائيات</div></div>
+            <div><div class="export-title">{{ t('admin_export_json') }}</div><div class="export-sub">{{ t('admin_export_json_desc') }}</div></div>
         </div>
         <div class="export-option" onclick="exportCSV()">
             <div class="export-icon"></div>
-            <div><div class="export-title">تصدير CSV</div><div class="export-sub">جدول المستخدمين لـ Excel</div></div>
+            <div><div class="export-title">{{ t('admin_export_csv') }}</div><div class="export-sub">{{ t('admin_export_csv_desc') }}</div></div>
         </div>
     </div>
 </div>
@@ -393,22 +464,55 @@ window._adminPage = true;
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-const ARABIC_LETTERS = ['أ','ب','ت','ث','ج','ح','خ','د','ذ','ر','ز','س','ش','ص','ض','ط','ظ','ع','غ','ف','ق','ك','ل','م','ن','ه','و','ي','لا'];
-let allStats = [];
-let currentUsersTab = 'active';
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
+(function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية الجلسة من هجمات الاختراقات.
+     */
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
 
+const ARABIC_LETTERS = {{ letters | tojson | safe }}; // مصفوفة الحروف العربية الممررة من السيرفر
+let allStats = []; // قائمة المستخدمين وجداول إحصائياتهم
+let currentUsersTab = 'active'; // التبويب النشط الحالي (المستخدمين النشطين / المعطلين)
+
+// دوال مساعدة لمنع ثغرات حقن النصوص وحساب الأرقام بأمان
 const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
     '"': '&quot;',
     "'": '&#39;'
-}[ch]));
+    }[ch]));
 
 const safeNumber = value => Number.isFinite(Number(value)) ? Number(value) : 0;
 
-// ===== فلتر الجودة =====
+// =========================================================================
+// 2. التحكم في فلتر الجودة وتصفية البيانات المرفوعة (Quality Filter Control)
+// =========================================================================
 async function loadFilterSettings() {
+    /** جلب إعدادات فلتر الجودة الحالية من السيرفر لتفعيل التوجيه التلقائي في الواجهة */
     try {
         const res = await fetch('/admin/settings');
         const s = await res.json();
@@ -418,14 +522,15 @@ async function loadFilterSettings() {
         document.getElementById('filterToggle').checked = isOn;
         document.getElementById('thresholdSlider').value = threshold;
         document.getElementById('thresholdVal').textContent = threshold + '%';
-        document.getElementById('filterToggleLabel').textContent = isOn ? 'مفعّل' : 'معطّل';
+        document.getElementById('filterToggleLabel').textContent = isOn ? '{{ t("admin_enabled") }}' : '{{ t("admin_disabled") }}';
         document.getElementById('thresholdWrap').style.opacity = isOn ? '1' : '0.4';
         document.getElementById('thresholdWrap').style.pointerEvents = isOn ? 'auto' : 'none';
     } catch(e) {}
 }
 
 async function toggleFilter(checked) {
-    document.getElementById('filterToggleLabel').textContent = checked ? 'مفعّل' : 'معطّل';
+    /** تفعيل أو تعطيل فلتر الجودة وإرسال التحديث للسيرفر فوراً */
+    document.getElementById('filterToggleLabel').textContent = checked ? '{{ t("admin_enabled") }}' : '{{ t("admin_disabled") }}';
     document.getElementById('thresholdWrap').style.opacity = checked ? '1' : '0.4';
     document.getElementById('thresholdWrap').style.pointerEvents = checked ? 'auto' : 'none';
     await fetch('/admin/settings', {
@@ -437,6 +542,7 @@ async function toggleFilter(checked) {
 
 let thresholdTimer = null;
 function updateThreshold(val) {
+    /** تحديث نسبة دقة قبول الحركات مع آلية التأخير (Debounce) لتقليل الطلبات المرسلة */
     document.getElementById('thresholdVal').textContent = val + '%';
     clearTimeout(thresholdTimer);
     thresholdTimer = setTimeout(async () => {
@@ -448,7 +554,11 @@ function updateThreshold(val) {
     }, 500);
 }
 
+// =========================================================================
+// 3. التحقق من صلاحيات المشرف وبوابة الدخول (Admin Verification Gate)
+// =========================================================================
 async function checkAdmin() {
+    /** فحص كلمة مرور لوحة التحكم وإظهار الداشبورد في حال مطابقتها */
     const pass = document.getElementById('adminPass').value;
     const res = await fetch('/admin/verify', {
         method: 'POST',
@@ -461,13 +571,13 @@ async function checkAdmin() {
         document.getElementById('dashboard').style.display = 'block';
         loadDashboard();
         loadFilterSettings();
-        oResize();
     } else {
-        document.getElementById('gateErr').textContent = 'كلمة المرور غلط';
+        document.getElementById('gateErr').textContent = '{{ t("admin_incorrect_password") }}';
     }
 }
 
 async function openDashboardIfAlreadyAdmin() {
+    /** فحص تلقائي عند فتح الصفحة: إذا كان مسجل دخوله كمشرف بالفعل، يدخل مباشرة */
     try {
         const res = await fetch('/auth/me');
         const user = await res.json();
@@ -476,16 +586,17 @@ async function openDashboardIfAlreadyAdmin() {
             document.getElementById('dashboard').style.display = 'block';
             loadDashboard();
             loadFilterSettings();
-            oResize();
         }
     } catch(e) {}
 }
 
 openDashboardIfAlreadyAdmin();
 
-// Removed global orientation controls.
-
+// =========================================================================
+// 4. جلب الإحصائيات وبناء لوحة البيانات (Load Stats & Build Dashboard)
+// =========================================================================
 async function loadDashboard() {
+    /** جلب الإحصائيات الإجمالية وحساب الحروف المكتملة وعرضها */
     const res = await fetch('/admin/stats');
     const data = await res.json();
     allStats = data.users || [];
@@ -496,15 +607,16 @@ async function loadDashboard() {
     const completedLetters = getLetterTotals();
     const doneLetters = Object.values(completedLetters).filter(v => v >= 200).length;
 
+    // بناء الكروت العلوية للإحصائيات العامة
     document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${allStats.length}</div><div class="stat-label">مستخدم</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${totalSamples}</div><div class="stat-label">عينة مقبولة</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${totalRejected}</div><div class="stat-label">عينة مرفوضة</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${avgQuality}%</div><div class="stat-label">متوسط الجودة</div></div>
-        <div class="stat-card"><div class="stat-num" style="color:var(--purple)">${doneLetters}/29</div><div class="stat-label">حرف مكتمل</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${allStats.length}</div><div class="stat-label">{{ t("admin_stat_users") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--warn)">${totalSamples}</div><div class="stat-label">{{ t("admin_stat_accepted") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--danger)">${totalRejected}</div><div class="stat-label">{{ t("admin_stat_rejected") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--accent)">${avgQuality}%</div><div class="stat-label">{{ t("admin_stat_avg_quality") }}</div></div>
+        <div class="stat-card"><div class="stat-num" style="color:var(--purple)">${doneLetters}/${ARABIC_LETTERS.length}</div><div class="stat-label">{{ t("admin_stat_letters_completed") }}</div></div>
     `;
 
-    // حروف
+    // بناء قائمة الحروف العربية لتوضيح التقدم في جمع عينات كل حرف
     const lt = getLetterTotals();
     document.getElementById('lettersOverview').innerHTML = ARABIC_LETTERS.map((l, idx) => {
         const c = lt[idx] || 0;
@@ -513,9 +625,98 @@ async function loadDashboard() {
     }).join('');
 
     renderUsersTable();
+    loadLanguagesDetail();
 }
 
+// =========================================================================
+// 5. إدارة اللغات وحالة نماذج الذكاء الاصطناعي (Languages Detail & Model Health)
+// =========================================================================
+async function loadLanguagesDetail() {
+    /** جلب تفاصيل اللغات المدعومة، حجم ملفات النموذج، وصحة وجودة التدريب */
+    try {
+        const res = await fetch('/admin/languages-detail');
+        const data = await res.json();
+        const body = document.getElementById('languagesDetailBody');
+        if (!body) return;
+        
+        body.innerHTML = data.languages.map(lang => {
+            const statusStyles = {
+                'active':          { color: 'var(--accent)',   label: '✔ Active' },
+                'not_trained':     { color: 'var(--warn)',     label: '⚠ Not Trained' },
+                'invalid_model':   { color: 'var(--danger)',   label: '⚠ Invalid Model' },
+                'missing_dataset': { color: 'var(--danger)',   label: '⚠ Missing Dataset' },
+                'disabled':        { color: 'var(--text-dim)', label: '✖ Disabled' }
+            };
+            const ss = statusStyles[lang.status] || statusStyles['disabled'];
+            const reasonTip = lang.invalid_reason ? ` title="${escapeHTML(lang.invalid_reason)}"` : '';
+            
+            const modelSizeText = lang.model_size_str ? ` <span style="color:var(--text-dim); font-size:10px;">(${escapeHTML(lang.model_size_str)})</span>` : '';
+            const datasetSizeText = lang.dataset_size_str ? ` <span style="color:var(--text-dim); font-size:10px;">(${escapeHTML(lang.dataset_size_str)})</span>` : '';
+
+            const modelBadge = lang.model_exists 
+                ? `<span style="color:var(--accent); font-family:monospace;">${escapeHTML(lang.model_path)}</span>${modelSizeText}`
+                : `<span style="color:var(--danger); font-weight:bold;">⚠️ {{ t('admin_lang_missing') }} (${escapeHTML(lang.model_path || '-')})</span>`;
+                
+            const labelsBadge = lang.labels_exists
+                ? `<span style="color:var(--accent); font-family:monospace;">${escapeHTML(lang.labels_path)}</span>`
+                : `<span style="color:var(--danger); font-weight:bold;">⚠️ {{ t('admin_lang_missing') }} (${escapeHTML(lang.labels_path || '-')})</span>`;
+                
+            const activeBadge = lang.is_current_active
+                ? `<span style="font-size:10px; font-weight:bold; color:#000; background:var(--warn); padding:2px 6px; border-radius:10px; margin-inline-start:6px;">{{ t('admin_lang_active_badge') }}</span>`
+                : '';
+                
+            let healthColor = 'var(--danger)';
+            if (lang.health_status === 'Healthy') {
+                healthColor = 'var(--accent)';
+            } else if (lang.health_status === 'Not Trained') {
+                healthColor = 'var(--warn)';
+            }
+            const healthReasonTip = lang.failure_reason ? ` title="${escapeHTML(lang.failure_reason)}"` : '';
+            const healthBadge = `<span style="color:${healthColor}; font-weight:bold;"${healthReasonTip}>${escapeHTML(lang.health_status)}</span>`;
+
+            const modelClassesVal = lang.model_classes > 0 ? safeNumber(lang.model_classes) : '-';
+
+            // عرض التحذيرات والأخطاء الخاصة بترميز الملفات أو صحة النموذج إن وجدت
+            let warningsHtml = '';
+            if (lang.warnings && lang.warnings.length > 0) {
+                warningsHtml = lang.warnings.map(w => {
+                    let titleText = '';
+                    if (w === 'Encoding Error' && lang.encoding_error) {
+                        titleText = ` title="${escapeHTML(lang.encoding_error)}"`;
+                    } else if (w === 'Invalid Model' && lang.invalid_reason) {
+                        titleText = ` title="${escapeHTML(lang.invalid_reason)}"`;
+                    }
+                    return `<span style="font-size:10px; font-weight:bold; color:#fff; background:var(--danger); padding:2px 6px; border-radius:4px; margin-inline-start:4px;"${titleText}>⚠ ${escapeHTML(w)}</span>`;
+                }).join(' ');
+            }
+
+            return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle;">
+                    <td style="padding: 12px 10px; font-weight: bold;">${escapeHTML(lang.name)} ${activeBadge}</td>
+                    <td style="padding: 12px 10px; font-family: monospace;">${escapeHTML(lang.code.toUpperCase())}</td>
+                    <td style="padding: 12px 10px; font-weight: bold; color: var(--warn);">${safeNumber(lang.class_count)}</td>
+                    <td style="padding: 12px 10px; font-weight: bold; color: var(--accent);">${safeNumber(lang.sample_count)}${datasetSizeText}</td>
+                    <td style="padding: 12px 10px; font-weight: bold; color: var(--warn);">${modelClassesVal}</td>
+                    <td style="padding: 12px 10px;">${healthBadge}</td>
+                    <td style="padding: 12px 10px; font-size: 11px;">${modelBadge}</td>
+                    <td style="padding: 12px 10px; font-size: 11px;">${labelsBadge}</td>
+                    <td style="padding: 12px 10px;">
+                        <span style="color: ${ss.color}; font-weight: bold; font-size: 11px;"${reasonTip}>${ss.label}</span>
+                        ${warningsHtml}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error("Failed to load languages detail", e);
+    }
+}
+
+// =========================================================================
+// 6. إدارة تبويبات وحسابات المستخدمين النشطة والمعطلة (Users Tab & Rows Management)
+// =========================================================================
 function switchUsersTab(tab) {
+    /** التبديل بين عرض حسابات المستخدمين المفعّلة والحسابات المعطلة مؤقتاً */
     currentUsersTab = tab;
     document.getElementById('tabActiveBtn').classList.toggle('active', tab === 'active');
     document.getElementById('tabDisabledBtn').classList.toggle('active', tab === 'disabled');
@@ -523,6 +724,7 @@ function switchUsersTab(tab) {
 }
 
 function renderUsersTable() {
+    /** استدعاء وعرض جدول حسابات المساهمين مع الأجهزة ونسبة الدقة الخاصة بهم */
     const filteredUsers = allStats.filter(u => {
         const isUserDisabled = u.status === 'disabled';
         return currentUsersTab === 'disabled' ? isUserDisabled : !isUserDisabled;
@@ -534,20 +736,20 @@ function renderUsersTable() {
         const dev = u.device || {};
         const role = u.role === 'admin' ? 'admin' : 'user';
         const nextRole = role === 'admin' ? 'user' : 'admin';
-        const roleLabel = role === 'admin' ? 'أدمن' : 'عادي';
-        const roleBtnLabel = role === 'admin' ? 'جعله عادي' : 'جعله أدمن';
+        const roleLabel = role === 'admin' ? '{{ t("admin_role_admin") }}' : '{{ t("admin_role_user") }}';
+        const roleBtnLabel = role === 'admin' ? '{{ t("admin_make_user") }}' : '{{ t("admin_make_admin") }}';
         
         let actionsHtml = '';
         if (currentUsersTab === 'active') {
             actionsHtml = `
                 <button class="role-btn" onclick="event.stopPropagation();setUserRoleByIndex(${userIndex}, '${nextRole}')">${roleBtnLabel}</button>
-                <button class="del-btn" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); color: var(--warn);" onclick="event.stopPropagation();disableUserByIndex(${userIndex})">تعطيل</button>
-                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف</button>
+                <button class="del-btn" style="background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.2); color: var(--warn);" onclick="event.stopPropagation();disableUserByIndex(${userIndex})">{{ t("admin_btn_disable") }}</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">{{ t("admin_btn_delete") }}</button>
             `;
         } else {
             actionsHtml = `
-                <button class="role-btn" style="color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.1);" onclick="event.stopPropagation();enableUserByIndex(${userIndex})">تفعيل</button>
-                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">حذف نهائي</button>
+                <button class="role-btn" style="color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.1);" onclick="event.stopPropagation();enableUserByIndex(${userIndex})">{{ t("admin_btn_enable") }}</button>
+                <button class="del-btn" onclick="event.stopPropagation();deleteUserByIndex(${userIndex})">{{ t("admin_btn_delete_permanently") }}</button>
             `;
         }
 
@@ -562,10 +764,11 @@ function renderUsersTable() {
                 ${actionsHtml}
             </div></span>
         </div>`;
-    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">لا يوجد مستخدمون هنا</div>';
+    }).join('') : '<div style="padding:20px;text-align:center;color:var(--text-dim)">{{ t("admin_no_users") }}</div>';
 }
 
 function getLetterTotals() {
+    /** تجميع إجمالي العينات المقبولة لكل حرف من مختلف مساهمات المستخدمين */
     const totals = {};
     allStats.forEach(u => {
         Object.entries(u.samples || {}).forEach(([k,v]) => {
@@ -575,7 +778,11 @@ function getLetterTotals() {
     return totals;
 }
 
+// =========================================================================
+// 7. نافذة تفاصيل المستخدم وتتبع سجل الدخول (User Details & Login History)
+// =========================================================================
 function showUserByIndex(userIndex) {
+    /** فتح نافذة منبثقة تفصيلية لبيانات مستخدم معين، أجهزته، وتوزيع الحروف المرفوعة من قبله */
     const u = allStats[userIndex];
     if (!u) return;
     const dev = u.device || {};
@@ -584,26 +791,26 @@ function showUserByIndex(userIndex) {
     document.getElementById('modalTitle').textContent = u.name;
     document.getElementById('modalContent').innerHTML = `
         <div class="info-grid">
-            <div class="info-card"><div class="info-label">العينات المقبولة</div><div class="info-val" style="color:var(--accent)">${safeNumber(u.total)}</div></div>
-            <div class="info-card"><div class="info-label">العينات المرفوضة</div><div class="info-val" style="color:var(--danger)">${safeNumber(u.rejected)}</div></div>
-            <div class="info-card"><div class="info-label">الحروف المسجّلة</div><div class="info-val">${safeNumber(u.letters_count)} / 29</div></div>
-            <div class="info-card"><div class="info-label">الجودة</div><div class="info-val">${safeNumber(u.quality)}%</div></div>
-            <div class="info-card"><div class="info-label">نوع الحساب</div><div class="info-val"><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'user'}">${u.role === 'admin' ? 'أدمن' : 'عادي'}</span></div></div>
+            <div class="info-card"><div class="info-label">{{ t("profile_accepted_samples") }}</div><div class="info-val" style="color:var(--accent)">${safeNumber(u.total)}</div></div>
+            <div class="info-card"><div class="info-label">{{ t("profile_rejected_samples") }}</div><div class="info-val" style="color:var(--danger)">${safeNumber(u.rejected)}</div></div>
+            <div class="info-card"><div class="info-label">{{ t("admin_modal_registered_letters") }}</div><div class="info-val">${safeNumber(u.letters_count)} / ${ARABIC_LETTERS.length}</div></div>
+            <div class="info-card"><div class="info-label">{{ t("admin_col_quality") }}</div><div class="info-val">${safeNumber(u.quality)}%</div></div>
+            <div class="info-card"><div class="info-label">{{ t("admin_modal_account_type") }}</div><div class="info-val"><span class="role-badge role-${u.role === 'admin' ? 'admin' : 'user'}">${u.role === 'admin' ? '{{ t("admin_role_admin") }}' : '{{ t("admin_role_user") }}'}</span></div></div>
         </div>
 
         <div class="device-section">
-            <div class="device-title">معلومات الجهاز</div>
-            <div class="device-row"><span class="device-key">عنوان IP</span><span style="font-family:monospace">${escapeHTML(dev.ip || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">نوع الجهاز</span><span>${escapeHTML(dev.device_type || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">نظام التشغيل</span><span>${escapeHTML(dev.os || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">المتصفح</span><span>${escapeHTML(dev.browser || 'unknown')}</span></div>
-            <div class="device-row"><span class="device-key">تاريخ التسجيل</span><span>${escapeHTML(u.created || '-')}</span></div>
-            <div class="device-row"><span class="device-key">آخر نشاط</span><span>${escapeHTML(u.last_active || '-')}</span></div>
+            <div class="device-title">{{ t("admin_modal_device_info") }}</div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_ip") }}</span><span style="font-family:monospace">${escapeHTML(dev.ip || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_device_type") }}</span><span>${escapeHTML(dev.device_type || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_os") }}</span><span>${escapeHTML(dev.os || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_browser") }}</span><span>${escapeHTML(dev.browser || 'unknown')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_created") }}</span><span>${escapeHTML(u.created || '-')}</span></div>
+            <div class="device-row"><span class="device-key">{{ t("admin_modal_last_active") }}</span><span>${escapeHTML(u.last_active || '-')}</span></div>
         </div>
 
         ${history.length ? `
         <div class="login-history">
-            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">سجل تسجيلات الدخول (آخر ${history.length})</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">{{ t("admin_modal_login_history") }} ({{ t("admin_modal_last") }} ${history.length})</div>
             ${[...history].reverse().map(h => `
                 <div class="login-item">
                     <span>${escapeHTML(h.time)}</span>
@@ -615,16 +822,16 @@ function showUserByIndex(userIndex) {
 
         ${(u.edit_history && u.edit_history.length) ? `
         <div class="login-history">
-            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">سجل تعديلات الأصابع (آخر ${u.edit_history.length})</div>
+            <div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:8px">{{ t("admin_modal_edit_history") }} ({{ t("admin_modal_last") }} ${u.edit_history.length})</div>
             ${u.edit_history.map(h => `
                 <div class="login-item">
                     <span style="min-width: 120px">${escapeHTML(h.time)}</span>
-                    <span style="color:var(--accent); text-align: left; flex: 1;">${escapeHTML(h.text)}</span>
+                    <span style="color:var(--accent); text-align: start; flex: 1;">${escapeHTML(h.text)}</span>
                 </div>
             `).join('')}
         </div>` : ''}
 
-        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">عينات كل حرف:</div>
+        <div style="font-size:12px;color:var(--text-dim);margin-bottom:8px">{{ t("admin_modal_letter_samples") }}:</div>
         <div class="modal-letters">
             ${ARABIC_LETTERS.map((l, idx) => {
                 const c = u.samples[idx] || 0;
@@ -645,9 +852,10 @@ function deleteUserByIndex(userIndex) {
 }
 
 async function disableUserByIndex(userIndex) {
+    /** تعطيل الحساب لحظر تسجيل دخوله مؤقتاً */
     const u = allStats[userIndex];
     if (!u) return;
-    if (!confirm('تعطيل المستخدم: ' + u.name + '؟ (لن يتمكن من الدخول)')) return;
+    if (!confirm('{{ t("admin_confirm_disable") }} ' + u.name + '?')) return;
     await fetch('/admin/disable_user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -657,9 +865,10 @@ async function disableUserByIndex(userIndex) {
 }
 
 async function enableUserByIndex(userIndex) {
+    /** إعادة تنشيط الحساب المعطل */
     const u = allStats[userIndex];
     if (!u) return;
-    if (!confirm('تفعيل المستخدم: ' + u.name + '؟')) return;
+    if (!confirm('{{ t("admin_confirm_enable") }} ' + u.name + '?')) return;
     await fetch('/admin/enable_user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -669,10 +878,11 @@ async function enableUserByIndex(userIndex) {
 }
 
 async function setUserRoleByIndex(userIndex, role) {
+    /** تبديل رتبة حساب المستخدم بين مشرف مستخدم عادي */
     const u = allStats[userIndex];
     if (!u) return;
-    const roleName = role === 'admin' ? 'أدمن' : 'عادي';
-    if (!confirm('تغيير نوع حساب ' + u.name + ' إلى ' + roleName + '؟')) return;
+    const roleName = role === 'admin' ? '{{ t("admin_role_admin") }}' : '{{ t("admin_role_user") }}';
+    if (!confirm('{{ t("admin_confirm_role_change") }} ' + u.name + ' {{ t("admin_to") }} ' + roleName + '?')) return;
 
     const res = await fetch('/admin/set_user_role', {
         method: 'POST',
@@ -681,14 +891,15 @@ async function setUserRoleByIndex(userIndex, role) {
     });
     const data = await res.json();
     if (!data.ok) {
-        alert(data.error || 'تعذّر تغيير نوع الحساب');
+        alert(data.error || '{{ t("toast_error") }}');
         return;
     }
     loadDashboard();
 }
 
 async function deleteUser(userId, name) {
-    if (!confirm('حذف المستخدم: ' + name + '؟')) return;
+    /** حذف حساب مساهم نهائياً من السيرفر وقاعدة البيانات */
+    if (!confirm('{{ t("admin_confirm_delete") }} ' + name + '?')) return;
     await fetch('/admin/delete_user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -697,14 +908,31 @@ async function deleteUser(userId, name) {
     loadDashboard();
 }
 
+// =========================================================================
+// 8. تصدير التقارير وجداول البيانات (JSON & CSV Data Export)
+// =========================================================================
 function exportJSON() {
+    /** تصدير كافة الإحصائيات الحالية كملف JSON مهيكل */
     const data = JSON.stringify({ users: allStats, exported: new Date().toISOString() }, null, 2);
     download('users_data.json', data, 'application/json');
     document.getElementById('exportModal').classList.remove('show');
 }
 
 function exportCSV() {
-    const rows = [['الاسم','ID','العينات المقبولة','المرفوضة','الجودة%','الحروف','IP','الجهاز','نظام التشغيل','المتصفح','آخر نشاط']];
+    /** تصدير كافة الإحصائيات والأرقام المعتمدة كملف CSV منسق لقراءة جداول Excel */
+    const rows = [[
+        '{{ t("admin_col_name") }}',
+        'ID',
+        '{{ t("admin_col_accepted") }}',
+        '{{ t("admin_col_rejected") }}',
+        '{{ t("admin_col_quality") }}%',
+        '{{ t("admin_col_letters") }}',
+        'IP',
+        '{{ t("admin_modal_device_type") }}',
+        '{{ t("admin_modal_os") }}',
+        '{{ t("admin_modal_browser") }}',
+        '{{ t("admin_modal_last_active") }}'
+    ]];
     allStats.forEach(u => {
         const dev = u.device || {};
         rows.push([u.name, u.id, u.total, u.rejected, u.quality, u.letters_count, dev.ip||'', dev.device_type||'', dev.os||'', dev.browser||'', u.last_active||'']);
@@ -715,11 +943,102 @@ function exportCSV() {
 }
 
 function download(filename, content, type) {
+    /** إنشاء رابط تحميل وهمي لتخزين التقرير المولد مباشرة بجهاز المستخدم */
     const blob = new Blob([content], { type });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
+}
+
+// =========================================================================
+// 9. تشغيل تدريب الذكاء الاصطناعي وإعادة الخادم (Train Model & Restart Services)
+// =========================================================================
+async function trainActiveModel() {
+    /** إرسال إشارة للسيرفر للبدء في معالجة العينات وتدريب النموذج النشط حالياً */
+    const btn = document.getElementById('trainBtn');
+    const status = document.getElementById('trainStatus');
+    btn.disabled = true;
+    btn.textContent = '{{ t("admin_training_in_progress") }}';
+    status.textContent = '{{ t("admin_training_started_desc") }}';
+    
+    try {
+        const res = await fetch('/admin/train-active-model', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            status.textContent = '{{ t("admin_training_success") }}';
+            status.style.color = 'var(--accent)';
+            setTimeout(() => { window.location.reload(); }, 2000);
+        } else {
+            status.textContent = '{{ t("admin_training_failed") }}: ' + (data.error || '{{ t("toast_error") }}');
+            status.style.color = 'var(--danger)';
+        }
+    } catch(e) {
+        status.textContent = '{{ t("toast_network_error") }}';
+        status.style.color = 'var(--danger)';
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '{{ t("admin_train_model_btn") }}';
+    }
+}
+
+async function restartServer() {
+    /** إعادة تشغيل خدمة الخادم تلقائياً لتحديث الإعدادات وتحميل النماذج الجديدة */
+    if (!confirm('{{ t("admin_confirm_restart_server") }}')) return;
+    const btn = document.getElementById('restartBtn');
+    btn.disabled = true;
+    btn.textContent = '{{ t("admin_restarting_in_progress") }}';
+    
+    try {
+        const res = await fetch('/admin/restart-server', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_restart_sent") }}');
+            setTimeout(() => { window.location.href = '/admin'; }, 3000);
+        } else {
+            alert('{{ t("admin_restart_failed") }}');
+            btn.disabled = false;
+            btn.textContent = '{{ t("admin_restart_server_btn") }}';
+        }
+    } catch(e) {
+        alert('{{ t("admin_restarting_now") }}');
+        setTimeout(() => { window.location.href = '/admin'; }, 3000);
+    }
+}
+
+async function addNewLanguage() {
+    /** إدراج لغة إشارة جديدة للنظام وتهيئة ملفاتها ورموز تصنيفها */
+    const code = document.getElementById('newLangCode').value.trim();
+    const name = document.getElementById('newLangName').value.trim();
+    const labelsStr = document.getElementById('newLangLabels').value.trim();
+    
+    if (!code || !name || !labelsStr) {
+        alert('{{ t("admin_all_lang_fields_required") }}');
+        return;
+    }
+    
+    const labels = labelsStr.split(',').map(l => l.trim()).filter(l => l.length > 0);
+    if (labels.length === 0) {
+        alert('{{ t("admin_at_least_one_label_required") }}');
+        return;
+    }
+    
+    try {
+        const res = await fetch('/admin/add-language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, name, labels })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_add_lang_success") }}');
+            window.location.reload();
+        } else {
+            alert('{{ t("admin_add_lang_failed") }}: ' + (data.error || '{{ t("toast_error") }}'));
+        }
+    } catch(e) {
+        alert('{{ t("toast_network_error") }}');
+    }
 }
 </script>
 </body>

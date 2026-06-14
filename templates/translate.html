@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ترجمة إلى لغة الإشارة ثلاثية الأبعاد</title>
+    <title>{{ t('title_translate') }}</title>
     <link rel="stylesheet" href="/static/ishara-theme.css">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="manifest" href="/manifest.json">
@@ -246,34 +246,9 @@
 
 <div class="page-content">
     <div class="inner">
-        <div class="card">
-            <div class="section-title"><span>النص العربي</span></div>
-            <textarea id="textInput" class="text-input" placeholder="اكتب جملة بالعربية لترجمتها إلى لغة الإشارة..."></textarea>
-            <div class="input-actions">
-                <div class="left-actions">
-                    <button id="micBtn" class="btn btn-mic" type="button">
-                        <span>تسجيل صوت</span>
-                    </button>
-                    <div class="speed-control">
-                        <span class="label">السرعة:</span>
-                        <span>بطيئة</span>
-                        <input id="speedSlider" class="speed-slider" type="range" min="1" max="3" step="1" value="2">
-                        <span>سريعة</span>
-                        <span id="speedTag" class="tag">متوسطة</span>
-                    </div>
-                </div>
-                <button id="translateBtn" class="btn btn-translate" type="button">
-                    <span>ترجم</span>
-                </button>
-            </div>
-            <div class="hint">
-                يمكن للتطبيق عرض اليد لكل حرف من الحروف العربية المدعومة. الأحرف غير المدعومة سيتم تجاهلها تلقائيًا.
-            </div>
-        </div>
-
         <div class="three-card">
             <div class="three-wrap">
-                <div class="three-overlay-label">يد ثلاثية الأبعاد - لغة الإشارة</div>
+                <div class="three-overlay-label">{{ t('translate_canvas_label') }}</div>
                 <div id="threeContainer">
                     <canvas id="threeCanvas"></canvas>
                 </div>
@@ -281,8 +256,8 @@
             <div class="card" style="padding:10px 12px;">
                 <div class="status-row">
                     <div class="current-letter">
-                        <span style="font-size:11px;color:var(--text-dim);">الحرف الحالي:</span>
-                        <div id="currentLetterPill" class="letter-pill">ـ</div>
+                        <span style="font-size:11px;color:var(--text-dim);">{{ t('current_letter') }}:</span>
+                        <div id="currentLetterPill" class="letter-pill">{{ t('translate_letter_placeholder') }}</div>
                     </div>
                     <div style="flex:1;display:flex;align-items:center;gap:8px;">
                         <div class="progress-bar-wrap">
@@ -291,6 +266,31 @@
                         <div id="progressText" class="progress-text">0 / 0</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title"><span>{{ t('translate_input_title') }}</span></div>
+            <textarea id="textInput" class="text-input" placeholder="{{ t('translate_input_placeholder') }}"></textarea>
+            <div class="input-actions">
+                <div class="left-actions">
+                    <button id="micBtn" class="btn btn-mic" type="button">
+                        <span>{{ t('translate_voice_btn') }}</span>
+                    </button>
+                    <div class="speed-control">
+                        <span class="label">{{ t('translate_speed_label') }}:</span>
+                        <span>{{ t('translate_speed_slow') }}</span>
+                        <input id="speedSlider" class="speed-slider" type="range" min="1" max="3" step="1" value="2">
+                        <span>{{ t('translate_speed_fast') }}</span>
+                        <span id="speedTag" class="tag">{{ t('translate_speed_medium') }}</span>
+                    </div>
+                </div>
+                <button id="translateBtn" class="btn btn-translate" type="button">
+                    <span>{{ t('translate_btn') }}</span>
+                </button>
+            </div>
+            <div class="hint">
+                {{ t('translate_hint') }}
             </div>
         </div>
     </div>
@@ -303,9 +303,12 @@
 <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-// ==== Toast ====
+// =========================================================================
+// 1. نظام الإشعارات المنبثقة (Toast System)
+// =========================================================================
 let toastTimer = null;
 function showToast(msg, type) {
+    /** عرض إشعار سريع للمستخدم في الأسفل */
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.className = 'toast show' + (type === 'error' ? ' error' : '');
@@ -313,63 +316,79 @@ function showToast(msg, type) {
     toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
-// ==== Speed ====
+// =========================================================================
+// 2. التحكم في سرعة العرض والترجمة
+// =========================================================================
 const speedSlider = document.getElementById('speedSlider');
 const speedTag    = document.getElementById('speedTag');
+
 function updateSpeedTag() {
+    /** تحديث اسم السرعة المعروضة (بطيء، متوسط، سريع) بناءً على قيمة المؤشر slider */
     const v = Number(speedSlider.value);
-    speedTag.textContent = v === 1 ? 'بطيئة' : v === 2 ? 'متوسطة' : 'سريعة';
+    speedTag.textContent = v === 1 ? '{{ t("translate_speed_slow") }}' : v === 2 ? '{{ t("translate_speed_medium") }}' : '{{ t("translate_speed_fast") }}';
 }
 speedSlider.addEventListener('input', updateSpeedTag);
 updateSpeedTag();
+
 function getLetterDelay() {
+    /** حساب فترة الانتظار بالملي ثانية بين كل حرف وحرف بناءً على السرعة المحددة */
     const v = Number(speedSlider.value);
-    return v === 1 ? 900 : v === 2 ? 600 : 300;
+    return v === 1 ? 900 : v === 2 ? 600 : 300; // 900ms للبطيء، 600ms للمتوسط، 300ms للسريع
 }
 
-// ==== Three.js setup ====
+// =========================================================================
+// 3. تهيئة بيئة الرسوم ثلاثية الأبعاد (Three.js WebGL Setup)
+// =========================================================================
 const container = document.getElementById('threeContainer');
 const canvas    = document.getElementById('threeCanvas');
 
+// إنشاء المصير (Renderer) لتصيير الرسوم على الكانفاس بحدود ناعمة (Antialiasing)
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(window.devicePixelRatio); // ضبط الكثافة لتناسب الشاشات عالية الدقة (Retina)
 
+// إنشاء المشهد (Scene) وهو الفضاء الافتراضي الذي سنضع فيه اليد والإضاءة
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x020617);
+scene.background = new THREE.Color(0x020617); // تعيين لون خلفية المشهد الأزرق الداكن
 
+// إنشاء الكاميرا المنظورية (Perspective Camera) التي تحاكي العين البشرية
 const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
-// ضبطنا الكاميرا زي المحرر بالظبط
-camera.position.set(0, 0.5, 6.5);
-camera.lookAt(0, 0, 0);
+camera.position.set(0, 0.5, 6.5); // وضع الكاميرا أمام اليد على مسافة مناسبة
+camera.lookAt(0, 0, 0);          // جعل الكاميرا تنظر إلى مركز المشهد (0,0,0)
 
+// إضافة الإضاءة للمشهد لرؤية المجسم بوضوح وتفاصيل ظلاله:
+// 1. إضاءة نصف الكرة (Hemisphere Light) لمحاكاة الضوء القادم من السماء والأرض
 scene.add(new THREE.HemisphereLight(0x38bdf8, 0x020617, 0.7));
+
+// 2. إضاءة اتجاهية (Directional Light) تشبه ضوء الشمس لتعطي ظلالاً وتجسيداً للمجسم
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-dirLight.position.set(2, 3, 4);
+dirLight.position.set(2, 3, 4); // تحديد موقع منبع الضوء
 scene.add(dirLight);
 
-// ==== Resize ====
+// دالة لتعديل أبعاد التصيير تلقائياً عند تغيير حجم الشاشة (Responsive Design)
 function onResize() {
     const w = container.clientWidth;
     const h = container.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    camera.updateProjectionMatrix(); // إعادة حساب أبعاد الكاميرا
 }
 onResize();
 window.addEventListener('resize', onResize);
 
-// ==== Render loop ====
+// حلقة الرسوميات اللانهائية (Render Loop) التي تصيّر المشهد باستمرار بأقصى سرعة للفريمات
 function loop() {
     renderer.render(scene, camera);
     requestAnimationFrame(loop);
 }
 loop();
 
-// ==== Load model ====
-let handBonesByName = {};
-let handBoneBindQuat = {}; // لحفظ وضع الراحة
+// =========================================================================
+// 4. تحميل مجسم اليد ثلاثية الأبعاد (Loading the Hand GLB Model)
+// =========================================================================
+let handBonesByName = {};   // قاموس لتخزين مراجع عظام اليد لتسهيل تحريكها بالاسم
+let handBoneBindQuat = {};  // قاموس لحفظ دوران العظام الافتراضي (وضعية الراحة - Bind Pose)
 let handModelLoaded = false;
-let handModel = null; // مرجع عام للموديل
+let handModel = null;       // مرجع عام للمجسم الكامل لليد
 
 // القيم الافتراضية لاتجاه الموديل
 const DEFAULT_PITCH = 0.15;
@@ -398,11 +417,13 @@ new THREE.GLTFLoader().load(
     null,
     (err) => {
         console.error('فشل تحميل الموديل:', err);
-        showToast('فشل تحميل موديل اليد', 'error');
+        showToast('{{ t("translate_load_model_failed") }}', 'error');
     }
 );
 
-// ==== تحويل بيانات الإحداثيات (3D Points) إلى دوران محلي للعظام باستخدام Inverse Kinematics ====
+// =========================================================================
+// 5. محرك الحسابات العكسية للحركة (Inverse Kinematics - IK mapping)
+// =========================================================================
 function getTargetLocalRotations(poseData) {
     const targets = {};
     const backupState = {};
@@ -660,7 +681,7 @@ function buildSequence(text) {
 
 function updateStatus() {
     if (!activeSequence.length) {
-        currentLetterPill.textContent = 'ـ';
+        currentLetterPill.textContent = "{{ t('translate_letter_placeholder') }}";
         progressText.textContent      = '0 / 0';
         progressBar.style.width       = '0%';
         return;
@@ -703,13 +724,59 @@ async function play() {
 translateBtn.addEventListener('click', () => {
     if(playing) return;
     const text = textInput.value.trim();
-    if (!text) { showToast('اكتب نص', 'error'); return; }
+    if (!text) { showToast('{{ t("toast_type_word_first") }}', 'error'); return; }
 
     activeSequence = buildSequence(text);
-    if (!activeSequence.length) { showToast('لا يوجد حروف مدعومة', 'error'); return; }
+    if (!activeSequence.length) { showToast('{{ t("translate_no_supported_letters") }}', 'error'); return; }
 
     play();
 });
+
+// ==== Mic / Voice Recognition ====
+const micBtn = document.getElementById('micBtn');
+let recognition = null;
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    const lang = "{{ active_lang }}";
+    recognition.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
+
+    recognition.onstart = () => {
+        micBtn.classList.add('listening');
+        micBtn.querySelector('span').textContent = '{{ t("translate_voice_listening") }}';
+    };
+
+    recognition.onend = () => {
+        micBtn.classList.remove('listening');
+        micBtn.querySelector('span').textContent = '{{ t("translate_voice_btn") }}';
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error', event);
+        micBtn.classList.remove('listening');
+        micBtn.querySelector('span').textContent = '{{ t("translate_voice_btn") }}';
+        showToast('{{ t("toast_error") }}', 'error');
+    };
+
+    recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        textInput.value = text;
+        showToast('{{ t("translate_voice_success") }}');
+    };
+
+    micBtn.addEventListener('click', () => {
+        if (micBtn.classList.contains('listening')) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    });
+} else {
+    micBtn.style.display = 'none';
+}
 </script>
 </body>
 </html>
