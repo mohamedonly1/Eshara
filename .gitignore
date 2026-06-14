@@ -47,8 +47,10 @@ Thumbs.db
 # بناء أندرويد وملفات Gradle
 Ishara/
 
-# تجاهل جميع ملفات الـ APK
+# تجاهل جميع ملفات الـ APK والملفات التنفيذية
 *.apk
+ngrok.exe
+*.exe
 
 scratch/
 test_keypoints.py
