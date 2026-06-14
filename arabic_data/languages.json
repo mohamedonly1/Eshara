@@ -35,7 +35,8 @@
         "ي",
         "لا"
       ],
-      "model_path": "arabic_model/ar_sign_model_2026-06-12_95.97.tflite",
+      "model_path": "arabic_model/ar_sign_model_2026-06-13_96.74.tflite",
+      "labels_path": "arabic_data/arabic_labels.csv",
       "dataset_path": "arabic_data/arabic_keypoints.csv"
     },
     "en": {
@@ -69,18 +70,43 @@
         "Y",
         "Z"
       ],
-      "model_path": "arabic_model/english_sign_model.tflite",
+      "model_path": "",
+      "labels_path": "arabic_data/english_labels.csv",
       "dataset_path": "arabic_data/english_keypoints.csv"
     },
     "fr": {
       "code": "fr",
-      "name": "French",
+      "name": "French (LSF)",
       "labels": [
         "A",
         "B",
-        "C"
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z"
       ],
-      "model_path": "arabic_model/fr_sign_model.tflite",
+      "model_path": "",
+      "labels_path": "arabic_data/french_labels.csv",
       "dataset_path": "arabic_data/fr_keypoints.csv"
     }
   }

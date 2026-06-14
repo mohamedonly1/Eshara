@@ -11,6 +11,7 @@ import os
 import re
 import secrets
 import smtplib
+import threading
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.header import Header
@@ -29,8 +30,16 @@ VALID_ROLES = {'user', 'admin'}
 
 os.makedirs(USERS_DIR, exist_ok=True)
 
+# ── Concurrency protection ─────────────────────────────────────────────────
+# Protects users.json (the shared index) against concurrent read-truncate races.
+_users_index_lock = threading.Lock()
+# Protects individual per-user JSON files. Per-user writes are rare but can
+# collide when the same user makes simultaneous requests (e.g. fast taps).
+_user_file_lock = threading.Lock()
+
 # Central Logger setup for emails
 email_logger = config.get_file_logger('email', config.SERVER_LOG)
+logger = config.get_file_logger('auth', config.SERVER_LOG)
 
 def generate_secure_otp(length: int = 6) -> str:
     """Generates a cryptographically secure numeric OTP using the secrets module."""
@@ -41,30 +50,43 @@ def hash_password(password: str) -> str:
     return generate_password_hash(password)
 
 def load_users() -> Dict[str, Any]:
-    """Loads the main user index database."""
-    if not os.path.exists(USERS_INDEX):
-        return {}
-    with open(USERS_INDEX, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    """Loads the main user index database (thread-safe)."""
+    with _users_index_lock:
+        if not os.path.exists(USERS_INDEX):
+            return {}
+        with open(USERS_INDEX, 'r', encoding='utf-8') as f:
+            return json.load(f)
 
 def save_users(users: Dict[str, Any]) -> None:
-    """Saves the user index database."""
-    with open(USERS_INDEX, 'w', encoding='utf-8') as f:
-        json.dump(users, f, ensure_ascii=False, indent=2)
+    """Saves the user index database atomically (thread-safe).
+
+    Uses a write-to-temp-then-replace strategy so a concurrent reader
+    always sees either the complete old file or the complete new file,
+    preventing JSONDecodeError from partially-written content.
+    """
+    tmp_path = USERS_INDEX + '.tmp'
+    with _users_index_lock:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(users, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, USERS_INDEX)  # atomic on Windows Vista+ and POSIX
 
 def load_user(user_id: str) -> Optional[Dict[str, Any]]:
-    """Loads a specific user's detailed profile JSON file."""
+    """Loads a specific user's detailed profile JSON file (thread-safe)."""
     path = os.path.join(USERS_DIR, f'{user_id}.json')
-    if not os.path.exists(path):
-        return None
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
+    with _user_file_lock:
+        if not os.path.exists(path):
+            return None
+        with open(path, 'r', encoding='utf-8') as f:
+            return json.load(f)
 
 def save_user(user_data: Dict[str, Any]) -> None:
-    """Saves a user's detailed profile JSON file."""
+    """Saves a user's detailed profile JSON file atomically (thread-safe)."""
     path = os.path.join(USERS_DIR, f"{user_data['id']}.json")
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(user_data, f, ensure_ascii=False, indent=2)
+    tmp_path = path + '.tmp'
+    with _user_file_lock:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(user_data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
 
 def print_mock_email(to_email: str, subject: str, body: str) -> None:
     """Prints a clear mock representation of the sent email in the server logs."""
@@ -182,6 +204,7 @@ def register_user(name: str, email: str, password: str, ip: str = None, user_age
         'samples': {},
         'rejected': 0,
         'total_accepted': 0,
+        'rejected_by_lang': {},
         'last_active': now,
         'profile_pic': '',
         # Device information
@@ -449,11 +472,19 @@ def record_sample(user_id: str, label: int, lang_code: str = 'ar') -> bool:
     save_user(user)
     return True
 
-def record_rejected(user_id: str) -> None:
-    """Records a rejected gesture in the user statistics file."""
+def record_rejected(user_id: str, lang_code: str = 'ar') -> None:
+    """Records a rejected gesture in the user statistics file for a specific language."""
     user = load_user(user_id)
     if not user:
         return
+    
+    if 'rejected_by_lang' not in user:
+        user['rejected_by_lang'] = {}
+        
+    if 'ar' not in user['rejected_by_lang'] and 'rejected' in user:
+        user['rejected_by_lang']['ar'] = user['rejected']
+        
+    user['rejected_by_lang'][lang_code] = user['rejected_by_lang'].get(lang_code, 0) + 1
     user['rejected'] = user.get('rejected', 0) + 1
     save_user(user)
 
@@ -464,11 +495,6 @@ def get_all_users_stats(lang_code: str = 'ar') -> List[Dict[str, Any]]:
     for user_id in users:
         user = load_user(user_id)
         if user:
-            total = user.get('total_accepted', 0)
-            rejected = user.get('rejected', 0)
-            quality = round(total / (total + rejected) * 100) if (total + rejected) > 0 else 0
-            device = user.get('device_info', {})
-            
             # Extract language specific samples
             all_samples = user.get('samples', {})
             has_flat = False
@@ -482,6 +508,25 @@ def get_all_users_stats(lang_code: str = 'ar') -> List[Dict[str, Any]]:
                 save_user(user)
                 
             lang_samples = all_samples.get(lang_code, {})
+            lang_accepted = sum(lang_samples.values())
+            
+            # Lazy migration for statistics loaded on the fly
+            if 'rejected_by_lang' not in user:
+                user['rejected_by_lang'] = {}
+            if 'ar' not in user['rejected_by_lang'] and 'rejected' in user:
+                user['rejected_by_lang']['ar'] = user['rejected']
+                save_user(user)
+                
+            lang_rejected = user['rejected_by_lang'].get(lang_code, 0)
+            quality = round(lang_accepted / (lang_accepted + lang_rejected) * 100) if (lang_accepted + lang_rejected) > 0 else 0
+            logger.info(
+                f"lang={lang_code} "
+                f"user={user_id} "
+                f"accepted={lang_accepted} "
+                f"rejected={lang_rejected} "
+                f"quality={quality}"
+            )
+            device = user.get('device_info', {})
             
             stats.append({
                 'id': user_id,
@@ -491,8 +536,8 @@ def get_all_users_stats(lang_code: str = 'ar') -> List[Dict[str, Any]]:
                 'profile_pic': user.get('profile_pic', ''),
                 'role': get_user_role(user),
                 'status': user.get('status', 'active'),
-                'total': sum(lang_samples.values()),
-                'rejected': rejected,
+                'total': lang_accepted,
+                'rejected': lang_rejected,
                 'quality': quality,
                 'letters_count': len(lang_samples),
                 'last_active': user.get('last_active', '-'),

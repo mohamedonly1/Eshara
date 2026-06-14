@@ -253,6 +253,17 @@ LANGUAGES_CONFIG_PATH = 'arabic_data/languages.json'
 languages_config = {}
 interpreters = {}
 _interpreters_lock = threading.Lock()
+# Protects all read-modify-write operations on languages.json
+_languages_config_lock = threading.Lock()
+# Tracks languages whose model failed validation (mismatch or missing)
+_invalid_lang_reasons: dict = {}
+language_health: dict = {}
+# Prevents simultaneous training for the same language
+_training_state_lock = threading.Lock()
+_training_in_progress: dict = {}
+# Prevents duplicate server restart on rapid button clicks
+_restart_lock = threading.Lock()
+_restart_in_progress = False
 
 def load_languages_config():
     global languages_config
@@ -272,57 +283,205 @@ def load_languages_config():
                     "name": "العربية",
                     "labels": ["أ", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي", "لا"],
                     "model_path": MODEL_PATH,
+                    "labels_path": "arabic_data/arabic_labels.csv",
                     "dataset_path": "arabic_data/arabic_keypoints.csv"
                 }
             }
         }
     return languages_config
 
-def init_interpreters():
-    global interpreters, interpreter, labels_dict
+def get_lang_labels(lang_info):
+    if not lang_info:
+        return []
+    labels_path = lang_info.get('labels_path')
+    if labels_path and os.path.exists(labels_path):
+        labels = []
+        try:
+            with open(labels_path, 'r', encoding='utf-8') as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if len(row) >= 2:
+                        labels.append(row[1])
+                    elif len(row) == 1:
+                        labels.append(row[0])
+            if labels:
+                return labels
+        except Exception as e:
+            logger.error("Failed to read labels from %s: %s", labels_path, e)
+    return lang_info.get('labels', [])
+
+def get_language_status(lang_code):
+    """Calculates active/not_trained/invalid_model/missing_dataset status for a language."""
     config_data = load_languages_config()
+    lang_info = config_data.get('languages', {}).get(lang_code)
+    if not lang_info:
+        return 'disabled'
+    
+    if lang_info.get('disabled', False) or lang_info.get('status') == 'disabled':
+        return 'disabled'
+        
+    model_path = lang_info.get('model_path', '')
+    labels_path = lang_info.get('labels_path', '')
+    dataset_path = lang_info.get('dataset_path', '')
+    
+    model_exists = bool(model_path and os.path.exists(model_path))
+    labels_exist = bool(labels_path and os.path.exists(labels_path))
+    dataset_exists = bool(dataset_path and os.path.exists(dataset_path))
+    
+    # MISSING_DATASET: labels exist, dataset missing
+    if labels_exist and not dataset_exists:
+        return 'missing_dataset'
+        
+    # NOT_TRAINED: dataset exists, labels exist, model missing
+    if dataset_exists and labels_exist and not model_exists:
+        return 'not_trained'
+        
+    # INVALID_MODEL / ACTIVE
+    if model_exists:
+        with _interpreters_lock:
+            loaded = lang_code in interpreters
+        if loaded:
+            return 'active'
+        else:
+            return 'invalid_model'
+            
+    return 'disabled'
+
+def validate_labels_encoding():
+    """Validates that all language label files are UTF-8 compliant and contain no mojibake."""
+    config_data = load_languages_config()
+    errors = {}
+    for code, info in config_data.get('languages', {}).items():
+        labels_path = info.get('labels_path')
+        if not labels_path:
+            continue
+        if not os.path.exists(labels_path):
+            errors[code] = "Label file missing"
+            continue
+        try:
+            with open(labels_path, 'rb') as f:
+                content = f.read()
+            try:
+                decoded = content.decode('utf-8')
+            except UnicodeDecodeError:
+                errors[code] = "Invalid UTF-8 encoding"
+                continue
+            
+            # CP1252 / mojibake indicator check for Arabic or other text
+            mojibake_chars = ['Ø', 'Ù', 'Â', 'Ã', 'æ', 'ç', 'è', 'é']
+            is_mojibake = False
+            for char in mojibake_chars:
+                if code == 'fr' and char in ['ç', 'è', 'é']:
+                    continue
+                if char in decoded:
+                    if decoded.count(char) > 2:
+                        is_mojibake = True
+                        break
+            if is_mojibake:
+                errors[code] = "Mojibake/corruption detected in label file encoding"
+            else:
+                errors[code] = ""
+        except Exception as e:
+            errors[code] = f"Encoding check failed: {e}"
+    return errors
+
+def init_interpreters():
+    """Load TFLite interpreters for every configured language and validate their integrity.
+
+    Safety rules (Phase 1 hardening):
+    - NEVER auto-copy an Arabic placeholder model for another language.
+    - NEVER load an interpreter whose output class count does not match
+      the configured label count — this would produce silently wrong results.
+    - Arabic model loading is unchanged; only the guard blocks are new.
+    """
+    global interpreters, interpreter, labels_dict, _invalid_lang_reasons, language_health
+    config_data = load_languages_config()
+    _invalid_lang_reasons = {}
     with _interpreters_lock:
         interpreters.clear()
+        language_health.clear()
         for lang_code, lang_info in config_data['languages'].items():
-            model_path = lang_info['model_path']
-            
-            # If the model file does not exist, copy default Arabic model as a placeholder
+            model_path = lang_info.get('model_path', '')
+            labels = get_lang_labels(lang_info)
+            label_count = len(labels)
+
+            if not model_path:
+                reason = "Model path is empty"
+                _invalid_lang_reasons[lang_code] = reason
+                language_health[lang_code] = {
+                    "model_classes": 0,
+                    "label_count": label_count,
+                    "valid": False,
+                    "reason": reason
+                }
+                continue
+
+            # --- Guard 1: model file must exist ---
             if not os.path.exists(model_path):
-                default_model = 'arabic_model/arabic_sign_model_2026-05-22_95.96.tflite'
-                if os.path.exists(default_model) and model_path != default_model:
-                    os.makedirs(os.path.dirname(model_path), exist_ok=True)
-                    try:
-                        import shutil
-                        shutil.copy2(default_model, model_path)
-                        logger.info("Copied placeholder model for language %s to %s", lang_code, model_path)
-                    except Exception as e:
-                        logger.error("Failed to copy placeholder model for %s: %s", lang_code, e)
-            
-            if os.path.exists(model_path):
-                try:
-                    logger.info("Loading TFLite model for %s from path: %s", lang_code, model_path)
-                    interp = tf.lite.Interpreter(model_path=model_path)
-                    interp.allocate_tensors()
-                    interpreters[lang_code] = {
-                        'interpreter': interp,
-                        'input_details': interp.get_input_details(),
-                        'output_details': interp.get_output_details(),
-                        'lock': threading.Lock()
+                reason = f"Model file not found: {model_path}"
+                _invalid_lang_reasons[lang_code] = reason
+                language_health[lang_code] = {
+                    "model_classes": 0,
+                    "label_count": label_count,
+                    "valid": False,
+                    "reason": reason
+                }
+                logger.warning("[%s] %s — language will show as Not Trained.", lang_code, reason)
+                continue
+
+            try:
+                logger.info("Loading TFLite model for %s from path: %s", lang_code, model_path)
+                interp = tf.lite.Interpreter(model_path=model_path)
+                interp.allocate_tensors()
+
+                # --- Guard 2: output class count must match label count ---
+                out_classes = interp.get_output_details()[0]['shape'][-1]
+                if label_count != out_classes:
+                    reason = (f"Model outputs {out_classes} classes but "
+                              f"label list has {label_count} entries")
+                    _invalid_lang_reasons[lang_code] = reason
+                    language_health[lang_code] = {
+                        "model_classes": out_classes,
+                        "label_count": label_count,
+                        "valid": False,
+                        "reason": reason
                     }
-                    logger.info("Loaded interpreter for language: %s", lang_code)
-                except Exception as e:
-                    logger.error("Failed to load interpreter for %s: %s", lang_code, e)
-        
-        # Populate legacy fallback references
+                    logger.warning(
+                        "[%s] MISMATCH — %s. "
+                        "Interpreter NOT loaded; language marked unavailable.",
+                        lang_code, reason
+                    )
+                    continue  # do NOT add to interpreters
+
+                interpreters[lang_code] = {
+                    'interpreter': interp,
+                    'input_details': interp.get_input_details(),
+                    'output_details': interp.get_output_details(),
+                    'lock': threading.Lock()
+                }
+                language_health[lang_code] = {
+                    "model_classes": out_classes,
+                    "label_count": label_count,
+                    "valid": True,
+                    "reason": ""
+                }
+                logger.info("Loaded interpreter for language: %s (%d classes)", lang_code, out_classes)
+            except Exception as e:
+                reason = f"TFLite load error: {e}"
+                _invalid_lang_reasons[lang_code] = reason
+                language_health[lang_code] = {
+                    "model_classes": 0,
+                    "label_count": label_count,
+                    "valid": False,
+                    "reason": reason
+                }
+                logger.error("Failed to load interpreter for %s: %s", lang_code, e)
+
+        # Populate legacy fallback references (Arabic only — no cross-language fallback)
         if 'ar' in interpreters:
             interpreter = interpreters['ar']['interpreter']
             ar_info = config_data['languages']['ar']
-            labels_dict = {idx: l for idx, l in enumerate(ar_info['labels'])}
-        elif interpreters:
-            first_key = list(interpreters.keys())[0]
-            interpreter = interpreters[first_key]['interpreter']
-            first_info = config_data['languages'][first_key]
-            labels_dict = {idx: l for idx, l in enumerate(first_info['labels'])}
+            labels_dict = {idx: l for idx, l in enumerate(get_lang_labels(ar_info))}
 
 init_interpreters()
 
@@ -330,14 +489,15 @@ def get_active_labels():
     lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
     lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
     if lang_info:
-        return {idx: label for idx, label in enumerate(lang_info['labels'])}
+        labels = get_lang_labels(lang_info)
+        return {idx: label for idx, label in enumerate(labels)}
     return labels_dict
 
 def get_active_labels_list():
     lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
     lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
     if lang_info:
-        return lang_info['labels']
+        return get_lang_labels(lang_info)
     return list(labels_dict.values())
 
 def get_active_dataset_path():
@@ -346,6 +506,16 @@ def get_active_dataset_path():
     if lang_info:
         return lang_info['dataset_path']
     return config.TRAIN_CSV
+
+def get_active_test_dataset_path(lang_code=None):
+    if not lang_code:
+        lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
+    if lang_info and 'test_dataset_path' in lang_info:
+        return lang_info['test_dataset_path']
+    if lang_code == 'ar':
+        return config.TEST_CSV
+    return f"arabic_data/{lang_code}_test_keypoints.csv"
 
 _means_cache = {}
 _means_mtime = {}
@@ -367,29 +537,41 @@ def normalize_landmarks(raw):
     return [v / max_val for v in rel]
 
 def predict_landmarks(landmarks, lang_code=None):
-    """Runs thread-safe TFLite interpreter inference for the active language."""
+    """Runs thread-safe TFLite interpreter inference for the active language.
+
+    Phase 1 hardening: NEVER falls back to Arabic silently. If the requested
+    language's interpreter is not loaded (missing model or validation failure),
+    a RuntimeError is raised so callers can return a clear API error.
+    Arabic behaviour is completely unchanged.
+    """
     if not lang_code:
         try:
             lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
         except Exception:
             lang_code = languages_config.get('active_language', 'ar')
-            
-    input_data = np.array([landmarks], dtype=np.float32)
+
     with _interpreters_lock:
-        lang_item = interpreters.get(lang_code, interpreters.get('ar'))
-        if lang_item is None and interpreters:
-            lang_item = interpreters[list(interpreters.keys())[0]]
-            
+        lang_item = interpreters.get(lang_code)
+
         if lang_item is None:
-            raise RuntimeError(f"TFLite interpreter for language '{lang_code}' is not initialized.")
-        
-    # Serialize calls to this specific interpreter to prevent clashing inputs, while allowing concurrency across languages
-    lock = lang_item.setdefault('lock', threading.Lock())
+            reason = _invalid_lang_reasons.get(lang_code, 'model not loaded')
+            raise RuntimeError(f"Model not available for language: {lang_code} ({reason})")
+
+    # Serialize calls to this specific interpreter; allows concurrency across languages.
+    lock = lang_item['lock']
     with lock:
         interp = lang_item['interpreter']
         in_details = lang_item['input_details']
         out_details = lang_item['output_details']
-        
+
+        # Dynamically determine feature mode from model input dimensions
+        expected_size = in_details[0]['shape'][-1]
+        if expected_size == 104:
+            derived = config.extract_derived_features(landmarks)
+            input_data = np.array([landmarks + derived], dtype=np.float32)
+        else:
+            input_data = np.array([landmarks], dtype=np.float32)
+
         interp.set_tensor(in_details[0]['index'], input_data)
         interp.invoke()
         return interp.get_tensor(out_details[0]['index'])[0].copy()
@@ -401,7 +583,15 @@ def predict_landmarks(landmarks, lang_code=None):
 @login_required
 def index():
     active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
-    return render_template('index.html', labels_map=get_active_labels(), letters=get_active_labels_list(), active_lang=active_lang)
+    with _interpreters_lock:
+        model_available = (active_lang in interpreters)
+    return render_template(
+        'index.html',
+        labels_map=get_active_labels(),
+        letters=get_active_labels_list(),
+        active_lang=active_lang,
+        model_available=model_available
+    )
 
 @app.route('/recognize')
 @login_required
@@ -435,7 +625,15 @@ def collect_page():
 @login_required
 def translate_page():
     active_lang = session.get('active_lang', languages_config.get('active_language', 'ar'))
-    return render_template('translate.html', labels_map=get_active_labels(), letters=get_active_labels_list(), active_lang=active_lang)
+    with _interpreters_lock:
+        model_available = (active_lang in interpreters)
+    return render_template(
+        'translate.html',
+        labels_map=get_active_labels(),
+        letters=get_active_labels_list(),
+        active_lang=active_lang,
+        model_available=model_available
+    )
 
 @app.route('/means')
 @login_required
@@ -592,6 +790,35 @@ def auth_me():
         if user_id:
             session.clear()
         return jsonify({'logged_in': False})
+        
+    lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+    all_samples = user.get('samples', {})
+    
+    # Migrate flat dict if needed
+    has_flat = False
+    for k in list(all_samples.keys()):
+        if k.isdigit():
+            has_flat = True
+            break
+    if has_flat:
+        all_samples = {'ar': {k: v for k, v in all_samples.items() if k.isdigit()}}
+        user['samples'] = all_samples
+        from auth import save_user
+        save_user(user)
+        
+    lang_samples = all_samples.get(lang_code, {})
+    lang_accepted = sum(lang_samples.values())
+    
+    # Lazy migration for statistics loaded on the fly
+    if 'rejected_by_lang' not in user:
+        user['rejected_by_lang'] = {}
+    if 'ar' not in user['rejected_by_lang'] and 'rejected' in user:
+        user['rejected_by_lang']['ar'] = user['rejected']
+        from auth import save_user
+        save_user(user)
+        
+    lang_rejected = user['rejected_by_lang'].get(lang_code, 0)
+    
     return jsonify({
         'logged_in': True,
         'name': user['name'],
@@ -599,9 +826,9 @@ def auth_me():
         'email_verified': user.get('email_verified', True),
         'pending_email': user.get('pending_email', ''),
         'profile_pic': user.get('profile_pic', ''),
-        'samples': user.get('samples', {}),
-        'total': user.get('total_accepted', 0),
-        'rejected': user.get('rejected', 0),
+        'samples': lang_samples,
+        'total': lang_accepted,
+        'rejected': lang_rejected,
         'created': user.get('created', ''),
         'is_admin': current_user_is_admin(),
         'role': 'admin' if user_is_admin(user) else 'user'
@@ -798,26 +1025,37 @@ def predict_route():
         return jsonify({'error': 'Invalid landmarks'}), 400
     
     try:
-        # Input Validation (Phase 2 & 9)
+        # Input Validation
         float_raw = [float(v) for v in raw]
         if any(np.isnan(float_raw)) or any(np.isinf(float_raw)):
             logger.warning("Predict request rejected: landmarks contain NaN/Inf")
             return jsonify({'error': 'Invalid numeric values'}), 400
-            
+
         normalized = normalize_landmarks(float_raw)
-        
+
         lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+        status = get_language_status(lang_code)
+        if status != 'active':
+            return jsonify({
+                "error": "Language not ready",
+                "status": status
+            }), 400
+
         probs = predict_landmarks(normalized, lang_code=lang_code)
         idx = int(np.argmax(probs))
-        
+
         labels_map = get_active_labels()
-        
+
         logger.debug("Successful prediction: class %d, confidence %f", idx, float(probs[idx]))
         return jsonify({
             'letter': labels_map.get(idx, '?'),
             'confidence': round(float(probs[idx]) * 100, 1),
             'status': 'ok'
         })
+    except RuntimeError as exc:
+        # Model unavailable for this language — surface a clear 503 (not a generic 500)
+        logger.warning("Predict blocked for unavailable model: %s", exc)
+        return jsonify({'error': str(exc), 'status': 'unavailable'}), 503
     except Exception as exc:
         logger.error("Error in /predict: %s", exc, exc_info=True)
         return jsonify({'error': 'Internal prediction error'}), 500
@@ -864,18 +1102,22 @@ def collect_sample():
             filter_threshold = GLOBAL_SETTINGS['filter_threshold']
 
         if quality_filter:
-            probs = predict_landmarks(normalized, lang_code=lang_code)
-            idx = int(np.argmax(probs))
-            confidence = float(probs[idx])
-            if idx != label and confidence > filter_threshold:
-                if user_id:
-                    record_rejected(user_id)
-                logger.info("Collected sample rejected by quality filter: label=%d, prediction=%d, confidence=%0.2f", label, idx, confidence)
-                return jsonify({
-                    'success': False,
-                    'rejected': True,
-                    'error': f'الإيماءة تشبه حرف {labels_map.get(idx, "?")} — جرّب تاني'
-                })
+            try:
+                probs = predict_landmarks(normalized, lang_code=lang_code)
+                idx = int(np.argmax(probs))
+                confidence = float(probs[idx])
+                if idx != label and confidence > filter_threshold:
+                    if user_id:
+                        record_rejected(user_id, lang_code=lang_code)
+                    logger.info("Collected sample rejected by quality filter: label=%d, prediction=%d, confidence=%0.2f", label, idx, confidence)
+                    return jsonify({
+                        'success': False,
+                        'rejected': True,
+                        'error': f'الإيماءة تشبه حرف {labels_map.get(idx, "?")} — جرّب تاني'
+                    })
+            except RuntimeError as qf_err:
+                # No model for this language yet — skip quality filter, still save sample
+                logger.info("Quality filter skipped for %s (no model): %s", lang_code, qf_err)
 
         # Save to main CSV with user tracking if logged in (Phase 3 metadata)
         dataset_path = get_active_dataset_path()
@@ -1062,9 +1304,10 @@ def admin_export():
         logger.warning("Unauthorized admin export request from IP %s", request.remote_addr)
         return jsonify({'error': 'Unauthorized'}), 401
     try:
-        users = get_all_users_stats()
+        lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
+        users = get_all_users_stats(lang_code)
         total_samples = sum(u['total'] for u in users)
-        logger.info("Admin export statistics retrieved successfully: %d users, %d samples", len(users), total_samples)
+        logger.info("Admin export statistics retrieved successfully: %d users, %d samples for lang %s", len(users), total_samples, lang_code)
         return jsonify({'users': users, 'total_users': len(users),
                         'total_samples': total_samples})
     except Exception as exc:
@@ -1157,7 +1400,8 @@ def collect_test_sample():
     except (ValueError, TypeError):
         return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
 
-    if label not in range(len(labels_dict)):
+    active_labels = get_active_labels()
+    if label not in active_labels:
         return jsonify({'success': False, 'error': 'تسمية غير صالحة'}), 400
     if len(raw) != 42:
         return jsonify({'success': False, 'error': 'Invalid landmarks'}), 400
@@ -1169,20 +1413,21 @@ def collect_test_sample():
             return jsonify({'success': False, 'error': 'Invalid landmark coordinate values'}), 400
 
         normalized = normalize_landmarks(float_raw)
-        os.makedirs(os.path.dirname(TEST_CSV), exist_ok=True)
+        active_test_csv = get_active_test_dataset_path()
+        os.makedirs(os.path.dirname(active_test_csv), exist_ok=True)
         with _test_csv_lock:
-            with open(TEST_CSV, 'a', newline='', encoding='utf-8') as f:
+            with open(active_test_csv, 'a', newline='', encoding='utf-8') as f:
                 csv.writer(f).writerow([tester_id, label] + normalized)
             
             # Count samples for this tester+label
             total = 0
-            if os.path.exists(TEST_CSV):
-                with open(TEST_CSV, 'r', encoding='utf-8') as f:
+            if os.path.exists(active_test_csv):
+                with open(active_test_csv, 'r', encoding='utf-8') as f:
                     for row in csv.reader(f):
                         if len(row) >= 2 and row[0] == tester_id and row[1] == str(label):
                             total += 1
         
-        logger.info("Test sample recorded successfully: tester=%s, label=%d", tester_id, label)
+        logger.info("Test sample recorded successfully: tester=%s, label=%d, file=%s", tester_id, label, active_test_csv)
         return jsonify({'success': True, 'total': total})
     except Exception as exc:
         logger.error("Error in /collect-test POST: %s", exc, exc_info=True)
@@ -1191,23 +1436,24 @@ def collect_test_sample():
 @app.route('/collect-test/export')
 @app.route('/collect_test/export')
 def collect_test_export():
-    if not os.path.exists(TEST_CSV):
-        logger.warning("Export test CSV requested but file does not exist.")
+    active_test_csv = get_active_test_dataset_path()
+    if not os.path.exists(active_test_csv):
+        logger.warning("Export test CSV requested but file does not exist: %s", active_test_csv)
         return jsonify({'error': 'لا توجد بيانات بعد'}), 404
     try:
-        with open(TEST_CSV, 'r', encoding='utf-8') as f:
+        with open(active_test_csv, 'r', encoding='utf-8') as f:
             row_count = sum(1 for _ in csv.reader(f))
         if row_count < 50:
-            logger.warning("Export test CSV blocked: insufficient samples count %d < 50", row_count)
+            logger.warning("Export test CSV blocked: insufficient samples count %d < 50 for %s", row_count, active_test_csv)
             return jsonify({'error': f'عدد العينات غير كافٍ ({row_count}/50)'}), 403
     except Exception as exc:
         logger.error("Failed to read test CSV for export: %s", exc)
         return jsonify({'error': 'خطأ في قراءة الملف'}), 500
         
-    logger.info("Exporting test CSV containing %d samples.", row_count)
-    return send_from_directory(os.path.dirname(TEST_CSV), os.path.basename(TEST_CSV),
+    logger.info("Exporting test CSV %s containing %d samples.", active_test_csv, row_count)
+    return send_from_directory(os.path.dirname(active_test_csv), os.path.basename(active_test_csv),
                                as_attachment=True,
-                               download_name='test_keypoints.csv')
+                               download_name=os.path.basename(active_test_csv))
 
 @app.route('/forgot-password')
 @app.route('/forgot_password')
@@ -1274,11 +1520,145 @@ def set_active_language():
     logger.info("Active language updated to %s for session", lang_code)
     return jsonify({'success': True})
 
+@app.route('/admin/languages-detail', methods=['GET'])
+@admin_required
+def admin_languages_detail():
+    config_data = load_languages_config()
+    active = session.get('active_lang', config_data.get('active_language', 'ar'))
+    langs_detail = []
+    
+    def format_size(size_in_bytes):
+        if not size_in_bytes:
+            return '0 B'
+        if size_in_bytes < 1024:
+            return f"{size_in_bytes} B"
+        elif size_in_bytes < 1024 * 1024:
+            return f"{size_in_bytes / 1024:.2f} KB"
+        else:
+            return f"{size_in_bytes / (1024 * 1024):.2f} MB"
+            
+    encoding_errors = validate_labels_encoding()
+    
+    for code, info in config_data['languages'].items():
+        # Get labels and class count
+        labels = get_lang_labels(info)
+        class_count = len(labels)
+        
+        # Get sample count from dataset_path CSV file
+        dataset_path = info.get('dataset_path')
+        sample_count = 0
+        dataset_exists = bool(dataset_path and os.path.exists(dataset_path))
+        if dataset_exists:
+            try:
+                with open(dataset_path, 'r', encoding='utf-8') as f:
+                    sample_count = sum(1 for line in f if line.strip())
+            except Exception as e:
+                logger.error("Failed to count samples in %s: %s", dataset_path, e)
+                
+        # Get training report info
+        last_training_date = '-'
+        latest_accuracy = '-'
+        report_path = os.path.join(config.REPORTS_DIR, f"{code}_training_report.json")
+        if os.path.exists(report_path):
+            try:
+                with open(report_path, 'r', encoding='utf-8') as f:
+                    rep_data = json.load(f)
+                    last_training_date = rep_data.get('trained_at', '-')
+                    acc = rep_data.get('accuracy')
+                    if acc is not None:
+                        latest_accuracy = f"{float(acc)*100:.2f}%"
+            except Exception as e:
+                logger.error("Failed to read report for %s: %s", code, e)
+        
+        # Determine status
+        status = get_language_status(code)
+        
+        # Health details
+        health_info = language_health.get(code, {
+            "model_classes": 0,
+            "label_count": class_count,
+            "valid": False,
+            "reason": "Not initialized"
+        })
+        
+        failure_reason = health_info.get("reason", "")
+        model_classes = health_info.get("model_classes", 0)
+        
+        # Paths
+        labels_path = info.get('labels_path', '')
+        labels_exist = bool(labels_path and os.path.exists(labels_path))
+        
+        model_path = info.get('model_path', '')
+        model_exists = bool(model_path and os.path.exists(model_path))
+        
+        # Health categories
+        if not labels_exist:
+            health_status = "Missing Labels"
+        elif not dataset_exists:
+            health_status = "Missing Dataset"
+        elif not model_path:
+            health_status = "Not Trained"
+        elif not model_exists:
+            health_status = "Missing Model"
+        else:
+            if health_info.get("valid"):
+                health_status = "Healthy"
+            else:
+                health_status = "Invalid Model"
+        
+        # Warnings checks
+        warnings = []
+        if labels_exist and not dataset_exists:
+            warnings.append("Dataset Missing")
+        elif dataset_exists and sample_count == 0:
+            warnings.append("Empty Dataset")
+            
+        if status == 'invalid_model':
+            warnings.append("Invalid Model")
+            
+        enc_err = encoding_errors.get(code, '')
+        if enc_err:
+            warnings.append("Encoding Error")
+
+        model_size = os.path.getsize(model_path) if model_exists else 0
+        dataset_size = os.path.getsize(dataset_path) if dataset_exists else 0
+        
+        langs_detail.append({
+            'code': code,
+            'name': info.get('name', ''),
+            'model_path': model_path,
+            'labels_path': labels_path,
+            'dataset_path': dataset_path,
+            'sample_count': sample_count,
+            'class_count': class_count,
+            'model_classes': model_classes,
+            'health_status': health_status,
+            'failure_reason': failure_reason,
+            'last_training_date': last_training_date,
+            'latest_accuracy': latest_accuracy,
+            'status': status,
+            'invalid_reason': failure_reason or _invalid_lang_reasons.get(code, ''),
+            'model_exists': model_exists,
+            'labels_exists': labels_exist,
+            'dataset_exists': dataset_exists,
+            'encoding_error': enc_err,
+            'warnings': warnings,
+            'is_current_active': (code == active),
+            'model_size': model_size,
+            'dataset_size': dataset_size,
+            'model_size_str': format_size(model_size) if model_exists else '-',
+            'dataset_size_str': format_size(dataset_size) if dataset_exists else '-'
+        })
+        
+    return jsonify({'languages': langs_detail, 'active': active})
+
+
 @app.route('/admin/add-language', methods=['POST'])
 @admin_required
 def add_new_language():
     import re
     import shutil
+    import csv
     data = request.get_json(silent=True) or {}
     code = data.get('code', '').strip().lower()
     name = data.get('name', '').strip()
@@ -1286,6 +1666,14 @@ def add_new_language():
 
     if not code or not name or not labels:
         return jsonify({'success': False, 'error': 'جميع الحقول مطلوبة'}), 400
+
+    if not isinstance(labels, list) or len(labels) == 0:
+        return jsonify({'success': False, 'error': 'قائمة التسميات يجب أن تحتوي على تسمية واحدة على الأعل'}), 400
+
+    # Ensure all labels are valid non-empty strings
+    labels = [str(lbl).strip() for lbl in labels if str(lbl).strip()]
+    if not labels:
+        return jsonify({'success': False, 'error': 'يجب توفير تسميات صالحة'}), 400
 
     if not re.match(r'^[a-z]{2,3}$', code):
         return jsonify({'success': False, 'error': 'رمز اللغة يجب أن يكون من حرفين أو ثلاثة أحرف إنجليزية'}), 400
@@ -1297,6 +1685,7 @@ def add_new_language():
     # Paths
     dataset_path = f"arabic_data/{code}_keypoints.csv"
     model_path = f"arabic_model/{code}_sign_model.tflite"
+    labels_path = f"arabic_data/{code}_labels.csv"
 
     # Create empty dataset file
     if not os.path.exists(dataset_path):
@@ -1304,32 +1693,39 @@ def add_new_language():
         with open(dataset_path, 'w', newline='', encoding='utf-8') as f:
             pass
 
-    # Copy placeholder model
-    default_model = 'arabic_model/arabic_sign_model_2026-05-22_95.96.tflite'
-    if os.path.exists(default_model):
-        os.makedirs(os.path.dirname(model_path), exist_ok=True)
-        try:
-            shutil.copy2(default_model, model_path)
-            logger.info("Copied placeholder model for new language %s to %s", code, model_path)
-        except Exception as e:
-            logger.error("Failed to copy placeholder model for new language %s: %s", code, e)
+    # Create labels file
+    os.makedirs(os.path.dirname(labels_path), exist_ok=True)
+    try:
+        with open(labels_path, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            for idx, lbl in enumerate(labels):
+                writer.writerow([idx, lbl])
+    except Exception as e:
+        logger.error("Failed to save labels file for new language %s: %s", code, e)
+        return jsonify({'success': False, 'error': 'فشل حفظ ملف التسميات'}), 500
 
-    # Save to config
-    config_data['languages'][code] = {
-        'code': code,
-        'name': name,
-        'labels': labels,
-        'model_path': model_path,
-        'dataset_path': dataset_path
-    }
+    # Language is created WITHOUT a model — it will show as Not Trained until
+    # an admin trains it. Never copy the Arabic placeholder model.
 
-    with open(LANGUAGES_CONFIG_PATH, 'w', encoding='utf-8') as f:
-        json.dump(config_data, f, ensure_ascii=False, indent=2)
+    # Save to config (protected by languages config lock)
+    with _languages_config_lock:
+        config_data['languages'][code] = {
+            'code': code,
+            'name': name,
+            'labels': labels,
+            'model_path': model_path,
+            'labels_path': labels_path,
+            'dataset_path': dataset_path
+        }
+        tmp_path = LANGUAGES_CONFIG_PATH + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, LANGUAGES_CONFIG_PATH)
 
-    # Reload interpreters
+    # Reload interpreters (new language will be unavailable until trained)
     init_interpreters()
 
-    logger.info("Successfully added new language: %s (%s)", name, code)
+    logger.info("Successfully added new language: %s (%s) — status: Not Trained", name, code)
     return jsonify({'success': True})
 
 @app.route('/admin/train-active-model', methods=['POST'])
@@ -1338,7 +1734,17 @@ def train_active_model_route():
     import subprocess
     import sys
     lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
-    
+
+    # ── Training lock: prevent simultaneous training for the same language ──
+    with _training_state_lock:
+        if _training_in_progress.get(lang_code):
+            logger.warning("Training already in progress for %s — duplicate request rejected", lang_code)
+            return jsonify({
+                'success': False,
+                'error': f'التدريب جاري بالفعل للغة {lang_code} — انتظر حتى ينتهي'
+            }), 409
+        _training_in_progress[lang_code] = True
+
     logger.info("Starting model training process for language: %s", lang_code)
     try:
         res = subprocess.run([sys.executable, 'train_model.py', lang_code], capture_output=True, text=True, timeout=180)
@@ -1355,6 +1761,10 @@ def train_active_model_route():
     except Exception as e:
         logger.error("Failed to trigger training for %s: %s", lang_code, e)
         return jsonify({'success': False, 'error': f'حدث خطأ غير متوقع: {str(e)}'})
+    finally:
+        # Always release the lock, even on timeout or error
+        with _training_state_lock:
+            _training_in_progress[lang_code] = False
 
 @app.route('/admin/restart-server', methods=['POST'])
 @admin_required
@@ -1362,14 +1772,22 @@ def restart_server_route():
     import sys
     import subprocess
     logger.info("Restarting server programmatically as requested by Admin...")
-    
+
+    # ── Restart guard: prevent duplicate process spawning on double-click ──
+    with _restart_lock:
+        if _restart_in_progress:
+            logger.warning("Restart already in progress — duplicate request ignored")
+            return jsonify({'success': False, 'error': 'إعادة التشغيل جارية بالفعل'}), 409
+        # Mark in-progress inside the lock before releasing
+        globals()['_restart_in_progress'] = True
+
     def restart():
         import time
         time.sleep(1)
         subprocess.Popen([sys.executable] + sys.argv)
         os._exit(0)
-        
-    threading.Thread(target=restart).start()
+
+    threading.Thread(target=restart, daemon=True).start()
     return jsonify({'success': True, 'message': 'جاري إعادة تشغيل الخادم...'})
 
 @app.route('/health')

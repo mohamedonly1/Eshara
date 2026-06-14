@@ -45,9 +45,11 @@ Thumbs.db
 *.pdf
 
 # بناء أندرويد وملفات Gradle
-Ishara/**/build/
-Ishara/**/.gradle/
+Ishara/
+
+# تجاهل ملفات الـ APK عدا الملف الرئيسي في الجذر
 *.apk
+!Ishara-v0.3.0.apk
+
 scratch/
 test_keypoints.py
-Ishara/app/release/

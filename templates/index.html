@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="{{ active_lang }}" dir="{{ 'rtl' if active_lang == 'ar' else 'ltr' }}">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -13,16 +14,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="إشارة">
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-<style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    <script src="/static/mediapipe/hands.js"></script>
+    <script src="/static/mediapipe/camera_utils.js"></script>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-html, body { 
-    height: 100%;
-    overflow-x: hidden;
-    overflow-y: auto;
-}
+        html,
+        body {
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
 
 
         /* ══ Sidebar ══ */
@@ -51,7 +59,12 @@ html, body {
             border-bottom: 1px solid var(--border);
         }
 
-        .letter-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .letter-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
 
         .letter-big {
             font-size: 76px;
@@ -62,23 +75,96 @@ html, body {
             text-align: center;
             transition: all 0.2s;
         }
-        .letter-big.empty { color: var(--text-dim); opacity: 0.5; font-size: 44px; }
 
-        .letter-meta { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-        .conf-label  { font-size: 11px; color: var(--text-dim); }
-        .conf-track  { height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-        .conf-fill   { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.15s; width: 0%; }
-        .conf-value  { font-size: 14px; font-weight: 700; color: var(--accent); }
+        .letter-big.empty {
+            color: var(--text-dim);
+            opacity: 0.5;
+            font-size: 44px;
+        }
 
-        .confirm-row   { display: flex; align-items: center; gap: 8px; }
-        .confirm-label { font-size: 11px; color: var(--text-dim); white-space: nowrap; }
-        .confirm-track { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
-        .confirm-fill  { height: 100%; border-radius: 2px; background: var(--warn); transition: width 0.1s; }
-        .confirm-fill.ready { background: var(--accent); }
+        .letter-meta {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
 
-        .status-row-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); transition: all 0.3s; flex-shrink: 0; }
-        .status-dot.active { background: var(--accent); }
+        .conf-label {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .conf-track {
+            height: 5px;
+            background: var(--surface2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .conf-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: var(--accent);
+            transition: width 0.15s;
+            width: 0%;
+        }
+
+        .conf-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .confirm-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .confirm-label {
+            font-size: 11px;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .confirm-track {
+            flex: 1;
+            height: 4px;
+            background: var(--surface2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .confirm-fill {
+            height: 100%;
+            border-radius: 2px;
+            background: var(--warn);
+            transition: width 0.1s;
+        }
+
+        .confirm-fill.ready {
+            background: var(--accent);
+        }
+
+        .status-row-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+
+        .status-dot.active {
+            background: var(--accent);
+        }
 
         /* بلوك النص */
         .text-block {
@@ -97,11 +183,36 @@ html, body {
             justify-content: space-between;
             margin-bottom: 10px;
         }
-        .word-text { font-size: 24px; font-weight: 700; color: var(--text); flex: 1; word-break: break-all; line-height: 1.3; }
-        .word-placeholder { color: var(--text-dim); opacity: 0.7; font-size: 13px; font-weight: 400; }
-        .word-count { font-size: 11px; color: var(--text-dim); white-space: nowrap; padding-right: 6px; }
 
-        .btn-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 7px; }
+        .word-text {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text);
+            flex: 1;
+            word-break: break-all;
+            line-height: 1.3;
+        }
+
+        .word-placeholder {
+            color: var(--text-dim);
+            opacity: 0.7;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        .word-count {
+            font-size: 11px;
+            color: var(--text-dim);
+            white-space: nowrap;
+            padding-right: 6px;
+        }
+
+        .btn-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px;
+            margin-bottom: 7px;
+        }
 
         .btn {
             padding: 10px 8px;
@@ -116,17 +227,58 @@ html, body {
             background: var(--surface2);
             color: var(--text);
         }
-        .btn:active { transform: scale(0.96); }
 
-        .btn-space  { background: var(--accent); color: #fff; border-color: var(--accent); }
-        .btn-space:hover { opacity: 0.9; }
-        .btn-delete { background: var(--warn-lt); color: var(--warn); border-color: rgba(186,117,23,0.2); }
-        .btn-clear  { background: var(--danger-lt); color: var(--danger); border-color: rgba(163,45,45,0.2); }
-        .btn-speak  { background: var(--accent-lt); color: var(--accent); border-color: rgba(29,158,117,0.25); }
-        .btn-speak.speaking { background: var(--accent); color: #fff; }
-        .btn-save   { background: var(--accent2-lt); color: var(--accent2); border-color: rgba(83,74,183,0.2); }
-        .btn-save:disabled  { opacity: 0.4; cursor: not-allowed; }
-        .btn-full   { width: 100%; }
+        .btn:active {
+            transform: scale(0.96);
+        }
+
+        .btn-space {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .btn-space:hover {
+            opacity: 0.9;
+        }
+
+        .btn-delete {
+            background: var(--warn-lt);
+            color: var(--warn);
+            border-color: rgba(186, 117, 23, 0.2);
+        }
+
+        .btn-clear {
+            background: var(--danger-lt);
+            color: var(--danger);
+            border-color: rgba(163, 45, 45, 0.2);
+        }
+
+        .btn-speak {
+            background: var(--accent-lt);
+            color: var(--accent);
+            border-color: rgba(29, 158, 117, 0.25);
+        }
+
+        .btn-speak.speaking {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-save {
+            background: var(--accent2-lt);
+            color: var(--accent2);
+            border-color: rgba(83, 74, 183, 0.2);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
 
         /* بلوك السجل */
         .history-header {
@@ -135,8 +287,20 @@ html, body {
             align-items: center;
             margin-bottom: 8px;
         }
-        .history-title { font-size: 12px; font-weight: 700; color: var(--text-dim); }
-        .history-badge { font-size: 11px; color: var(--text-dim); background: var(--surface2); padding: 2px 10px; border-radius: 20px; }
+
+        .history-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-dim);
+        }
+
+        .history-badge {
+            font-size: 11px;
+            color: var(--text-dim);
+            background: var(--surface2);
+            padding: 2px 10px;
+            border-radius: 20px;
+        }
 
         .history-item {
             background: var(--surface2);
@@ -150,10 +314,30 @@ html, body {
             cursor: pointer;
             transition: background 0.15s;
         }
-        .history-item:hover { background: var(--accent-lt); }
-        .h-text { font-size: 17px; font-weight: 700; color: var(--text); }
-        .h-time { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
-        .history-empty { text-align: center; padding: 20px; color: var(--text-dim); opacity: 0.7; font-size: 13px; }
+
+        .history-item:hover {
+            background: var(--accent-lt);
+        }
+
+        .h-text {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .h-time {
+            font-size: 10px;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        .history-empty {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-dim);
+            opacity: 0.7;
+            font-size: 13px;
+        }
 
         /* ══ Camera ══ */
         .camera-wrap {
@@ -168,406 +352,696 @@ html, body {
 
         #video {
             position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
             transform: scaleX(-1);
             display: block;
             z-index: 1;
         }
+
         #overlay {
-            position: absolute; 
-            top: 0; left: 0;
-            width: 100%; height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
             transform: scaleX(-1);
             pointer-events: none;
             z-index: 2;
             background-color: transparent;
         }
+
         .tracking-badge {
             position: absolute;
-            bottom: 20px; left: 50%;
+            bottom: 20px;
+            left: 50%;
             transform: translateX(-50%);
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 999px;
             padding: 8px 18px;
-            display: flex; align-items: center; gap: 10px;
-            font-size: 12px; font-weight: 700; color: var(--text);
-            box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
             transition: background 0.3s, color 0.3s;
         }
-        .t-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); transition: background 0.3s; }
-        .t-dot.active { background: var(--accent); }
+
+        .t-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: background 0.3s;
+        }
+
+        .t-dot.active {
+            background: var(--accent);
+        }
 
         .collect-btn {
-            position: absolute; top: 14px; right: 16px;
+            position: absolute;
+            top: 14px;
+            right: 16px;
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: 999px;
             padding: 7px 14px;
             font-family: 'Cairo', sans-serif;
-            font-size: 12px; font-weight: 700; color: var(--text);
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text);
             text-decoration: none;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
             transition: all 0.15s;
         }
-        .collect-btn:hover { background: var(--accent-lt); color: var(--accent); }
+
+        .collect-btn:hover {
+            background: var(--accent-lt);
+            color: var(--accent);
+        }
 
         /* ══ Loading ══ */
         .loading-screen {
-            position: fixed; inset: 0; background: var(--bg);
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 999; transition: opacity 0.4s;
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            transition: opacity 0.4s;
         }
-        .loading-screen.hidden { opacity: 0; pointer-events: none; }
-        .loading-logo { width: 60px; height: 60px; border-radius: 16px; background: var(--accent); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
-        .loading-title { font-size: 20px; font-weight: 900; color: var(--accent); margin-bottom: 6px; }
-        .loading-sub   { font-size: 13px; color: var(--text-dim); margin-bottom: 22px; }
-        .spinner { width: 28px; height: 28px; border: 3px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-logo {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+        }
+
+        .loading-title {
+            font-size: 20px;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 6px;
+        }
+
+        .loading-sub {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-bottom: 22px;
+        }
+
+        .spinner {
+            width: 28px;
+            height: 28px;
+            border: 3px solid var(--surface2);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
 
         /* ══ Toast ══ */
         .toast {
-            position: fixed; bottom: 24px; left: 50%;
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
             transform: translateX(-50%) translateY(16px);
-            background: var(--surface); border: 1px solid var(--accent);
-            border-radius: 999px; padding: 8px 18px;
-            font-size: 12px; font-weight: 600; color: var(--accent);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-            opacity: 0; pointer-events: none; transition: all 0.25s; z-index: 999; white-space: nowrap;
+            background: var(--surface);
+            border: 1px solid var(--accent);
+            border-radius: 999px;
+            padding: 8px 18px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.25s;
+            z-index: 999;
+            white-space: nowrap;
         }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .toast.error { border-color: var(--danger); color: var(--danger); }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
     </style>
 </head>
+
 <body>
-{% include 'navbar.html' %}
+    {% include 'navbar.html' %}
 
-<div class="loading-screen" id="loadingScreen">
-    <div class="loading-logo">
-        <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
-            <path d="M8 17 C5.5 15.5 5 11 7 9.5 C8.5 8.5 10 10 10 13" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-            <path d="M11 14 L11 7.5 C11 6.2 13 6.2 13 7.5 L13 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-            <path d="M14 14 L14 6.5 C14 5.2 16 5.2 16 6.5 L16 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-            <path d="M17 14 L17 7.5 C17 6.2 19 6.2 19 7.5 L19 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-            <path d="M20 14 L20 10 C20 8.7 22 8.7 22 10 L22 14" stroke="white" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-            <circle cx="12" cy="7.5" r="1.3" fill="white"/>
-            <circle cx="15" cy="6.5" r="1.3" fill="white"/>
-            <circle cx="18" cy="7.5" r="1.3" fill="white"/>
-            <circle cx="21" cy="10"  r="1.3" fill="white"/>
-        </svg>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-logo">
+            <svg width="34" height="34" viewBox="0 0 28 28" fill="none">
+                <path d="M8 17 C5.5 15.5 5 11 7 9.5 C8.5 8.5 10 10 10 13" stroke="white" stroke-width="1.8"
+                    stroke-linecap="round" fill="none" />
+                <path d="M11 14 L11 7.5 C11 6.2 13 6.2 13 7.5 L13 14" stroke="white" stroke-width="1.8"
+                    stroke-linecap="round" fill="none" />
+                <path d="M14 14 L14 6.5 C14 5.2 16 5.2 16 6.5 L16 14" stroke="white" stroke-width="1.8"
+                    stroke-linecap="round" fill="none" />
+                <path d="M17 14 L17 7.5 C17 6.2 19 6.2 19 7.5 L19 14" stroke="white" stroke-width="1.8"
+                    stroke-linecap="round" fill="none" />
+                <path d="M20 14 L20 10 C20 8.7 22 8.7 22 10 L22 14" stroke="white" stroke-width="1.8"
+                    stroke-linecap="round" fill="none" />
+                <circle cx="12" cy="7.5" r="1.3" fill="white" />
+                <circle cx="15" cy="6.5" r="1.3" fill="white" />
+                <circle cx="18" cy="7.5" r="1.3" fill="white" />
+                <circle cx="21" cy="10" r="1.3" fill="white" />
+            </svg>
+        </div>
+        <div class="loading-title">{{ t('app_name') }}</div>
+        <div class="loading-sub" id="loadingSub">{{ t('loading_mediapipe') }}</div>
+        <div class="spinner"></div>
     </div>
-    <div class="loading-title">{{ t('app_name') }}</div>
-    <div class="loading-sub" id="loadingSub">{{ t('loading_mediapipe') }}</div>
-    <div class="spinner"></div>
-</div>
 
-<div class="toast" id="toast"></div>
+    <div class="toast" id="toast"></div>
 
-<div class="page-content layout-fullscreen">
+    <div class="page-content layout-fullscreen">
 
-    <!-- ═══ Sidebar ═══ -->
-    <aside class="sidebar">
+        <!-- ═══ Sidebar ═══ -->
+        <aside class="sidebar">
 
-        <!-- الحرف الحالي -->
-        <div class="letter-block">
-            <div class="status-row-top">
-                <div class="block-label" style="margin-bottom:0">{{ t('current_letter') }}</div>
-                <div class="status-dot" id="statusDot"></div>
-            </div>
-            <div class="letter-row">
-                <div class="letter-big empty" id="letterDisplay">—</div>
-                <div class="letter-meta">
-                    <div class="conf-label">{{ t('confidence_level') }}</div>
-                    <div class="conf-track"><div class="conf-fill" id="confBar"></div></div>
-                    <div class="conf-value" id="confValue">0%</div>
+            <!-- الحرف الحالي -->
+            <div class="letter-block">
+                <div class="status-row-top">
+                    <div class="block-label" style="margin-bottom:0">{{ t('current_letter') }}</div>
+                    <div class="status-dot" id="statusDot"></div>
+                </div>
+                <div class="letter-row">
+                    <div class="letter-big empty" id="letterDisplay">—</div>
+                    <div class="letter-meta">
+                        <div class="conf-label">{{ t('confidence_level') }}</div>
+                        <div class="conf-track">
+                            <div class="conf-fill" id="confBar"></div>
+                        </div>
+                        <div class="conf-value" id="confValue">0%</div>
+                    </div>
+                </div>
+                <div class="confirm-row">
+                    <div class="confirm-label">{{ t('letter_confirmation') }}</div>
+                    <div class="confirm-track">
+                        <div class="confirm-fill" id="confirmFill" style="width:0%"></div>
+                    </div>
                 </div>
             </div>
-            <div class="confirm-row">
-                <div class="confirm-label">{{ t('letter_confirmation') }}</div>
-                <div class="confirm-track"><div class="confirm-fill" id="confirmFill" style="width:0%"></div></div>
+
+            <!-- النص المجمع -->
+            <div class="text-block">
+                <div class="block-label">{{ t('collected_text') }}</div>
+                <div class="word-box">
+                    <div class="word-count" id="wordCount">0</div>
+                    <div id="wordDisplay" class="word-text word-placeholder">{{ t('start_signing') }}</div>
+                </div>
+                <div class="btn-grid-2">
+                    <button class="btn btn-space" onclick="addSpace()">{{ t('btn_space') }}</button>
+                    <button class="btn btn-clear" onclick="clearWord()">{{ t('btn_clear_all') }}</button>
+                </div>
+                <div class="btn-grid-2" style="margin-bottom:7px">
+                    <button class="btn btn-speak" id="speakBtn" onclick="speakWord()">{{ t('btn_speak') }}</button>
+                    <button class="btn btn-save" id="saveBtn" onclick="saveToHistory()" disabled>{{ t('btn_save')
+                        }}</button>
+                </div>
+                <button class="btn btn-delete btn-full" onclick="deleteLetter()">{{ t('btn_delete_last') }}</button>
             </div>
+
+            <!-- السجل -->
+            <div class="history-block">
+                <div class="history-header">
+                    <div class="history-title">{{ t('recent_history') }}</div>
+                    <div class="history-badge" id="historyBadge">0</div>
+                </div>
+                <div id="historyList">
+                    <div class="history-empty">{{ t('no_saved_sentences') }}</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══ Camera ═══ -->
+        <div class="camera-wrap">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="overlay"></canvas>
+            <div class="tracking-badge">
+                <div class="t-dot" id="trackingDot"></div>
+                <span id="trackingLabel">{{ t('waiting_for_hand') }}</span>
+            </div>
+            {% if not model_available %}
+            <div
+                style="position: absolute; inset: 0; background: rgba(10,10,15,0.95); z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; text-align: center; font-family: 'Cairo', sans-serif;">
+                <div style="font-size: 54px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(245,158,11,0.3));">
+                    ⚠️</div>
+                <h2 style="color: var(--warn); font-size: 20px; font-weight: 900; margin-bottom: 8px;">{{
+                    t('model_not_trained') or 'النموذج غير متوفر' }}</h2>
+                <p
+                    style="color: var(--text-dim); font-size: 13px; max-width: 340px; line-height: 1.5; margin-bottom: 20px;">
+                    {{ t('model_not_trained_desc') or 'نموذج التعرف على لغة الإشارة لهذه اللغة غير متوفر حالياً. يمكنك
+                    جمع عينات تدريبية عبر صفحة جمع البيانات لمساعدتنا في تدريبه.' }}
+                </p>
+                <a href="/collect-data" class="btn btn-space"
+                    style="text-decoration: none; padding: 10px 24px; font-size: 14px; font-weight: 700; border-radius: 12px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(29,158,117,0.25);">
+                    <span>{{ t('nav_collect') or 'جمع البيانات' }}</span>
+                </a>
+            </div>
+            {% endif %}
         </div>
 
-        <!-- النص المجمع -->
-        <div class="text-block">
-            <div class="block-label">{{ t('collected_text') }}</div>
-            <div class="word-box">
-                <div class="word-count" id="wordCount">0</div>
-                <div id="wordDisplay" class="word-text word-placeholder">{{ t('start_signing') }}</div>
-            </div>
-            <div class="btn-grid-2">
-                <button class="btn btn-space"  onclick="addSpace()">{{ t('btn_space') }}</button>
-                <button class="btn btn-clear"  onclick="clearWord()">{{ t('btn_clear_all') }}</button>
-            </div>
-            <div class="btn-grid-2" style="margin-bottom:7px">
-                <button class="btn btn-speak" id="speakBtn" onclick="speakWord()">{{ t('btn_speak') }}</button>
-                <button class="btn btn-save"  id="saveBtn"  onclick="saveToHistory()" disabled>{{ t('btn_save') }}</button>
-            </div>
-            <button class="btn btn-delete btn-full" onclick="deleteLetter()">{{ t('btn_delete_last') }}</button>
-        </div>
-
-        <!-- السجل -->
-        <div class="history-block">
-            <div class="history-header">
-                <div class="history-title">{{ t('recent_history') }}</div>
-                <div class="history-badge" id="historyBadge">0</div>
-            </div>
-            <div id="historyList">
-                <div class="history-empty">{{ t('no_saved_sentences') }}</div>
-            </div>
-        </div>
-    </aside>
-
-    <!-- ═══ Camera ═══ -->
-    <div class="camera-wrap">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
-        <div class="tracking-badge">
-            <div class="t-dot" id="trackingDot"></div>
-            <span id="trackingLabel">{{ t('waiting_for_hand') }}</span>
-        </div>
     </div>
 
-</div>
+    <script>
+        // =========================================================================
+        // 1. ثوابت التحكم في منطق التعرف والترجمة
+        // =========================================================================
+        const CONFIDENCE_THRESHOLD = 0.75; // الحد الأدنى لنسبة ثقة الموديل (75%) لاعتماد الحرف
+        const HISTORY_LENGTH = 10;        // طول سجل التوقعات المتتالية للتحقق من ثبات وضعية اليد
+        const AGREEMENT_RATIO = 0.75;      // نسبة الاتفاق المطلوبة داخل السجل لتسجيل الحرف (مثلاً 7.5 من 10 توقعات متطابقة)
+        const COOLDOWN_MS = 800;           // وقت الانتظار بالملي ثانية بين كل حرف وحرف لمنع التكرار السريع عند الثبات
 
-<script>
-const CONFIDENCE_THRESHOLD = 0.75;
-const HISTORY_LENGTH = 10;
-const AGREEMENT_RATIO = 0.75;
-const COOLDOWN_MS = 800;
+        // متغيرات ديناميكية لتخزين حالة البرنامج
+        let currentWord = [],         // مصفوفة تحتوي على الحروف المشكلة للكلمة أو الجملة الحالية
+            predictionHistory = [],   // سجل مؤقت لحفظ آخر 10 توقعات متتالية من السيرفر
+            lastLetter = null,        // الحرف الأخير الذي تم اعتماده وكتابته بنجاح
+            lastLetterTime = 0,       // التوقيت الزمني لآخر حرف مكتوب لمنع الكتابة المزدوجة
+            noHandCount = 0;          // عداد الفريمات الخالية من اليد (تستخدم لإخفاء خطوط الرسم عند إبعاد اليد)
 
-let currentWord = [], predictionHistory = [], lastLetter = null, lastLetterTime = 0, noHandCount = 0;
+        // استدعاء عناصر واجهة المستخدم (DOM Elements) للتحكم بها
+        const video = document.getElementById('video');
+        const overlayCanvas = document.getElementById('overlay');
+        const overlayCtx = overlayCanvas.getContext('2d'); // محرك الرسم ثنائي الأبعاد للكانفاس
 
-const video         = document.getElementById('video');
-const overlayCanvas = document.getElementById('overlay');
-const overlayCtx    = overlayCanvas.getContext('2d');
-
-function extractLandmarks(landmarks) {
-    const raw = [];
-    landmarks.forEach(lm => raw.push(lm.x, lm.y));
-    return raw;
-}
-
-function drawHand(landmarks) {
-    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    const px = lm => lm.x * overlayCanvas.width;
-    const py = lm => lm.y * overlayCanvas.height;
-    const connections = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20],[5,9],[9,13],[13,17]];
-    overlayCtx.strokeStyle = 'rgba(29,158,117,0.75)';
-    overlayCtx.lineWidth = 2;
-    connections.forEach(([a,b]) => {
-        overlayCtx.beginPath();
-        overlayCtx.moveTo(px(landmarks[a]), py(landmarks[a]));
-        overlayCtx.lineTo(px(landmarks[b]), py(landmarks[b]));
-        overlayCtx.stroke();
-    });
-    const tips = [4,8,12,16,20];
-    landmarks.forEach((lm, i) => {
-        overlayCtx.beginPath();
-        overlayCtx.arc(px(lm), py(lm), tips.includes(i) ? 5 : 3.5, 0, Math.PI*2);
-        overlayCtx.fillStyle = tips.includes(i) ? '#534AB7' : '#1D9E75';
-        overlayCtx.fill();
-    });
-}
-
-async function sendLandmarks(raw) {
-    try {
-        const res = await fetch('/predict', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({landmarks: raw}) });
-        handlePrediction(await res.json());
-    } catch(e) {}
-}
-
-function handlePrediction(data) {
-    const { letter, confidence, status } = data;
-    const now = Date.now();
-    if (status !== 'ok' || !letter) return;
-    updateUI(letter, confidence / 100);
-    if (confidence >= CONFIDENCE_THRESHOLD * 100) {
-        predictionHistory.push(letter);
-        if (predictionHistory.length > HISTORY_LENGTH) predictionHistory.shift();
-    } else { predictionHistory = []; }
-    const fillPct = (predictionHistory.length / HISTORY_LENGTH) * 100;
-    const cf = document.getElementById('confirmFill');
-    cf.style.width = fillPct + '%';
-    cf.className = 'confirm-fill' + (fillPct >= 100 ? ' ready' : '');
-    if (predictionHistory.length >= HISTORY_LENGTH && now - lastLetterTime > COOLDOWN_MS) {
-        const counts = {};
-        predictionHistory.forEach(l => counts[l] = (counts[l]||0)+1);
-        const top = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
-        if (top[1]/HISTORY_LENGTH >= AGREEMENT_RATIO && top[0] !== lastLetter) {
-            addLetter(top[0]); lastLetter = top[0]; lastLetterTime = now;
-            predictionHistory = []; cf.style.width = '0%';
+// =========================================================================
+// 2. دوال الرسم ومعالجة إحداثيات MediaPipe
+// =========================================================================
+        function extractLandmarks(landmarks) {
+            /**
+             * تحويل كائنات معالم اليد من MediaPipe إلى مصفوفة بسيطة تحتوي على إحداثيات [x, y] متتالية
+             * ليتم إرسالها إلى السيرفر للتنبؤ.
+             */
+            const raw = [];
+            landmarks.forEach(lm => raw.push(lm.x, lm.y));
+            return raw;
         }
-    }
-}
 
-function updateUI(letter, confidence) {
-    const el = document.getElementById('letterDisplay');
-    el.textContent = letter; el.className = 'letter-big';
-    const pct = Math.round(confidence * 100);
-    document.getElementById('confBar').style.width = pct + '%';
-    document.getElementById('confBar').style.background = pct > 90 ? '#1D9E75' : pct > 75 ? '#BA7517' : '#A32D2D';
-    document.getElementById('confValue').textContent = pct + '%';
-}
+        function drawHand(landmarks) {
+            /**
+             * رسم خطوط ومفاصل اليد على الكانفاس بطريقة تفاعلية وألوان جميلة فوق فيديو الكاميرا.
+             */
+            // مسح الكانفاس أولاً قبل رسم الإطار الجديد لمنع تداخل الرسومات السابقة
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
 
-function clearUI() {
-    document.getElementById('letterDisplay').textContent = '—';
-    document.getElementById('letterDisplay').className = 'letter-big empty';
-    document.getElementById('confBar').style.width = '0%';
-    document.getElementById('confValue').textContent = '0%';
-    document.getElementById('confirmFill').style.width = '0%';
-    overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-    predictionHistory = []; lastLetter = null;
-}
+            // دوال تحويل النسب العشرية (0 إلى 1) إلى بكسلات حقيقية بناءً على أبعاد الكانفاس
+            const px = lm => lm.x * overlayCanvas.width;
+            const py = lm => lm.y * overlayCanvas.height;
 
-function addLetter(letter)  { currentWord.push(letter); updateWordDisplay(); if (navigator.vibrate) navigator.vibrate(30); }
-function addSpace()         { currentWord.push(' '); updateWordDisplay(); }
-function deleteLetter()     { if (currentWord.length) { currentWord.pop(); updateWordDisplay(); lastLetter = null; } }
-function clearWord()        { currentWord = []; lastLetter = null; predictionHistory = []; updateWordDisplay(); }
+            // روابط مفاصل الأصابع الـ 21 لتشكيل هيكل اليد الكامل
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4],
+                [0, 5], [5, 6], [6, 7], [7, 8],
+                [0, 9], [9, 10], [10, 11], [11, 12],
+                [0, 13], [13, 14], [14, 15], [15, 16],
+                [0, 17], [17, 18], [18, 19], [19, 20],
+                [5, 9], [9, 13], [13, 17]
+            ];
 
-function updateWordDisplay() {
-    const wordEl = document.getElementById('wordDisplay');
-    const word   = currentWord.join('').trim();
-    if (!word) { wordEl.textContent = '{{ t("start_signing") }}'; wordEl.className = 'word-text word-placeholder'; document.getElementById('wordCount').textContent = '0'; }
-    else       { wordEl.textContent = currentWord.join(''); wordEl.className = 'word-text'; document.getElementById('wordCount').textContent = word.length; }
-    checkSaveBtn();
-}
+            // ضبط ألوان وعرض الخطوط للرسم
+            overlayCtx.strokeStyle = 'rgba(29,158,117,0.75)'; // لون أخضر شفاف أنيق
+            overlayCtx.lineWidth = 2;
 
-function initMediaPipe() {
-    document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
-    const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-    hands.setOptions({ maxNumHands:1, modelComplexity:1, minDetectionConfidence:0.7, minTrackingConfidence:0.5 });
-    let lastSend = 0;
-    hands.onResults(results => {
-        const tDot = document.getElementById('trackingDot');
-        const tLbl = document.getElementById('trackingLabel');
-        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            noHandCount = 0;
-            document.getElementById('statusDot').classList.add('active');
-            tDot.classList.add('active'); tLbl.textContent = '{{ t("tracking_active") }}';
-            const lm = results.multiHandLandmarks[0];
-            drawHand(lm);
-            const now = Date.now();
-            if (now - lastSend > 120) { lastSend = now; sendLandmarks(extractLandmarks(lm)); }
-        } else {
-            noHandCount++;
-            if (noHandCount > 3) { clearUI(); tDot.classList.remove('active'); tLbl.textContent = '{{ t("waiting_for_hand") }}'; }
-            document.getElementById('statusDot').classList.remove('active');
+            // رسم خطوط المفاصل
+            connections.forEach(([a, b]) => {
+                overlayCtx.beginPath();
+                overlayCtx.moveTo(px(landmarks[a]), py(landmarks[a]));
+                overlayCtx.lineTo(px(landmarks[b]), py(landmarks[b]));
+                overlayCtx.stroke();
+            });
+
+            // رسم دوائر ملونة عند المفاصل وأطراف الأصابع (رؤوس الأصابع بلون بنفسجي والمفاصل بلون أخضر)
+            const tips = [4, 8, 12, 16, 20];
+            landmarks.forEach((lm, i) => {
+                overlayCtx.beginPath();
+                overlayCtx.arc(px(lm), py(lm), tips.includes(i) ? 5 : 3.5, 0, Math.PI * 2);
+                overlayCtx.fillStyle = tips.includes(i) ? '#534AB7' : '#1D9E75';
+                overlayCtx.fill();
+            });
         }
-    });
-    const cam = new Camera(video, {
-        onFrame: async () => {
-            if (video.videoWidth) {
-                overlayCanvas.width = video.videoWidth;
-                overlayCanvas.height = video.videoHeight;
+
+// =========================================================================
+// 3. التواصل مع خادم بايثون والحصول على التنبؤات (API Requests)
+// =========================================================================
+        async function sendLandmarks(raw) {
+            /**
+             * إرسال مصفوفة النقاط الـ 42 إلى السيرفر عن طريق طلب POST للرابط '/predict'
+             */
+            try {
+                const res = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ landmarks: raw })
+                });
+                handlePrediction(await res.json()); // تمرير النتيجة للدالة المسؤولة عن معالجة التوقع
+            } catch (e) {
+                // تفادي توقف الموقع عند حدوث خطأ مؤقت في الشبكة
             }
-            await hands.send({ image: video });
-        }, width: 640, height: 480
-    });
-    cam.start()
-       .then(() => document.getElementById('loadingScreen').classList.add('hidden'))
-       .catch(() => { document.getElementById('loadingSub').textContent = '{{ t("camera_access_failed") }}'; });
-}
-
-let toastTimer = null;
-function showToast(msg, type) {
-    const t = document.getElementById('toast');
-    t.textContent = msg; t.className = 'toast show' + (type === 'error' ? ' error' : '');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
-}
-
-let isSpeaking = false;
-
-function speakWord() {
-    const word = currentWord.join('').trim();
-    if (!word) { showToast('{{ t("toast_type_word_first") }}', 'error'); return; }
-    if (isSpeaking) { window.speechSynthesis.cancel(); return; }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(word);
-    const lang = "{{ active_lang }}";
-    u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
-    u.rate = 0.85;
-    const voices = window.speechSynthesis.getVoices();
-    const voice = voices.find(v => v.lang.startsWith(lang));
-    if (voice) u.voice = voice;
-    const btn = document.getElementById('speakBtn');
-    isSpeaking = true;
-    if(btn) { btn.textContent = '{{ t("translate_stop_btn") }}'; btn.classList.add('speaking'); }
-    u.onend = u.onerror = () => {
-        isSpeaking = false;
-        if(btn) { btn.textContent = '{{ t("btn_speak") }}'; btn.classList.remove('speaking'); }
-    };
-    window.speechSynthesis.speak(u);
-}
-
-window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
-
-async function saveToHistory() {
-    const word = currentWord.join('').trim();
-    if (!word) return;
-    const btn = document.getElementById('saveBtn');
-    btn.disabled = true; btn.textContent = '...';
-    try {
-        const res  = await fetch('/history/save', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({text: word}) });
-        const data = await res.json();
-        if (data.success) {
-            showToast('{{ t("toast_saved") }}'); btn.textContent = '{{ t("toast_saved") }}';
-            loadHistory();
-            setTimeout(() => { btn.textContent = '{{ t("btn_save") }}'; btn.disabled = false; checkSaveBtn(); }, 2000);
-        } else {
-            showToast(data.error || '{{ t("toast_save_failed") }}', 'error'); btn.textContent = '{{ t("btn_save") }}'; btn.disabled = false;
         }
-    } catch(e) { showToast('{{ t("toast_network_error") }}', 'error'); btn.textContent = '{{ t("btn_save") }}'; btn.disabled = false; }
-}
 
-function checkSaveBtn() {
-    document.getElementById('saveBtn').disabled = !currentWord.join('').trim();
-}
+        function handlePrediction(data) {
+            /**
+             * استقبال نتيجة التوقع من السيرفر وتطبيق الخوارزمية الفلترة للتأكد من ثبات اليد
+             */
+            const { letter, confidence, status } = data;
+            const now = Date.now();
 
-async function loadHistory() {
-    try {
-        const res  = await fetch('/history/list');
-        const data = await res.json();
-        const entries = (data.entries || []).slice(0, 6);
-        document.getElementById('historyBadge').textContent = data.entries?.length || 0;
-        const list = document.getElementById('historyList');
-        list.replaceChildren();
-        if (!entries.length) { list.innerHTML = '<div class="history-empty">{{ t("no_saved_sentences") }}</div>'; return; }
-        entries.forEach(e => {
-            const item = document.createElement('div');
-            item.className = 'history-item';
-            item.addEventListener('click', () => speakHistItem(e.text || ''));
+            if (status !== 'ok' || !letter) return;
 
-            const text = document.createElement('div');
-            text.className = 'h-text';
-            text.textContent = e.text || '';
+            // تحديث مؤشر نسبة الدقة والحرف الحالي على الشاشة
+            updateUI(letter, confidence / 100);
 
-            const time = document.createElement('div');
-            time.className = 'h-time';
-            time.textContent = e.time || '';
+            // إذا كانت نسبة الثقة تفوق الحد المطلوب، نضيف الحرف لسجل التوقعات
+            if (confidence >= CONFIDENCE_THRESHOLD * 100) {
+                predictionHistory.push(letter);
+                if (predictionHistory.length > HISTORY_LENGTH) predictionHistory.shift(); // الحفاظ على الحجم الأقصى (10)
+            } else {
+                predictionHistory = []; // تصفير السجل عند انخفاض الدقة لضمان الثبات
+            }
 
-            item.append(text, time);
-            list.appendChild(item);
+            // تحديث شريط التقدم الدائري أو الطولي للتأكيد
+            const fillPct = (predictionHistory.length / HISTORY_LENGTH) * 100;
+            const cf = document.getElementById('confirmFill');
+            cf.style.width = fillPct + '%';
+            cf.className = 'confirm-fill' + (fillPct >= 100 ? ' ready' : '');
+
+            // إذا امتلأ سجل التأكيد، نقوم باحتساب الحرف الأكثر تكراراً واعتماده
+            if (predictionHistory.length >= HISTORY_LENGTH && now - lastLetterTime > COOLDOWN_MS) {
+                const counts = {};
+                predictionHistory.forEach(l => counts[l] = (counts[l] || 0) + 1);
+                const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+
+                // إذا كانت نسبة اتفاق التوقعات تتعدى 75% ولم يكن هذا نفس الحرف المكتوب للتو
+                if (top[1] / HISTORY_LENGTH >= AGREEMENT_RATIO && top[0] !== lastLetter) {
+                    addLetter(top[0]);
+                    lastLetter = top[0];
+                    lastLetterTime = now;
+                    predictionHistory = []; // تصفير السجل للبدء من جديد للحرف التالي
+                    cf.style.width = '0%';
+                }
+            }
+        }
+
+// =========================================================================
+// 4. تحديث عناصر واجهة المستخدم وتعديل البيانات
+// =========================================================================
+        function updateUI(letter, confidence) {
+            /** تحديث صندوق عرض الحرف الحالي ونسبة ثقة الموديل ملونة تبعا للدرجة */
+            const el = document.getElementById('letterDisplay');
+            el.textContent = letter;
+            el.className = 'letter-big';
+
+            const pct = Math.round(confidence * 100);
+            document.getElementById('confBar').style.width = pct + '%';
+            // تلوين شريط الثقة (أخضر للممتاز، برتقالي للمتوسط، أحمر للضعيف)
+            document.getElementById('confBar').style.background = pct > 90 ? '#1D9E75' : pct > 75 ? '#BA7517' : '#A32D2D';
+            document.getElementById('confValue').textContent = pct + '%';
+        }
+
+        function clearUI() {
+            /** تنظيف وإعادة تعيين واجهة المستخدم لوضعها الافتراضي عند عدم وجود يد */
+            document.getElementById('letterDisplay').textContent = '—';
+            document.getElementById('letterDisplay').className = 'letter-big empty';
+            document.getElementById('confBar').style.width = '0%';
+            document.getElementById('confValue').textContent = '0%';
+            document.getElementById('confirmFill').style.width = '0%';
+            overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            predictionHistory = [];
+            lastLetter = null;
+        }
+
+        // دوال التحكم بالكلمة الجاري صياغتها
+        function addLetter(letter) {
+            currentWord.push(letter);
+            updateWordDisplay();
+            if (navigator.vibrate) navigator.vibrate(30); // اهتزاز بسيط في الموبايل لتنبيه المستخدم بكتابة الحرف
+        }
+        function addSpace() { currentWord.push(' '); updateWordDisplay(); }
+        function deleteLetter() { if (currentWord.length) { currentWord.pop(); updateWordDisplay(); lastLetter = null; } }
+        function clearWord() { currentWord = []; lastLetter = null; predictionHistory = []; updateWordDisplay(); }
+
+        function updateWordDisplay() {
+            /** تحديث النص المترجم في صندوق العرض وحساب عدد الحروف */
+            const wordEl = document.getElementById('wordDisplay');
+            const word = currentWord.join('').trim();
+            if (!word) {
+                wordEl.textContent = '{{ t("start_signing") }}';
+                wordEl.className = 'word-text word-placeholder';
+                document.getElementById('wordCount').textContent = '0';
+            } else {
+                wordEl.textContent = currentWord.join('');
+                wordEl.className = 'word-text';
+                document.getElementById('wordCount').textContent = word.length;
+            }
+            checkSaveBtn();
+        }
+
+// =========================================================================
+// 5. تهيئة كاميرا الويب ومكتبة MediaPipe Hands
+// =========================================================================
+        function initMediaPipe() {
+            document.getElementById('loadingSub').textContent = 'جاري تشغيل الكاميرا...';
+
+            // إنشاء كائن تتبع اليد من MediaPipe وجلب ملفات المعالجة محلياً
+            const hands = new Hands({ locateFile: f => `/static/mediapipe/${f}` });
+
+            // إعداد معاملات تتبع اليد (يد واحدة، دقة متوازنة، ثقة 70%)
+            hands.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.5
+            });
+
+            let lastSend = 0;
+
+            // دالة المعالجة التي تستدعى تلقائياً عند وصول كل فريم من الكاميرا
+            hands.onResults(results => {
+                const tDot = document.getElementById('trackingDot');
+                const tLbl = document.getElementById('trackingLabel');
+
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                    noHandCount = 0;
+                    document.getElementById('statusDot').classList.add('active');
+                    tDot.classList.add('active');
+                    tLbl.textContent = '{{ t("tracking_active") }}';
+
+                    const lm = results.multiHandLandmarks[0];
+                    drawHand(lm); // رسم اليد على الشاشة
+
+                    // نرسل النقاط للسيرفر مرة كل 120 ملي ثانية لتجنب الضغط والبطء في معالجة الشبكة
+                    const now = Date.now();
+                    if (now - lastSend > 120) {
+                        lastSend = now;
+                        sendLandmarks(extractLandmarks(lm));
+                    }
+                } else {
+                    // إخفاء الواجهات والرسم تدريجياً لو اختفت اليد لأكثر من 3 فريمات متتالية
+                    noHandCount++;
+                    if (noHandCount > 3) {
+                        clearUI();
+                        tDot.classList.remove('active');
+                        tLbl.textContent = '{{ t("waiting_for_hand") }}';
+                    }
+                    document.getElementById('statusDot').classList.remove('active');
+                }
+            });
+
+            // تشغيل الكاميرا وتغذية الكاشف بالفيديو بشكل مستمر
+            const cam = new Camera(video, {
+                onFrame: async () => {
+                    if (video.videoWidth) {
+                        overlayCanvas.width = video.videoWidth;
+                        overlayCanvas.height = video.videoHeight;
+                    }
+                    await hands.send({ image: video });
+                },
+                width: 640,
+                height: 480
+            });
+
+            cam.start()
+                .then(() => document.getElementById('loadingScreen').classList.add('hidden')) // إخفاء شاشة التحميل عند البدء
+                .catch(() => { document.getElementById('loadingSub').textContent = '{{ t("camera_access_failed") }}'; });
+        }
+
+// =========================================================================
+// 6. نطق النصوص وحفظ التاريخ (Speech Synthesis & Web API)
+// =========================================================================
+        let toastTimer = null;
+        function showToast(msg, type) {
+            /** عرض إشعارات منبثقة جميلة وسريعة في الأسفل */
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show' + (type === 'error' ? ' error' : '');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+        }
+
+        let isSpeaking = false;
+
+        function speakWord() {
+            /** نطق الكلمة الحالية صوتياً للمستخدمين (مفيد لضعاف السمع والبصر) باستخدام ميزة متصفح الويب المدمجة */
+            const word = currentWord.join('').trim();
+            if (!word) { showToast('{{ t("toast_type_word_first") }}', 'error'); return; }
+            if (isSpeaking) { window.speechSynthesis.cancel(); return; }
+
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(word);
+            const lang = "{{ active_lang }}";
+            u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
+            u.rate = 0.85; // سرعة نطق متوسطة وهادئة
+
+            const voices = window.speechSynthesis.getVoices();
+            const voice = voices.find(v => v.lang.startsWith(lang));
+            if (voice) u.voice = voice;
+
+            const btn = document.getElementById('speakBtn');
+            isSpeaking = true;
+            if (btn) { btn.textContent = '{{ t("translate_stop_btn") }}'; btn.classList.add('speaking'); }
+
+            u.onend = u.onerror = () => {
+                isSpeaking = false;
+                if (btn) { btn.textContent = '{{ t("btn_speak") }}'; btn.classList.remove('speaking'); }
+            };
+            window.speechSynthesis.speak(u);
+        }
+
+        window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+
+        async function saveToHistory() {
+            /** حفظ الكلمة الحالية المترجمة في قاعدة بيانات السجل للمستخدم */
+            const word = currentWord.join('').trim();
+            if (!word) return;
+
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true;
+            btn.textContent = '...';
+
+            try {
+                const res = await fetch('/history/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: word })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('{{ t("toast_saved") }}');
+                    btn.textContent = '{{ t("toast_saved") }}';
+                    loadHistory(); // تحديث قائمة السجل المعروضة على الشاشة فوراً
+                    setTimeout(() => {
+                        btn.textContent = '{{ t("btn_save") }}';
+                        btn.disabled = false;
+                        checkSaveBtn();
+                    }, 2000);
+                } else {
+                    showToast(data.error || '{{ t("toast_save_failed") }}', 'error');
+                    btn.textContent = '{{ t("btn_save") }}';
+                    btn.disabled = false;
+                }
+            } catch (e) {
+                showToast('{{ t("toast_network_error") }}', 'error');
+                btn.textContent = '{{ t("btn_save") }}';
+                btn.disabled = false;
+            }
+        }
+
+        function checkSaveBtn() {
+            document.getElementById('saveBtn').disabled = !currentWord.join('').trim();
+        }
+
+        async function loadHistory() {
+            /** جلب قائمة الكلمات المترجمة سابقاً وعرضها في القائمة الجانبية للموقع */
+            try {
+                const res = await fetch('/history/list');
+                const data = await res.json();
+                const entries = (data.entries || []).slice(0, 6); // نكتفي بعرض آخر 6 جمل
+
+                document.getElementById('historyBadge').textContent = data.entries?.length || 0;
+                const list = document.getElementById('historyList');
+                list.replaceChildren(); // تنظيف المحتوى القديم
+
+                if (!entries.length) {
+                    list.innerHTML = '<div class="history-empty">{{ t("no_saved_sentences") }}</div>';
+                    return;
+                }
+
+                entries.forEach(e => {
+                    const item = document.createElement('div');
+                    item.className = 'history-item';
+                    item.addEventListener('click', () => speakHistItem(e.text || ''));
+
+                    const text = document.createElement('div');
+                    text.className = 'h-text';
+                    text.textContent = e.text || '';
+
+                    const time = document.createElement('div');
+                    time.className = 'h-time';
+                    time.textContent = e.time || '';
+
+                    item.append(text, time);
+                    list.appendChild(item);
+                });
+            } catch (e) { }
+        }
+
+        function speakHistItem(text) {
+            if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            const lang = "{{ active_lang }}";
+            u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
+            u.rate = 0.85;
+            const voice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith(lang));
+            if (voice) u.voice = voice;
+            window.speechSynthesis.speak(u);
+        }
+
+        // بدء التشغيل التلقائي عند انتهاء تحميل الصفحة في المتصفح
+        window.addEventListener('load', () => {
+            {% if model_available %}
+            initMediaPipe();
+            {% else %}
+            const loadingScreen = document.getElementById('loadingScreen');
+            if (loadingScreen) loadingScreen.classList.add('hidden');
+            {% endif %}
+            loadHistory();
         });
-    } catch(e) {}
-}
-
-function speakHistItem(text) {
-    if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    const lang = "{{ active_lang }}";
-    u.lang = lang === 'ar' ? 'ar-SA' : (lang === 'en' ? 'en-US' : lang);
-    u.rate = 0.85;
-    const voice = window.speechSynthesis.getVoices().find(v => v.lang.startsWith(lang));
-    if (voice) u.voice = voice;
-    window.speechSynthesis.speak(u);
-}
-
-window.addEventListener('load', () => { initMediaPipe(); loadHistory(); });
-</script>
-{% include 'onboarding.html' %}
+    </script>
+    {% include 'onboarding.html' %}
 </body>
+
 </html>

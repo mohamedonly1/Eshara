@@ -162,14 +162,49 @@
 </div>
 
 <script>
+// تحديد الثوابت وتدفق الحروف المستهدفة
 const ARABIC_LETTERS = {{ letters | tojson | safe }};
-const TARGET = 200;
+const TARGET = 200; // الهدف المطلوب لكل حرف ليكون مكتمل البيانات
 
+// =========================================================================
+// 1. نظام حماية الموقع التلقائي (CSRF Protection Helper - SEC-01)
+// =========================================================================
+(function() {
+    /**
+     * وظيفة هذه الدالة التلقائية هي تتبع وتغليف دالة Fetch الافتراضية بالمتصفح.
+     * تقوم بفحص أي طلب إرسال بيانات (POST/PUT/DELETE) وتدرج رمز الـ CSRF 
+     * تلقائياً في الترويسات لحماية الجلسة من هجمات الاختراقات.
+     */
+    function getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]*)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    }
+    const _originalFetch = window.fetch;
+    window.fetch = function(url, options) {
+        options = options || {};
+        const method = (options.method || 'GET').toUpperCase();
+        if (method !== 'GET' && method !== 'HEAD') {
+            if (options.headers instanceof Headers) {
+                if (!options.headers.has('X-CSRFToken')) options.headers.set('X-CSRFToken', getCsrfToken());
+            } else {
+                options.headers = options.headers || {};
+                if (!options.headers['X-CSRFToken']) options.headers['X-CSRFToken'] = getCsrfToken();
+            }
+        }
+        return _originalFetch.call(this, url, options);
+    };
+})();
+
+// =========================================================================
+// 2. تحميل الملف الشخصي وعرض الإحصائيات (Load Profile & Stats)
+// =========================================================================
 async function loadProfile() {
+    /** جلب بيانات المستخدم وعرض تقدمه الإجمالي وحالة الحروف المكتملة */
     const res = await fetch('/auth/me');
     const user = await res.json();
     if (!user.logged_in) return;
 
+    // عرض الصورة الشخصية أو الحرف الأول من الاسم كخيار افتراضي
     if (user.profile_pic) {
         document.getElementById('profileAvatar').innerHTML = `<img src="${user.profile_pic}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
     } else {
@@ -179,7 +214,7 @@ async function loadProfile() {
     document.getElementById('profileSince').textContent = '{{ t("profile_member_since") }}: ' + (user.created || '');
     document.getElementById('profileEmail').textContent = user.email || '';
     
-    // Set edit form defaults
+    // إدخال القيم الحالية في حقول نموذج تعديل البيانات الافتراضية
     document.getElementById('editName').value = user.name;
     document.getElementById('editEmail').value = user.email || '';
     document.getElementById('editNewPass').value = '';
@@ -188,18 +223,19 @@ async function loadProfile() {
     document.getElementById('statTotal').textContent = user.total || 0;
     document.getElementById('statRejected').textContent = user.rejected || 0;
 
+    // فحص عدد الحروف التي شارك المستخدم فيها
     const samples = user.samples || {};
     const lettersWithSamples = Object.keys(samples).filter(k => (samples[k] || 0) > 0).length;
     document.getElementById('statLetters').textContent = lettersWithSamples;
 
-    // إجمالي التقدم
+    // حساب نسبة التقدم الإجمالي (Total Progress)
     const totalPossible = ARABIC_LETTERS.length * TARGET;
     const totalDone = Object.values(samples).reduce((s,v) => s + Math.min(v, TARGET), 0);
     const pct = Math.round(totalDone / totalPossible * 100);
     document.getElementById('overallPct').textContent = pct + '%';
     document.getElementById('overallFill').style.width = pct + '%';
 
-    // شبكة الحروف
+    // بناء شبكة الحروف العربية وعرض خط التقدم لكل حرف على حدة
     document.getElementById('lettersGrid').innerHTML = ARABIC_LETTERS.map((l, idx) => {
         const count = samples[idx] || 0;
         const barPct = Math.min(count / TARGET * 100, 100);
@@ -214,11 +250,16 @@ async function loadProfile() {
 
 loadProfile();
 
+// =========================================================================
+// 3. رفع وتحديث الصورة الشخصية (Avatar Upload)
+// =========================================================================
 function triggerAvatarUpload() {
+    /** فتح نافذة اختيار الملفات من جهاز المستخدم بالنقر على الصورة */
     document.getElementById('avatarInput').click();
 }
 
 async function uploadAvatar(event) {
+    /** إرسال الصورة المحددة إلى السيرفر وتحديثها مباشرة بالصفحة */
     const file = event.target.files[0];
     if (!file) return;
 
@@ -245,7 +286,11 @@ async function uploadAvatar(event) {
     }
 }
 
+// =========================================================================
+// 4. تعديل الإعدادات وكلمة المرور (Edit Profile)
+// =========================================================================
 function toggleEditProfile() {
+    /** إظهار أو إخفاء نموذج التعديل */
     const card = document.getElementById('editProfileCard');
     const isHidden = card.style.display === 'none';
     card.style.display = isHidden ? 'block' : 'none';
@@ -255,6 +300,7 @@ function toggleEditProfile() {
 }
 
 async function saveProfileChanges() {
+    /** إرسال طلب تحديث الاسم أو البريد أو كلمة المرور والتحقق منها */
     const name = document.getElementById('editName').value.trim();
     const email = document.getElementById('editEmail').value.trim();
     const newPassword = document.getElementById('editNewPass').value;
@@ -285,6 +331,7 @@ async function saveProfileChanges() {
         });
         const data = await res.json();
         if (data.success) {
+            // إذا قمنا بتعديل البريد، سنطلب منه التحقق من البريد الجديد أولاً
             if (data.pending_email_verification) {
                 successEl.textContent = '{{ t("profile_settings_success_email_pending") }}';
                 successEl.style.display = 'block';
@@ -304,8 +351,11 @@ async function saveProfileChanges() {
     }
 }
 
-// ===== سجل الجمل =====
+// =========================================================================
+// 5. سجل الجمل المترجمة ونطق الكلمات (Saved History & TTS)
+// =========================================================================
 async function loadHistory() {
+    /** جلب قائمة الجمل المحفوظة وتوليد عناصرها في الصفحة */
     const res = await fetch('/history/list');
     const data = await res.json();
     const entries = data.entries || [];
@@ -358,6 +408,7 @@ async function loadHistory() {
 }
 
 function speakText(text) {
+    /** تحويل النص إلى صوت ونطقه باستخدام محرك نطق النصوص المدمج بالمتصفح (TTS) */
     if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
     const lang = "{{ active_lang }}";
@@ -369,6 +420,7 @@ function speakText(text) {
 }
 
 async function deleteEntry(id) {
+    /** حذف جملة من السجل نهائياً وتحديث الشاشة */
     await fetch('/history/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -381,7 +433,6 @@ async function deleteEntry(id) {
 }
 
 loadHistory();
-
 </script>
 </body>
 </html>

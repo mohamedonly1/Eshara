@@ -309,9 +309,10 @@ const steps = [
   }
 ];
 
-let current = 0;
+let current = 0; // الخطوة النشطة حالياً بالمحرر (تبدأ من صفر)
 
 function handleGifError(imgEl, fallbackText) {
+  /** وظيفتها عرض نص بديل جميل وجذاب للمستخدم في حال فشل تحميل الـ GIF التوضيحي */
   const wrapper = imgEl.parentElement;
   if (wrapper) {
     wrapper.innerHTML = `<div class="ishara-tour-gif-fallback">${fallbackText}</div>`;
@@ -319,10 +320,11 @@ function handleGifError(imgEl, fallbackText) {
 }
 
 function renderStep(i) {
+  /** بناء وتصيير الخطوة المحددة رقم (i) داخل المودال ديناميكياً مع تأثير التلاشي (fade effect) */
   const contentEl = document.getElementById('ishara-tour-step-content');
   if (!contentEl) return;
 
-  // Add fade-out transition class
+  // إضافة كلاس الاختفاء (fade-out) لبدء الحركة الانتقالية
   contentEl.classList.add('fade-out');
 
   setTimeout(() => {
@@ -349,7 +351,7 @@ function renderStep(i) {
       ${demoHtml}
     `;
 
-    // Render dot indicators
+    // رسم وتلوين نقاط الانتقال السفلية (Navigation Dots Indicators)
     const dotsContainer = document.getElementById('ishara-tour-dots');
     if (dotsContainer) {
       dotsContainer.innerHTML = steps.map((_, idx) => `
@@ -357,13 +359,13 @@ function renderStep(i) {
       `).join('');
     }
 
-    // Toggle Back button visibility
+    // إخفاء زر الرجوع "السابق" إذا كنا في الخطوة الأولى
     const backBtn = document.getElementById('ishara-tour-back');
     if (backBtn) {
       backBtn.style.visibility = (i === 0) ? 'hidden' : 'visible';
     }
 
-    // Next / CTA button handling
+    // تخصيص زر الاستمرار (إما يعرض "التالي" أو يعرض زر إنهاء الجولة والبدء)
     const nextBtn = document.getElementById('ishara-tour-next');
     if (nextBtn) {
       if (step.cta) {
@@ -377,12 +379,13 @@ function renderStep(i) {
       }
     }
 
-    // Fade in
+    // إزالة كلاس الاختفاء (Fade-in) لتنعيم ظهور المحتوى الجديد
     contentEl.classList.remove('fade-out');
   }, 250);
 }
 
 function nextStep() {
+  /** الانتقال للخطوة التالية */
   if (current < steps.length - 1) {
     current++;
     renderStep(current);
@@ -390,6 +393,7 @@ function nextStep() {
 }
 
 function prevStep() {
+  /** الرجوع للخطوة السابقة */
   if (current > 0) {
     current--;
     renderStep(current);
@@ -397,11 +401,13 @@ function prevStep() {
 }
 
 function goToStep(idx) {
+  /** الانتقال لخطوة محددة مباشرة عند الضغط على نقطة الفهرس السفلية */
   current = idx;
   renderStep(current);
 }
 
 function openTour() {
+  /** إظهار مودال الجولة الترحيبية وتثبيت شاشة المتصفح خلفه */
   const tourEl = document.getElementById('ishara-tour');
   if (tourEl) {
     tourEl.style.display = 'flex';
@@ -410,8 +416,8 @@ function openTour() {
   }
 }
 
-// Check direction to adjust close button position if needed
 function adjustCloseBtnAlign() {
+  /** تعديل محاذاة زر الإغلاق ليدعم اتجاه الصفحة للعربية (RTL) أو الإنجليزية (LTR) */
   const closeBtn = document.querySelector('.ishara-tour-close');
   if (closeBtn) {
     const isRtl = "{{ active_lang }}" === "ar";
@@ -426,6 +432,7 @@ function adjustCloseBtnAlign() {
 }
 
 function closeTour() {
+  /** إغلاق الجولة وحفظ إشعار الإتمام في المتصفح حتى لا تظهر الجولة للمستخدم مرة أخرى */
   localStorage.setItem('ishara_tour_done', '1');
   const tourEl = document.getElementById('ishara-tour');
   if (tourEl) {
@@ -435,6 +442,7 @@ function closeTour() {
 }
 
 function onCtaClick() {
+  /** حدث البدء الفعلي عند إتمام الجولة */
   closeTour();
   if (window.location.pathname !== '/') {
     window.location.href = '/';
@@ -443,13 +451,15 @@ function onCtaClick() {
 
 window.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
-  // Ignore login, admin, and pose editor pages
+  
+  // لا نريد عرض الجولة الترحيبية في صفحات الإدارة، تعديل الحركة، أو تسجيل الدخول
   if (path === '/login' || path.startsWith('/admin') || path.startsWith('/pose-editor')) {
     return;
   }
   
   adjustCloseBtnAlign();
 
+  // فحص ما إذا كان المستخدم قد أتم الجولة من قبل أم لا
   if (!localStorage.getItem('ishara_tour_done')) {
     openTour();
   }
