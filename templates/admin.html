@@ -817,7 +817,7 @@ async function loadLanguagesDetail() {
                     } else if (w === 'Invalid Model' && lang.invalid_reason) {
                         titleText = ` title="${escapeHTML(lang.invalid_reason)}"`;
                     }
-                    return `<span style="font-size:10px; font-weight:bold; color:#fff; background:var(--danger); padding:2px 6px; border-radius:4px; margin-inline-start:4px;"${titleText}>⚠ ${escapeHTML(w)}</span>`;
+                    return `<span style="font-size:10px; font-weight:bold; color:#fff; background:var(--danger); padding:2px 6px; border-radius:4px; margin-inline-start:4px; white-space: nowrap;"${titleText}>⚠ ${escapeHTML(w)}</span>`;
                 }).join(' ');
             }
 
@@ -837,8 +837,8 @@ async function loadLanguagesDetail() {
                     <td style="padding: 12px 10px; font-size: 11px;">${labelsBadge}</td>
                     <td style="padding: 12px 10px;">
                         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <div>
-                                <span style="color: ${ss.color}; font-weight: bold; font-size: 11px;"${reasonTip}>${ss.label}</span>
+                            <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+                                <span style="color: ${ss.color}; font-weight: bold; font-size: 11px; white-space: nowrap;"${reasonTip}>${ss.label}</span>
                                 ${warningsHtml}
                             </div>
                             ${deleteActionHtml}
