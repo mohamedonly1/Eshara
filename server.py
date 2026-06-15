@@ -85,19 +85,43 @@ app.secret_key = _session_secret
 # =============================================
 TRANSLATIONS = {}
 
+# Maps sign-language dialect codes → UI display language code.
+# Dialects of Arabic all show Arabic UI; other languages map to themselves.
+SIGN_LANG_TO_UI_LANG = {
+    # Arabic dialects → Arabic UI
+    'ar': 'ar', 'sa': 'ar', 'eg': 'ar', 'ma': 'ar', 'ly': 'ar',
+    'tn': 'ar', 'dz': 'ar', 'jo': 'ar', 'iq': 'ar', 'sy': 'ar',
+    'ye': 'ar', 'lb': 'ar', 'kw': 'ar', 'bh': 'ar', 'qa': 'ar',
+    'ae': 'ar', 'om': 'ar', 'ps': 'ar', 'sd': 'ar',
+    # Major languages → their own UI
+    'en': 'en', 'fr': 'fr', 'es': 'es', 'de': 'de', 'tr': 'tr',
+    'ur': 'ur', 'fa': 'fa', 'zh': 'zh', 'hi': 'hi', 'bn': 'bn',
+    'ru': 'ru', 'pt': 'pt', 'it': 'it', 'nl': 'nl', 'pl': 'pl',
+    'id': 'id', 'ms': 'ms', 'ko': 'ko', 'ja': 'ja', 'sw': 'sw',
+}
+
+# Tracks background translation-generation jobs: {lang_code: 'pending'|'done'|'failed'|'exists'}
+_translation_jobs = {}
+_translation_jobs_lock = threading.Lock()
+
 def load_translations():
+    """Dynamically load ALL translation JSON files found in the translations/ folder."""
     global TRANSLATIONS
-    for lang in ['ar', 'en', 'fr']:
-        path = os.path.join(app.root_path, 'translations', f'{lang}.json')
-        if os.path.exists(path):
-            try:
-                with open(path, 'r', encoding='utf-8') as f:
-                    TRANSLATIONS[lang] = json.load(f)
-            except Exception as e:
-                logger.error("Failed to load translation file %s: %s", path, e)
-                TRANSLATIONS[lang] = {}
-        else:
-            logger.warning("Translation file not found: %s", path)
+    translations_dir = os.path.join(app.root_path, 'translations')
+    if not os.path.exists(translations_dir):
+        logger.warning("Translations directory not found: %s", translations_dir)
+        return
+    for filename in os.listdir(translations_dir):
+        if not filename.endswith('.json'):
+            continue
+        lang = filename[:-5]
+        path = os.path.join(translations_dir, filename)
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                TRANSLATIONS[lang] = json.load(f)
+            logger.info("Loaded translation: %s (%d keys)", lang, len(TRANSLATIONS[lang]))
+        except Exception as e:
+            logger.error("Failed to load translation file %s: %s", path, e)
             TRANSLATIONS[lang] = {}
 
 load_translations()
@@ -265,6 +289,43 @@ _training_in_progress: dict = {}
 _restart_lock = threading.Lock()
 _restart_in_progress = False
 
+def cleanup_expired_deleted_languages_in_place(config_data):
+    """Checks config_data['deleted_languages'] and removes/deletes expired entries."""
+    import datetime
+    deleted_langs = config_data.get('deleted_languages', {})
+    if not deleted_langs:
+        return False
+        
+    now = datetime.datetime.now()
+    expired_codes = []
+    for code, info in list(deleted_langs.items()):
+        del_at_str = info.get('deleted_at')
+        if del_at_str:
+            try:
+                del_at = datetime.datetime.strptime(del_at_str, "%Y-%m-%d %H:%M:%S")
+                if (now - del_at).days >= 30:
+                    expired_codes.append(code)
+            except Exception as e:
+                logger.error("Error parsing deleted_at for %s: %s", code, e)
+                
+    if not expired_codes:
+        return False
+        
+    for code in expired_codes:
+        info = deleted_langs.pop(code, None)
+        if info:
+            for path_key in ['model_path', 'labels_path', 'dataset_path']:
+                path = info.get(path_key)
+                if path and os.path.exists(path):
+                    try:
+                        os.remove(path)
+                        logger.info("Permanently deleted expired file: %s", path)
+                    except Exception as e:
+                        logger.error("Failed to delete expired file %s: %s", path, e)
+                        
+    logger.info("Cleaned up expired deleted languages: %s", expired_codes)
+    return True
+
 def load_languages_config():
     global languages_config
     if os.path.exists(LANGUAGES_CONFIG_PATH):
@@ -288,6 +349,16 @@ def load_languages_config():
                 }
             }
         }
+        
+    try:
+        if cleanup_expired_deleted_languages_in_place(languages_config):
+            tmp_path = LANGUAGES_CONFIG_PATH + '.tmp'
+            with open(tmp_path, 'w', encoding='utf-8') as f:
+                json.dump(languages_config, f, ensure_ascii=False, indent=2)
+            os.replace(tmp_path, LANGUAGES_CONFIG_PATH)
+    except Exception as e:
+        logger.error("Failed to run cleanup of deleted languages: %s", e)
+        
     return languages_config
 
 def get_lang_labels(lang_info):
@@ -308,7 +379,15 @@ def get_lang_labels(lang_info):
                 return labels
         except Exception as e:
             logger.error("Failed to read labels from %s: %s", labels_path, e)
-    return lang_info.get('labels', [])
+    
+    # Fallback to configured labels list, and if empty/missing check parent
+    labels = lang_info.get('labels', [])
+    if not labels and 'parent' in lang_info:
+        parent_code = lang_info['parent']
+        parent_info = languages_config['languages'].get(parent_code)
+        if parent_info:
+            return get_lang_labels(parent_info)
+    return labels
 
 def get_language_status(lang_code):
     """Calculates active/not_trained/invalid_model/missing_dataset status for a language."""
@@ -405,6 +484,16 @@ def init_interpreters():
             labels = get_lang_labels(lang_info)
             label_count = len(labels)
 
+            # Check parent fallback if model path is missing or doesn't exist
+            if (not model_path or not os.path.exists(model_path)) and 'parent' in lang_info:
+                parent_code = lang_info['parent']
+                parent_info = config_data['languages'].get(parent_code)
+                if parent_info:
+                    parent_model_path = parent_info.get('model_path', '')
+                    if parent_model_path and os.path.exists(parent_model_path):
+                        model_path = parent_model_path
+                        logger.info("Dialect '%s' falling back to parent '%s' model path: %s", lang_code, parent_code, model_path)
+
             if not model_path:
                 reason = "Model path is empty"
                 _invalid_lang_reasons[lang_code] = reason
@@ -435,7 +524,7 @@ def init_interpreters():
                 interp.allocate_tensors()
 
                 # --- Guard 2: output class count must match label count ---
-                out_classes = interp.get_output_details()[0]['shape'][-1]
+                out_classes = int(interp.get_output_details()[0]['shape'][-1])
                 if label_count != out_classes:
                     reason = (f"Model outputs {out_classes} classes but "
                               f"label list has {label_count} entries")
@@ -504,15 +593,28 @@ def get_active_dataset_path():
     lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
     lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
     if lang_info:
-        return lang_info['dataset_path']
+        dataset_path = lang_info.get('dataset_path')
+        if not dataset_path and 'parent' in lang_info:
+            parent_code = lang_info['parent']
+            parent_info = languages_config['languages'].get(parent_code)
+            if parent_info:
+                dataset_path = parent_info.get('dataset_path')
+        if dataset_path:
+            return dataset_path
     return config.TRAIN_CSV
 
 def get_active_test_dataset_path(lang_code=None):
     if not lang_code:
         lang_code = session.get('active_lang', languages_config.get('active_language', 'ar'))
     lang_info = languages_config['languages'].get(lang_code, languages_config['languages'].get('ar'))
-    if lang_info and 'test_dataset_path' in lang_info:
-        return lang_info['test_dataset_path']
+    if lang_info:
+        if 'test_dataset_path' in lang_info:
+            return lang_info['test_dataset_path']
+        if 'parent' in lang_info:
+            parent_code = lang_info['parent']
+            parent_info = languages_config['languages'].get(parent_code)
+            if parent_info and 'test_dataset_path' in parent_info:
+                return parent_info['test_dataset_path']
     if lang_code == 'ar':
         return config.TEST_CSV
     return f"arabic_data/{lang_code}_test_keypoints.csv"
@@ -1196,6 +1298,246 @@ def history_delete():
     delete_entry(session['user_id'], data.get('id'))
     return jsonify({'success': True})
 
+# Maps UI lang codes (as typed by admin) → correct ISO 639-1/BCP-47 code for MyMemory API
+_LANG_TO_API_CODE = {
+    # Common alternate codes admins might type
+    'jp': 'ja',   'jap': 'ja',
+    'cn': 'zh-CN', 'zh': 'zh-CN', 'zht': 'zh-TW',
+    'kr': 'ko',   'kor': 'ko',
+    'gr': 'el',   'gre': 'el',
+    'dk': 'da',   'dan': 'da',
+    'cz': 'cs',   'cze': 'cs',
+    'se': 'sv',   'swe': 'sv',
+    'no': 'no',
+    'fi': 'fi',
+    'pl': 'pl',
+    'ro': 'ro',
+    'hu': 'hu',
+    'sk': 'sk',
+    'bg': 'bg',
+    'hr': 'hr',
+    'sr': 'sr',
+    'uk': 'uk',
+    'he': 'he',   'heb': 'he',
+    'fa': 'fa',   'per': 'fa',
+    'ur': 'ur',
+    'hi': 'hi',   'hin': 'hi',
+    'bn': 'bn',   'ben': 'bn',
+    'ta': 'ta',   'tel': 'te',
+    'ml': 'ml',
+    'th': 'th',   'tha': 'th',
+    'vi': 'vi',   'vie': 'vi',
+    'id': 'id',   'ind': 'id',
+    'ms': 'ms',   'may': 'ms',
+    'sw': 'sw',   'swa': 'sw',
+    'tr': 'tr',   'tur': 'tr',
+    'ru': 'ru',   'rus': 'ru',
+    'pt': 'pt',   'por': 'pt',
+    'es': 'es',   'spa': 'es',
+    'de': 'de',   'deu': 'de',
+    'fr': 'fr',   'fre': 'fr',
+    'it': 'it',   'ita': 'it',
+    'nl': 'nl',   'dut': 'nl',
+    'en': 'en',   'eng': 'en',
+    'ar': 'ar',   'ara': 'ar',
+}
+
+def _do_generate_translation(ui_lang: str):
+    """
+    Background worker: translates en.json into `ui_lang` using Google Translate API
+    as primary engine (unlimited, fast) with MyMemory API as fallback.
+    Saves result to translations/{ui_lang}.json.
+    """
+    import urllib.request as _urlreq
+    import urllib.parse as _urlparse
+    import time as _time
+
+    with _translation_jobs_lock:
+        _translation_jobs[ui_lang] = 'pending'
+
+    # Resolve source: prefer English, fall back to Arabic
+    source = TRANSLATIONS.get('en') or TRANSLATIONS.get('ar', {})
+    if not source:
+        with _translation_jobs_lock:
+            _translation_jobs[ui_lang] = 'failed'
+        logger.error("Auto-translate: no source translations loaded, cannot generate '%s'", ui_lang)
+        return
+
+    source_lang = 'en' if 'en' in TRANSLATIONS else 'ar'
+
+    # Resolve correct API language code
+    api_code = _LANG_TO_API_CODE.get(ui_lang.lower(), ui_lang)
+    logger.info("Auto-translate: starting %s → %s (using code: %s)", source_lang, ui_lang, api_code)
+
+    from concurrent.futures import ThreadPoolExecutor as _ThreadPoolExecutor
+
+    # Keys to keep as-is (app name, technical placeholders, etc.)
+    SKIP_TRANSLATE = {'app_name', 'translate_letter_placeholder'}
+
+    translated = {}
+    failed_keys = []
+
+    def google_translate(text, target, source='en'):
+        try:
+            url = f"https://translate.googleapis.com/translate_a/single?client=gtx&sl={source}&tl={target}&dt=t&q={_urlparse.quote(text)}"
+            req = _urlreq.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with _urlreq.urlopen(req, timeout=5) as response:
+                res = json.loads(response.read().decode('utf-8'))
+                return ''.join([part[0] for part in res[0]])
+        except Exception as e:
+            return None
+
+    def mymemory_translate(text, target, source='en'):
+        try:
+            import requests as _req
+            resp = _req.get(
+                'https://api.mymemory.translated.net/get',
+                params={'q': text, 'langpair': f'{source}|{target}'},
+                timeout=4
+            )
+            data = resp.json()
+            if data.get('responseStatus') == 200:
+                return data['responseData']['translatedText']
+        except Exception:
+            pass
+        return None
+
+    def translate_single_key(item):
+        key, value = item
+        if not isinstance(value, str) or not value.strip() or key in SKIP_TRANSLATE:
+            return key, value, True
+
+        # Try Google Translate
+        res = google_translate(value, api_code, source_lang)
+        if not res:
+            # Fallback to MyMemory
+            res = mymemory_translate(value, api_code, source_lang)
+
+        if res and res.strip() and res.lower() != value.lower():
+            # Fix brace formatting (e.g. { letter } -> {letter})
+            import re
+            fixed_res = re.sub(r'\{\s*(\w+)\s*\}', r'{\1}', res)
+            return key, fixed_res, True
+        return key, value, False
+
+    # Run translations in parallel (max 25 threads for blazing fast completion)
+    with _ThreadPoolExecutor(max_workers=25) as executor:
+        results = list(executor.map(translate_single_key, source.items()))
+
+    for key, val, success in results:
+        translated[key] = val
+        if not success:
+            failed_keys.append(key)
+
+    if failed_keys:
+        logger.warning("Auto-translate '%s': %d keys fell back to source: %s",
+                       ui_lang, len(failed_keys), failed_keys[:5])
+
+    # Save file
+    out_path = os.path.join(app.root_path, 'translations', f'{ui_lang}.json')
+    try:
+        with open(out_path, 'w', encoding='utf-8') as f:
+            json.dump(translated, f, ensure_ascii=False, indent=2)
+        TRANSLATIONS[ui_lang] = translated
+        with _translation_jobs_lock:
+            _translation_jobs[ui_lang] = 'done'
+        logger.info("Auto-translation for '%s' completed (%d keys, %d fallbacks).",
+                    ui_lang, len(translated), len(failed_keys))
+    except Exception as exc:
+        with _translation_jobs_lock:
+            _translation_jobs[ui_lang] = 'failed'
+        logger.error("Failed to save translation for '%s': %s", ui_lang, exc)
+
+
+
+def trigger_auto_translation(sign_lang_code: str):
+    """
+    Given a sign-language code (e.g. 'fr', 'tr', 'sa'), resolve the UI language
+    and kick off a background translation job if no translation file exists yet.
+    """
+    ui_lang = SIGN_LANG_TO_UI_LANG.get(sign_lang_code, sign_lang_code)
+    out_path = os.path.join(app.root_path, 'translations', f'{ui_lang}.json')
+
+    if os.path.exists(out_path):
+        with _translation_jobs_lock:
+            _translation_jobs[ui_lang] = 'exists'
+        logger.info("Translation for '%s' already exists — skipping generation.", ui_lang)
+        return
+
+    with _translation_jobs_lock:
+        if _translation_jobs.get(ui_lang) == 'pending':
+            return  # already running
+
+    logger.info("Triggering auto-translation for sign lang '%s' → UI lang '%s'", sign_lang_code, ui_lang)
+    t = threading.Thread(target=_do_generate_translation, args=(ui_lang,), daemon=True)
+    t.start()
+
+
+@app.route('/admin/translation-status', methods=['GET'])
+@admin_required
+def admin_translation_status():
+    """
+    Returns translation status for every registered sign language.
+    Frontend polls this to show progress indicators.
+    """
+    config_data = load_languages_config()
+    result = {}
+    for code in config_data.get('languages', {}):
+        ui_lang = SIGN_LANG_TO_UI_LANG.get(code, code)
+        path = os.path.join(app.root_path, 'translations', f'{ui_lang}.json')
+        with _translation_jobs_lock:
+            job = _translation_jobs.get(ui_lang)
+        if os.path.exists(path):
+            status = 'exists'
+        elif job == 'pending':
+            status = 'pending'
+        elif job == 'failed':
+            status = 'failed'
+        else:
+            status = 'missing'
+        result[code] = {'ui_lang': ui_lang, 'status': status}
+    return jsonify({'translations': result})
+
+
+@app.route('/admin/generate-translation', methods=['POST'])
+@admin_required
+def admin_generate_translation():
+    """Manually trigger auto-translation for a sign language code."""
+    data = request.get_json(silent=True) or {}
+    sign_lang_code = data.get('lang_code', '').strip().lower()
+    force = bool(data.get('force', False))
+
+    if not sign_lang_code:
+        return jsonify({'success': False, 'error': 'رمز اللغة مطلوب'}), 400
+
+    ui_lang = SIGN_LANG_TO_UI_LANG.get(sign_lang_code, sign_lang_code)
+    out_path = os.path.join(app.root_path, 'translations', f'{ui_lang}.json')
+
+    if os.path.exists(out_path) and not force:
+        # Reload into memory and return
+        try:
+            with open(out_path, 'r', encoding='utf-8') as f:
+                TRANSLATIONS[ui_lang] = json.load(f)
+        except Exception:
+            pass
+        return jsonify({'success': True, 'status': 'exists',
+                        'message': f'ملف الترجمة ({ui_lang}.json) موجود بالفعل'})
+
+    if force and os.path.exists(out_path):
+        os.remove(out_path)
+
+    with _translation_jobs_lock:
+        if _translation_jobs.get(ui_lang) == 'pending':
+            return jsonify({'success': True, 'status': 'pending',
+                            'message': 'الترجمة جارية بالفعل...'})
+
+    t = threading.Thread(target=_do_generate_translation, args=(ui_lang,), daemon=True)
+    t.start()
+    logger.info("Admin triggered translation for sign_lang=%s → ui_lang=%s", sign_lang_code, ui_lang)
+    return jsonify({'success': True, 'status': 'pending',
+                    'message': f'بدأت الترجمة التلقائية إلى {ui_lang}...'})
+
+
 # =============================================
 # Admin
 # =============================================
@@ -1582,7 +1924,7 @@ def admin_languages_detail():
         })
         
         failure_reason = health_info.get("reason", "")
-        model_classes = health_info.get("model_classes", 0)
+        model_classes = int(health_info.get("model_classes", 0))
         
         # Paths
         labels_path = info.get('labels_path', '')
@@ -1650,7 +1992,155 @@ def admin_languages_detail():
             'dataset_size_str': format_size(dataset_size) if dataset_exists else '-'
         })
         
-    return jsonify({'languages': langs_detail, 'active': active})
+    deleted_langs_detail = []
+    deleted_langs = config_data.get('deleted_languages', {})
+    import datetime
+    now = datetime.datetime.now()
+    for dcode, dinfo in deleted_langs.items():
+        deleted_at_str = dinfo.get('deleted_at', '')
+        days_left = 30
+        if deleted_at_str:
+            try:
+                del_at = datetime.datetime.strptime(deleted_at_str, "%Y-%m-%d %H:%M:%S")
+                elapsed_days = (now - del_at).days
+                days_left = max(0, 30 - elapsed_days)
+            except Exception as e:
+                logger.error("Error parsing deleted_at: %s", e)
+        deleted_langs_detail.append({
+            'code': dcode,
+            'name': dinfo.get('name', ''),
+            'deleted_at': deleted_at_str,
+            'days_left': days_left,
+            'class_count': len(get_lang_labels(dinfo))
+        })
+        
+    return jsonify({
+        'languages': langs_detail,
+        'deleted_languages': deleted_langs_detail,
+        'active': active
+    })
+
+
+@app.route('/admin/delete-language', methods=['POST'])
+@admin_required
+def delete_language():
+    data = request.get_json(silent=True) or {}
+    code = data.get('code', '').strip().lower()
+    
+    if not code:
+        return jsonify({'success': False, 'error': 'رمز اللغة مطلوب'}), 400
+        
+    config_data = load_languages_config()
+    active = config_data.get('active_language', 'ar')
+    
+    if code == active:
+        return jsonify({'success': False, 'error': 'لا يمكن حذف اللغة النشطة حالياً. يرجى تغيير اللغة النشطة أولاً.'}), 400
+        
+    if code not in config_data.get('languages', {}):
+        return jsonify({'success': False, 'error': 'اللغة غير موجودة'}), 404
+        
+    with _languages_config_lock:
+        config_data = load_languages_config()
+        if code not in config_data.get('languages', {}):
+            return jsonify({'success': False, 'error': 'اللغة غير موجودة'}), 404
+            
+        lang_info = config_data['languages'].pop(code)
+        
+        import datetime
+        lang_info['deleted_at'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        if 'deleted_languages' not in config_data:
+            config_data['deleted_languages'] = {}
+        config_data['deleted_languages'][code] = lang_info
+        
+        tmp_path = LANGUAGES_CONFIG_PATH + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, LANGUAGES_CONFIG_PATH)
+        
+    init_interpreters()
+    logger.info("Language %s moved to recycle bin", code)
+    return jsonify({'success': True})
+
+
+@app.route('/admin/restore-language', methods=['POST'])
+@admin_required
+def restore_language():
+    data = request.get_json(silent=True) or {}
+    code = data.get('code', '').strip().lower()
+    
+    if not code:
+        return jsonify({'success': False, 'error': 'رمز اللغة مطلوب'}), 400
+        
+    config_data = load_languages_config()
+    deleted_langs = config_data.get('deleted_languages', {})
+    
+    if code not in deleted_langs:
+        return jsonify({'success': False, 'error': 'اللغة غير موجودة في سلة المحذوفات'}), 404
+        
+    if code in config_data.get('languages', {}):
+        return jsonify({'success': False, 'error': 'توجد لغة نشطة بنفس الرمز بالفعل'}), 400
+        
+    with _languages_config_lock:
+        config_data = load_languages_config()
+        deleted_langs = config_data.get('deleted_languages', {})
+        if code not in deleted_langs:
+            return jsonify({'success': False, 'error': 'اللغة غير موجودة في سلة المحذوفات'}), 404
+            
+        lang_info = deleted_langs.pop(code)
+        lang_info.pop('deleted_at', None)
+        
+        config_data['languages'][code] = lang_info
+        
+        tmp_path = LANGUAGES_CONFIG_PATH + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, LANGUAGES_CONFIG_PATH)
+        
+    init_interpreters()
+    logger.info("Language %s restored from recycle bin", code)
+    return jsonify({'success': True})
+
+
+@app.route('/admin/delete-language-permanently', methods=['POST'])
+@admin_required
+def delete_language_permanently():
+    data = request.get_json(silent=True) or {}
+    code = data.get('code', '').strip().lower()
+    
+    if not code:
+        return jsonify({'success': False, 'error': 'رمز اللغة مطلوب'}), 400
+        
+    config_data = load_languages_config()
+    deleted_langs = config_data.get('deleted_languages', {})
+    
+    if code not in deleted_langs:
+        return jsonify({'success': False, 'error': 'اللغة غير موجودة في سلة المحذوفات'}), 404
+        
+    with _languages_config_lock:
+        config_data = load_languages_config()
+        deleted_langs = config_data.get('deleted_languages', {})
+        if code not in deleted_langs:
+            return jsonify({'success': False, 'error': 'اللغة غير موجودة في سلة المحذوفات'}), 404
+            
+        lang_info = deleted_langs.pop(code)
+        
+        for path_key in ['model_path', 'labels_path', 'dataset_path']:
+            path = lang_info.get(path_key)
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                    logger.info("Permanently deleted file: %s", path)
+                except Exception as e:
+                    logger.error("Failed to delete file %s: %s", path, e)
+                    
+        tmp_path = LANGUAGES_CONFIG_PATH + '.tmp'
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            json.dump(config_data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, LANGUAGES_CONFIG_PATH)
+        
+    logger.info("Language %s permanently deleted", code)
+    return jsonify({'success': True})
 
 
 @app.route('/admin/add-language', methods=['POST'])
@@ -1663,6 +2153,7 @@ def add_new_language():
     code = data.get('code', '').strip().lower()
     name = data.get('name', '').strip()
     labels = data.get('labels', [])
+    parent = data.get('parent', '').strip().lower()
 
     if not code or not name or not labels:
         return jsonify({'success': False, 'error': 'جميع الحقول مطلوبة'}), 400
@@ -1681,6 +2172,9 @@ def add_new_language():
     config_data = load_languages_config()
     if code in config_data['languages']:
         return jsonify({'success': False, 'error': 'اللغة مسجلة بالفعل'}), 400
+
+    if parent and parent not in config_data['languages']:
+        return jsonify({'success': False, 'error': 'رمز اللغة الأب غير مسجل في النظام'}), 400
 
     # Paths
     dataset_path = f"arabic_data/{code}_keypoints.csv"
@@ -1717,6 +2211,8 @@ def add_new_language():
             'labels_path': labels_path,
             'dataset_path': dataset_path
         }
+        if parent:
+            config_data['languages'][code]['parent'] = parent
         tmp_path = LANGUAGES_CONFIG_PATH + '.tmp'
         with open(tmp_path, 'w', encoding='utf-8') as f:
             json.dump(config_data, f, ensure_ascii=False, indent=2)
@@ -1724,6 +2220,9 @@ def add_new_language():
 
     # Reload interpreters (new language will be unavailable until trained)
     init_interpreters()
+
+    # Auto-generate UI translation for the new language in the background
+    trigger_auto_translation(code)
 
     logger.info("Successfully added new language: %s (%s) — status: Not Trained", name, code)
     return jsonify({'success': True})

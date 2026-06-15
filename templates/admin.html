@@ -274,6 +274,49 @@
             .orient-body { flex-direction: column; }
             .orient-preview { width: 100%; height: 160px; }
         }
+
+        /* COLLAPSIBLE CARDS SYSTEM */
+        .collapsible-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-header {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+        .card-header:hover {
+            opacity: 0.85;
+        }
+        .toggle-arrow {
+            font-size: 10px;
+            color: var(--accent);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            margin-right: 8px;
+            margin-left: 8px;
+        }
+        .card-content {
+            width: 100%;
+            overflow: hidden;
+            max-height: 4000px;
+            opacity: 1;
+            transition: max-height 0.5s cubic-bezier(0, 1, 0, 1), opacity 0.3s ease, margin-top 0.3s ease;
+        }
+        .collapsible-card.collapsed .card-content {
+            max-height: 0 !important;
+            opacity: 0 !important;
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .collapsible-card.collapsed .toggle-arrow {
+            transform: rotate(-90deg);
+        }
     </style>
 <script>
 // override initNavbar for admin page - no redirect needed, has its own gate
@@ -307,126 +350,214 @@ window._adminPage = true;
     <div class="stats-grid" id="statsGrid"></div>
 
     <!-- فلتر الجودة -->
-    <div class="filter-card">
-        <div class="filter-info">
-            <div class="filter-title">{{ t('admin_quality_filter') }}</div>
-            <div class="filter-desc">{{ t('admin_quality_filter_desc') }}</div>
-        </div>
-        <div class="filter-controls">
-            <div class="threshold-wrap" id="thresholdWrap">
-                <span class="threshold-label">{{ t('admin_quality_threshold') }}</span>
-                <input type="range" class="slider" id="thresholdSlider" min="50" max="99" value="95"
-                       oninput="updateThreshold(this.value)">
-                <span class="threshold-val" id="thresholdVal">95%</span>
+    <div class="filter-card collapsible-card">
+        <div class="card-header" onclick="toggleCard(this)">
+            <div class="filter-info">
+                <div class="filter-title"><span class="toggle-arrow">▼</span> {{ t('admin_quality_filter') }}</div>
+                <div class="filter-desc">{{ t('admin_quality_filter_desc') }}</div>
             </div>
-            <div class="toggle-wrap">
-                <span class="toggle-label" id="filterToggleLabel">{{ t('admin_enabled') }}</span>
-                <label class="toggle">
-                    <input type="checkbox" id="filterToggle" checked onchange="toggleFilter(this.checked)">
-                    <div class="toggle-track"></div>
-                    <div class="toggle-thumb"></div>
-                </label>
+        </div>
+        <div class="card-content" style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; width: 100%;">
+            <div class="filter-controls" style="margin-left: auto; display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                <div class="threshold-wrap" id="thresholdWrap">
+                    <span class="threshold-label">{{ t('admin_quality_threshold') }}</span>
+                    <input type="range" class="slider" id="thresholdSlider" min="50" max="99" value="95"
+                           oninput="updateThreshold(this.value)">
+                    <span class="threshold-val" id="thresholdVal">95%</span>
+                </div>
+                <div class="toggle-wrap">
+                    <span class="toggle-label" id="filterToggleLabel">{{ t('admin_enabled') }}</span>
+                    <label class="toggle">
+                        <input type="checkbox" id="filterToggle" checked onchange="toggleFilter(this.checked)">
+                        <div class="toggle-track"></div>
+                        <div class="toggle-thumb"></div>
+                    </label>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- إدارة اللغات ونظام الذكاء الاصطناعي -->
-    <div class="filter-card" style="margin-top: 15px; display: block;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px;">
-            <div class="filter-title">{{ t('admin_ai_lang_title') }}</div>
+    <div class="section collapsible-card" style="margin-top: 15px;">
+        <div class="card-header" onclick="toggleCard(this)" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="section-title"><span class="toggle-arrow">▼</span> {{ t('admin_ai_lang_title') }}</div>
             <div style="font-size:12px; font-weight:700; color:var(--accent); background:var(--accent-lt); padding:4px 10px; border-radius:12px;">{{ t('admin_active_lang') }}: {{ active_lang.upper() }}</div>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <!-- القسم الأول: تدريب وإعادة تشغيل الخادم -->
-            <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div>
-                    <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_model_server_control') }}</h4>
-                    <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px; line-height: 1.5;">
-                        {{ t('admin_model_server_control_desc') }}
-                    </p>
+        <div class="card-content">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- القسم الأول: تدريب وإعادة تشغيل الخادم -->
+                <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_model_server_control') }}</h4>
+                        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 15px; line-height: 1.5;">
+                            {{ t('admin_model_server_control_desc') }}
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button id="trainBtn" class="action-btn" onclick="trainActiveModel()" style="flex:1; background:var(--purple); color:#fff; border-color:var(--purple); padding:10px 0; font-size:12px; font-weight:bold;">
+                             {{ t('admin_train_model_btn') }}
+                        </button>
+                        <button id="restartBtn" class="action-btn" onclick="restartServer()" style="flex:1; color:var(--danger); border-color:rgba(163,45,45,0.3); padding:10px 0; font-size:12px; font-weight:bold;">
+                             {{ t('admin_restart_server_btn') }}
+                        </button>
+                    </div>
+                    <div id="trainStatus" style="font-size: 11px; margin-top: 8px; color: var(--text-dim); text-align: center;"></div>
                 </div>
-                <div style="display: flex; gap: 10px;">
-                    <button id="trainBtn" class="action-btn" onclick="trainActiveModel()" style="flex:1; background:var(--purple); color:#fff; border-color:var(--purple); padding:10px 0; font-size:12px; font-weight:bold;">
-                         {{ t('admin_train_model_btn') }}
-                    </button>
-                    <button id="restartBtn" class="action-btn" onclick="restartServer()" style="flex:1; color:var(--danger); border-color:rgba(163,45,45,0.3); padding:10px 0; font-size:12px; font-weight:bold;">
-                         {{ t('admin_restart_server_btn') }}
-                    </button>
+
+                <!-- القسم الثاني: إضافة لغة جديدة -->
+                <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px;">
+                    <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_add_lang_title') }}</h4>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text" id="newLangName" list="presetLanguages" placeholder="{{ t('admin_add_lang_name_placeholder') }}" oninput="handlePresetLangChange(this.value)" style="flex: 1.5; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
+                            <input type="text" id="newLangCode" placeholder="{{ t('admin_add_lang_code_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
+                        </div>
+                        <textarea id="newLangLabels" placeholder="{{ t('admin_add_lang_labels_placeholder') }}" rows="2" style="background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none; resize: none;"></textarea>
+                        <button class="action-btn add-language-btn" onclick="addNewLanguage()" style="width: 100%; background: var(--accent); color: #fff; border-color: var(--accent); padding: 8px 0; font-size: 12px; font-weight: bold;">
+                            {{ t('admin_add_lang_btn') }}
+                        </button>
+                    </div>
+
+                    <datalist id="presetLanguages">
+                        <option value="لغة الإشارة السعودية (Saudi Sign Language)">
+                        <option value="لغة الإشارة المصرية (Egyptian Sign Language)">
+                        <option value="لغة الإشارة المغربية (Moroccan Sign Language)">
+                        <option value="لغة الإشارة الأردنية (Jordanian Sign Language)">
+                        <option value="لغة الإشارة الإماراتية (UAE Sign Language)">
+                        <option value="لغة الإشارة الأمريكية (American Sign Language - ASL)">
+                        <option value="لغة الإشارة الكورية (Korean Sign Language)">
+                        <option value="لغة الإشارة اليابانية (Japanese Sign Language)">
+                        <option value="لغة الإشارة التركية (Turkish Sign Language)">
+                        <option value="لغة الإشارة الألمانية (German Sign Language)">
+                        <option value="لغة الإشارة الإسبانية (Spanish Sign Language)">
+                        <option value="لغة الإشارة الفرنسية (French Sign Language)">
+                    </datalist>
                 </div>
-                <div id="trainStatus" style="font-size: 11px; margin-top: 8px; color: var(--text-dim); text-align: center;"></div>
             </div>
 
-            <!-- القسم الثاني: إضافة لغة جديدة -->
-            <div style="background: var(--surface2); border: 1px solid var(--border); padding: 15px; border-radius: 12px;">
-                <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 8px; color: var(--text)">{{ t('admin_add_lang_title') }}</h4>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="newLangCode" placeholder="{{ t('admin_add_lang_code_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
-                        <input type="text" id="newLangName" placeholder="{{ t('admin_add_lang_name_placeholder') }}" style="flex: 1; background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none;">
-                    </div>
-                    <textarea id="newLangLabels" placeholder="{{ t('admin_add_lang_labels_placeholder') }}" rows="2" style="background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-family:'Cairo'; font-size: 12px; outline: none; resize: none;"></textarea>
-                    <button class="action-btn add-language-btn" onclick="addNewLanguage()" style="width: 100%; background: var(--accent); color: #fff; border-color: var(--accent); padding: 8px 0; font-size: 12px; font-weight: bold;">
-                        {{ t('admin_add_lang_btn') }}
-                    </button>
-                </div>
-            </div>
+            <script>
+            const PRESET_LANGS = {
+                "لغة الإشارة السعودية (Saudi Sign Language)": { code: "sa", parent: "ar", labels: "ا,ب,ت,ث,ج,ح,خ,د,ذ,ر,ز,س,ش,ص,ض,ط,ظ,ع,غ,ف,ق,ك,ل,م,ن,ه,و,ي" },
+                "لغة الإشارة المصرية (Egyptian Sign Language)": { code: "eg", parent: "ar", labels: "ا,ب,ت,ث,ج,ح,خ,د,ذ,ر,ز,س,ش,ص,ض,ط,ظ,ع,غ,ف,ق,ك,ل,م,ن,ه,و,ي" },
+                "لغة الإشارة المغربية (Moroccan Sign Language)": { code: "ma", parent: "ar", labels: "ا,ب,ت,ث,ج,ح,خ,د,ذ,ر,ز,س,ش,ص,ض,ط,ظ,ع,غ,ف,ق,ك,ل,م,ن,ه,و,ي" },
+                "لغة الإشارة الأردنية (Jordanian Sign Language)": { code: "jo", parent: "ar", labels: "ا,ب,ت,ث,ج,ح,خ,د,ذ,ر,ز,س,ش,ص,ض,ط,ظ,ع,غ,ف,ق,ك,ل,م,ن,ه,و,ي" },
+                "لغة الإشارة الإماراتية (UAE Sign Language)": { code: "ae", parent: "ar", labels: "ا,ب,ت,ث,ج,ح,خ,د,ذ,ر,ز,س,ش,ص,ض,ط,ظ,ع,غ,ف,ق,ك,ل,م,ن,ه,و,ي" },
+                "لغة الإشارة الأمريكية (American Sign Language - ASL)": { code: "us", parent: "en", labels: "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z" },
+                "لغة الإشارة الكورية (Korean Sign Language)": { code: "kr", parent: "", labels: "ㄱ,ㄴ,ㄷ,ㄹ,ㅁ,ㅂ,ㅅ,ㅇ,ㅈ,ㅊ,ㅋ,ㅌ,ㅍ,ㅎ" },
+                "لغة الإشارة اليابانية (Japanese Sign Language)": { code: "jp", parent: "", labels: "A,I,U,E,O,KA,KI,KU,KE,KO" },
+                "لغة الإشارة التركية (Turkish Sign Language)": { code: "tr", parent: "", labels: "A,B,C,Ç,D,E,F,G,Ğ,H,I,İ,J,K,L,M,N,O,Ö,P,R,S,Ş,T,U,Ü,V,Y,Z" },
+                "لغة الإشارة الألمانية (German Sign Language)": { code: "de", parent: "", labels: "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z" },
+                "لغة الإشارة الإسبانية (Spanish Sign Language)": { code: "es", parent: "", labels: "A,B,C,D,E,F,G,H,I,J,K,L,M,N,Ñ,O,P,Q,R,S,T,U,V,W,X,Y,Z" },
+                "لغة الإشارة الفرنسية (French Sign Language)": { code: "fr", parent: "", labels: "A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z" }
+            };
+
+            function handlePresetLangChange(val) {
+                const info = PRESET_LANGS[val];
+                if (info) {
+                    document.getElementById('newLangCode').value = info.code;
+                    // Note: if custom parent is needed, can be handled or set if input is present
+                    const parentInput = document.getElementById('newLangParent');
+                    if (parentInput) parentInput.value = info.parent || '';
+                    document.getElementById('newLangLabels').value = info.labels;
+                }
+            }
+            </script>
         </div>
     </div>
 
     <!-- تفاصيل اللغات المسجلة -->
-    <div class="filter-card" style="margin-top: 15px; display: block;">
-        <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; margin-bottom: 15px;">
-            <div class="filter-title">{{ t('admin_languages_title') }}</div>
+    <div class="section collapsible-card" style="margin-top: 15px;">
+        <div class="card-header" onclick="toggleCard(this)">
+            <div class="section-title"><span class="toggle-arrow">▼</span> {{ t('admin_languages_title') }}</div>
         </div>
-        <div style="overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: start;">
-                <thead>
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); text-align: start;">
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_name') }}</th>
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_add_lang_code_placeholder') }}</th>
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_letters') }}</th>
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_accepted') }}</th>
-                        <th style="padding: 10px; text-align: start;">Model Classes</th>
-                        <th style="padding: 10px; text-align: start;">Health</th>
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_model_path') }}</th>
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_col_labels_path') }}</th>
-                        <th style="padding: 10px; text-align: start;">{{ t('admin_users_table_status') }}</th>
-                    </tr>
-                </thead>
-                <tbody id="languagesDetailBody">
-                    <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-dim);">{{ t('loading_mediapipe') }}</td></tr>
-                </tbody>
-            </table>
+        <div class="card-content">
+            <div style="overflow-x: auto; background: var(--surface); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding: 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: start;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); text-align: start;">
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_name') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_add_lang_code_placeholder') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_letters') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_accepted') }}</th>
+                            <th style="padding: 10px; text-align: start;">Model Classes</th>
+                            <th style="padding: 10px; text-align: start;">Health</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_model_path') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_labels_path') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_users_table_status') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="languagesDetailBody">
+                        <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-dim);">{{ t('loading_mediapipe') }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- سلة مهملات اللغات المحذوفة -->
+    <div class="section collapsible-card" id="recycleBinCard" style="margin-top: 15px;">
+        <div class="card-header" onclick="toggleCard(this)">
+            <div class="section-title"><span class="toggle-arrow">▼</span> {{ t('admin_recycle_bin_title') }}</div>
+        </div>
+        <div class="card-content">
+            <div style="overflow-x: auto; background: var(--surface); border: 1px solid rgba(255,255,255,0.06); border-radius: var(--radius); padding: 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: start;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: var(--text-dim); text-align: start;">
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_name') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_add_lang_code_placeholder') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_letters') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_days_left') }}</th>
+                            <th style="padding: 10px; text-align: start;">{{ t('admin_col_actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="deletedLanguagesBody">
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-dim);">
+                                {{ t('admin_no_deleted_langs') }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <!-- Orientation control removed. Moved to Pose Editor per-letter -->
 
-    <div class="section">
-        <div class="section-title">{{ t('admin_letter_samples_total') }}</div>
-        <div class="letters-grid" id="lettersOverview"></div>
+    <!-- إجمالي عينات الحروف -->
+    <div class="section collapsible-card">
+        <div class="card-header" onclick="toggleCard(this)">
+            <div class="section-title"><span class="toggle-arrow">▼</span> {{ t('admin_letter_samples_total') }}</div>
+        </div>
+        <div class="card-content">
+            <div class="letters-grid" id="lettersOverview"></div>
+        </div>
     </div>
 
-    <div class="section">
-        <div class="section-title" style="justify-content: space-between;">
-            <div>{{ t('admin_users_title') }}</div>
-            <div class="tabs-header">
+    <!-- قائمة المستخدمين والمساهمين -->
+    <div class="section collapsible-card">
+        <div class="card-header" onclick="toggleCard(this)" style="display: flex; justify-content: space-between; align-items: center;">
+            <div class="section-title"><span class="toggle-arrow">▼</span> {{ t('admin_users_title') }}</div>
+            <div class="tabs-header" onclick="event.stopPropagation()">
                 <button class="tab-btn active" id="tabActiveBtn" onclick="switchUsersTab('active')">{{ t('admin_tab_active') }}</button>
                 <button class="tab-btn" id="tabDisabledBtn" onclick="switchUsersTab('disabled')">{{ t('admin_tab_disabled') }}</button>
             </div>
         </div>
-        <div class="users-table">
-            <div class="table-head">
-                <span>{{ t('admin_col_name') }}</span>
-                <span>{{ t('admin_col_accepted') }}</span>
-                <span>{{ t('admin_col_rejected') }}</span>
-                <span>{{ t('admin_col_letters') }}</span>
-                <span>{{ t('admin_col_quality') }}</span>
-                <span>{{ t('admin_col_device') }}</span>
-                <span>{{ t('admin_col_actions') }}</span>
+        <div class="card-content">
+            <div class="users-table">
+                <div class="table-head">
+                    <span>{{ t('admin_col_name') }}</span>
+                    <span>{{ t('admin_col_accepted') }}</span>
+                    <span>{{ t('admin_col_rejected') }}</span>
+                    <span>{{ t('admin_col_letters') }}</span>
+                    <span>{{ t('admin_col_quality') }}</span>
+                    <span>{{ t('admin_col_device') }}</span>
+                    <span>{{ t('admin_col_actions') }}</span>
+                </div>
+                <div id="usersBody"></div>
             </div>
-            <div id="usersBody"></div>
         </div>
     </div>
 </div>
@@ -690,6 +821,10 @@ async function loadLanguagesDetail() {
                 }).join(' ');
             }
 
+            const deleteActionHtml = lang.is_current_active
+                ? ''
+                : `<button class="del-btn" style="padding: 4px 8px; font-size: 11px; margin-inline-start: 10px; background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: var(--danger);" onclick="event.stopPropagation(); deleteLanguage('${lang.code}')">{{ t('admin_btn_delete') }}</button>`;
+
             return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle;">
                     <td style="padding: 12px 10px; font-weight: bold;">${escapeHTML(lang.name)} ${activeBadge}</td>
@@ -701,14 +836,109 @@ async function loadLanguagesDetail() {
                     <td style="padding: 12px 10px; font-size: 11px;">${modelBadge}</td>
                     <td style="padding: 12px 10px; font-size: 11px;">${labelsBadge}</td>
                     <td style="padding: 12px 10px;">
-                        <span style="color: ${ss.color}; font-weight: bold; font-size: 11px;"${reasonTip}>${ss.label}</span>
-                        ${warningsHtml}
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <div>
+                                <span style="color: ${ss.color}; font-weight: bold; font-size: 11px;"${reasonTip}>${ss.label}</span>
+                                ${warningsHtml}
+                            </div>
+                            ${deleteActionHtml}
+                        </div>
                     </td>
                 </tr>
             `;
         }).join('');
+
+        // تحديث وعرض سلة المحذوفات للغات
+        const recycleBinCard = document.getElementById('recycleBinCard');
+        const deletedBody = document.getElementById('deletedLanguagesBody');
+        if (recycleBinCard && deletedBody) {
+            const deletedLangs = data.deleted_languages || [];
+            if (deletedLangs.length > 0) {
+                deletedBody.innerHTML = deletedLangs.map(dlang => {
+                    return `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle;">
+                            <td style="padding: 12px 10px; font-weight: bold;">${escapeHTML(dlang.name)}</td>
+                            <td style="padding: 12px 10px; font-family: monospace;">${escapeHTML(dlang.code.toUpperCase())}</td>
+                            <td style="padding: 12px 10px; font-weight: bold; color: var(--warn);">${safeNumber(dlang.class_count)}</td>
+                            <td style="padding: 12px 10px; font-weight: bold; color: var(--danger);">${safeNumber(dlang.days_left)} يوم</td>
+                            <td style="padding: 12px 10px;">
+                                <button class="role-btn" style="color: var(--accent); border-color: rgba(0,212,170,0.3); background: rgba(0,212,170,0.1); padding: 4px 8px; font-size: 11px;" onclick="event.stopPropagation(); restoreLanguage('${dlang.code}')">{{ t('admin_btn_restore') }}</button>
+                                <button class="del-btn" style="padding: 4px 8px; font-size: 11px; margin-inline-start: 6px;" onclick="event.stopPropagation(); deleteLanguagePermanently('${dlang.code}')">{{ t('admin_btn_delete_permanently') }}</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                deletedBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px; color: var(--text-dim);">
+                            {{ t('admin_no_deleted_langs') }}
+                        </td>
+                    </tr>
+                `;
+            }
+        }
     } catch (e) {
         console.error("Failed to load languages detail", e);
+    }
+}
+
+async function deleteLanguage(code) {
+    if (!confirm('{{ t("admin_confirm_delete_lang") }}')) return;
+    try {
+        const res = await fetch('/admin/delete-language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_lang_deleted_success") }}');
+            loadDashboard();
+        } else {
+            alert(data.error || 'فشل نقل اللغة لسلة المهملات');
+        }
+    } catch (e) {
+        alert('{{ t("toast_network_error") }}');
+    }
+}
+
+async function restoreLanguage(code) {
+    try {
+        const res = await fetch('/admin/restore-language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_lang_restored_success") }}');
+            loadDashboard();
+        } else {
+            alert(data.error || 'فشل استعادة اللغة');
+        }
+    } catch (e) {
+        alert('{{ t("toast_network_error") }}');
+    }
+}
+
+async function deleteLanguagePermanently(code) {
+    if (!confirm('{{ t("admin_confirm_delete_lang_perm") }}')) return;
+    try {
+        const res = await fetch('/admin/delete-language-permanently', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.success) {
+            alert('{{ t("admin_lang_deleted_perm_success") }}');
+            loadDashboard();
+        } else {
+            alert(data.error || 'فشل حذف اللغة نهائياً');
+        }
+    } catch (e) {
+        alert('{{ t("toast_network_error") }}');
     }
 }
 
@@ -1038,6 +1268,13 @@ async function addNewLanguage() {
         }
     } catch(e) {
         alert('{{ t("toast_network_error") }}');
+    }
+}
+
+function toggleCard(header) {
+    const card = header.closest('.collapsible-card');
+    if (card) {
+        card.classList.toggle('collapsed');
     }
 }
 </script>

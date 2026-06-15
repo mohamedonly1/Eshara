@@ -310,5 +310,21 @@
   "verify_email_resend_btn": "إعادة إرسال رمز التحقق",
   "verify_email_resend_cooldown": "يمكنك إعادة الإرسال بعد {seconds} ثانية",
   "verify_email_resend_prompt": "لم يصلك الرمز؟",
-  "verify_email_resent_success": "تم إعادة إرسال رمز التحقق إلى بريدك الإلكتروني."
+  "verify_email_resent_success": "تم إعادة إرسال رمز التحقق إلى بريدك الإلكتروني.",
+  "admin_recycle_bin_title": "سلة مهملات اللغات المحذوفة",
+  "admin_btn_restore": "استعادة",
+  "admin_lang_deleted_success": "تم نقل اللغة إلى سلة المهملات بنجاح",
+  "admin_lang_restored_success": "تم استعادة اللغة بنجاح",
+  "admin_lang_deleted_perm_success": "تم حذف اللغة نهائياً مع كافة ملفات البيانات الخاصة بها",
+  "admin_orient_title": "اتجاه اليد الافتراضي",
+  "admin_orient_desc": "تعديل زوايا الدوران (Yaw) والميلان (Pitch) الافتراضية لعرض مجسم اليد ثلاثي الأبعاد.",
+  "admin_orient_yaw": "دوران اليد (Yaw)",
+  "admin_orient_pitch": "ميلان اليد (Pitch)",
+  "admin_save_btn": "حفظ الإعدادات",
+  "admin_reset_btn": "إعادة تعيين",
+  "admin_orient_saved": "تم حفظ اتجاه اليد!",
+  "admin_confirm_delete_lang": "هل أنت متأكد من نقل هذه اللغة إلى سلة المهملات؟",
+  "admin_confirm_delete_lang_perm": "تحذير شديد: سيتم حذف اللغة وملفات النماذج والبيانات المسجلة نهائياً ولا يمكن استرجاعها! هل تريد الاستمرار؟",
+  "admin_no_deleted_langs": "لا توجد لغات في سلة المهملات حالياً",
+  "admin_days_left": "الأيام المتبقية"
 }
