@@ -14,14 +14,16 @@ import os        # مكتبة للتعامل مع نظام التشغيل، مث
 import uuid      # مكتبة لإنشاء معرفات فريدة وعشوائية (Unique IDs) لكي نميز كل جملة مسجلة بمعرف خاص بها
 from datetime import datetime  # مكتبة لمعرفة التاريخ والوقت الحالي وتنسيقهما بشكل جميل
 
+import config
+
 # نحدد المجلد الذي سنخزن فيه ملفات سجلات المستخدمين
-HISTORY_DIR = 'arabic_data/users'
+HISTORY_DIR = config.USERS_DIR
 
 def _path(user_id):
     """
     هذه دالة مساعدة داخلية (تبدأ بشرطة سفلية _ للدلالة على أنها للاستخدام الداخلي فقط).
     مهمتها تحديد المسار الدقيق لملف السجل الخاص بالمستخدم بناءً على اسمه أو معرفه.
-    مثلاً: إذا كان اسم المستخدم 'mohamed'، فسترجع المسار: 'arabic_data/users/mohamed_history.json'
+    مثلاً: إذا كان اسم المستخدم 'mohamed'، فسترجع المسار: 'users_data/mohamed_history.json'
     """
     return os.path.join(HISTORY_DIR, f'{user_id}_history.json')
 

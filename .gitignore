@@ -1,12 +1,12 @@
 # بيانات حساسة ومجلدات المستخدمين
 .env
-arabic_data/users/
-arabic_data/settings.json
+users_data/
+languages_data/settings.json
 users_keys.txt
 deleted_accounts_with_data.txt
 
 # ملفات البيانات الكبيرة والمجمعة (CSVs)
-arabic_data/*.csv
+languages_data/**/*.csv
 *.csv
 
 # صور الحسابات المرفوعة من المستخدمين
@@ -27,11 +27,12 @@ venv/
 
 # ملفات النماذج والأوزان (كبيرة — لا ترفع للجيت)
 arabic_model/*.h5
-arabic_model/*.tflite
 arabic_model/*.keras
 *.h5
-*.tflite
 *.keras
+
+# نسمح برفع نماذج TFLite الخفيفة الخاصة بالاستنتاج
+!arabic_model/*.tflite
 
 # ملفات النظام المؤقتة
 .DS_Store

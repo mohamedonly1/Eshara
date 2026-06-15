@@ -15,9 +15,9 @@ import logging   # مكتبة لتسجيل الأحداث والتقارير (Lo
 # =========================================================================
 # 1. المجلدات الأساسية للمشروع (Base Directories)
 # =========================================================================
-DATA_DIR = 'arabic_data'              # المجلد الرئيسي لحفظ كافة البيانات (ملفات CSV، بيانات المستخدمين، إلخ)
+DATA_DIR = 'languages_data'           # المجلد الرئيسي لحفظ كافة البيانات (ملفات CSV، بيانات المستخدمين، إلخ)
 MODEL_DIR = 'arabic_model'            # المجلد الذي سنخزن فيه نماذج الذكاء الاصطناعي المدربة
-USERS_DIR = os.path.join(DATA_DIR, 'users')  # مجلد فرعي داخل arabic_data لتخزين ملفات المستخدمين المستقلة
+USERS_DIR = 'users_data'              # مجلد فرعي لتخزين ملفات المستخدمين المستقلة
 LOG_DIR = 'logs'                      # مجلد لحفظ ملفات السجلات اليومية للنظام (Logs)
 REPORTS_DIR = 'reports'                # مجلد لحفظ تقارير التدريب ورسوم مصفوفة الالتباس (Confusion Matrix)
 
@@ -32,13 +32,13 @@ os.makedirs(REPORTS_DIR, exist_ok=True)
 # 2. مسارات ملفات البيانات والترجمة (Dataset & Translation Paths)
 # =========================================================================
 # ملف حفظ نقاط اليد الخاصة ببيانات التدريب
-TRAIN_CSV = os.path.join(DATA_DIR, 'arabic_keypoints.csv')
+TRAIN_CSV = os.path.join(DATA_DIR, 'ar', 'ar_keypoints.csv')
 
 # ملف حفظ نقاط اليد الخاصة ببيانات الاختبار
-TEST_CSV = os.path.join(DATA_DIR, 'test_keypoints.csv')
+TEST_CSV = os.path.join(DATA_DIR, 'ar', 'ar_test_keypoints.csv')
 
 # ملف جدول الحروف العربية الموحدة وأرقامها التعريفية
-LABELS_CSV = os.path.join(DATA_DIR, 'arabic_labels.csv')
+LABELS_CSV = os.path.join(DATA_DIR, 'ar', 'ar_labels.csv')
 
 # ملف حفظ إعدادات النظام بصيغة JSON
 SETTINGS_JSON = os.path.join(DATA_DIR, 'settings.json')

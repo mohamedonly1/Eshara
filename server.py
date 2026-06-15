@@ -273,7 +273,7 @@ labels_dict = {}
 interpreter = None
 _interpreter_lock = threading.Lock()
 
-LANGUAGES_CONFIG_PATH = 'arabic_data/languages.json'
+LANGUAGES_CONFIG_PATH = 'languages_data/languages.json'
 languages_config = {}
 interpreters = {}
 _interpreters_lock = threading.Lock()
@@ -344,8 +344,8 @@ def load_languages_config():
                     "name": "العربية",
                     "labels": ["أ", "ب", "ت", "ث", "ج", "ح", "خ", "د", "ذ", "ر", "ز", "س", "ش", "ص", "ض", "ط", "ظ", "ع", "غ", "ف", "ق", "ك", "ل", "م", "ن", "ه", "و", "ي", "لا"],
                     "model_path": MODEL_PATH,
-                    "labels_path": "arabic_data/arabic_labels.csv",
-                    "dataset_path": "arabic_data/arabic_keypoints.csv"
+                    "labels_path": "languages_data/ar/ar_labels.csv",
+                    "dataset_path": "languages_data/ar/ar_keypoints.csv"
                 }
             }
         }
@@ -617,7 +617,7 @@ def get_active_test_dataset_path(lang_code=None):
                 return parent_info['test_dataset_path']
     if lang_code == 'ar':
         return config.TEST_CSV
-    return f"arabic_data/{lang_code}_test_keypoints.csv"
+    return f"languages_data/{lang_code}/{lang_code}_test_keypoints.csv"
 
 _means_cache = {}
 _means_mtime = {}
@@ -2177,9 +2177,9 @@ def add_new_language():
         return jsonify({'success': False, 'error': 'رمز اللغة الأب غير مسجل في النظام'}), 400
 
     # Paths
-    dataset_path = f"arabic_data/{code}_keypoints.csv"
+    dataset_path = f"languages_data/{code}/{code}_keypoints.csv"
     model_path = f"arabic_model/{code}_sign_model.tflite"
-    labels_path = f"arabic_data/{code}_labels.csv"
+    labels_path = f"languages_data/{code}/{code}_labels.csv"
 
     # Create empty dataset file
     if not os.path.exists(dataset_path):

@@ -43,7 +43,7 @@ logger.info("=" * 50)
 import sys
 
 # مسار ملف اللغات المدعومة في المشروع
-LANGUAGES_CONFIG_PATH = 'arabic_data/languages.json'
+LANGUAGES_CONFIG_PATH = 'languages_data/languages.json'
 
 # تحديد لغة التدريب الافتراضية وهي العربية 'ar'
 # وإذا قام المطور بتشغيل الملف هكذا: python train_model.py en، فسيقوم بتدريب النموذج الخاص بالإنجليزية

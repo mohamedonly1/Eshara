@@ -1,4 +1,4 @@
-﻿# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة
+# مشروع إشارة - التعرف على لغة الإشارة العربية الموحدة
 # Ishara - Arabic Sign Language Recognition System
 
 ---
@@ -64,11 +64,12 @@ ishara-project/
 │
 ├── static/                  ← ملفات الويب (CSS, JS, Three.js)
 ├── templates/               ← واجهات الويب (HTML)
-├── app.py / server.py       ← خادم Flask للويب
+├── server.py                ← خادم Flask للويب
 │
 ├── collect_data.py          ← أداة جمع بيانات التدريب
 ├── train_model.py           ← سكريبت تدريب الموديل الأساسي
-├── arabic_data/             ← بيانات التدريب (CSV)
+├── languages_data/          ← بيانات لغات الذكاء الاصطناعي (مفصولة لكل لغة في مجلد خاص بها)
+├── users_data/              ← بيانات المستخدمين وسجلات نشاطهم (مفصولة عن بيانات اللغات)
 └── arabic_model/            ← النماذج المدربة (H5 & TFLite)
 ```
 
@@ -84,7 +85,7 @@ ishara-project/
 ```bash
 pip install mediapipe==0.10.11 tensorflow==2.10.1 numpy==1.26.4
 pip install opencv-contrib-python Flask scikit-learn matplotlib
-```
+ ```
 
 ---
 
