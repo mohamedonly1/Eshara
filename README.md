@@ -53,7 +53,9 @@
 
 ---
 
-## هيكل المشروع الحالي
+---
+
+## 📁 هيكل المشروع الحالي (Project Structure)
 
 ```
 ishara-project/
@@ -62,48 +64,70 @@ ishara-project/
 │   ├── app/src/main/java/   ← أكواد Kotlin و CameraX
 │   └── app/src/main/assets/ ← موديل TFLite وقوائم الحروف
 │
-├── static/                  ← ملفات الويب (CSS, JS, Three.js)
-├── templates/               ← واجهات الويب (HTML)
-├── server.py                ← خادم Flask للويب
+├── languages_data/          ← الإعدادات وبيانات لغات الذكاء الاصطناعي (مفصولة لكل لغة)
+│   ├── languages.json       ← ملف اللغات النشطة ومسارات بياناتها
+│   ├── settings.json        ← ملف إعدادات معايرة النظام وتصفية الجودة
+│   ├── ar/                  ← بيانات اللغة العربية (العينات، الملصقات، وبيانات الاختبار)
+│   └── en/ fr/ de/ ...      ← مجلدات اللغات الأخرى المضافة ديناميكياً
 │
-├── collect_data.py          ← أداة جمع بيانات التدريب
-├── train_model.py           ← سكريبت تدريب الموديل الأساسي
-├── languages_data/          ← بيانات لغات الذكاء الاصطناعي (مفصولة لكل لغة في مجلد خاص بها)
-├── users_data/              ← بيانات المستخدمين وسجلات نشاطهم (مفصولة عن بيانات اللغات)
-└── arabic_model/            ← النماذج المدربة (H5 & TFLite)
+├── users_data/              ← سجلات وملفات نشاط المستخدمين الشخصية (مفصولة بالكامل)
+│
+├── arabic_model/            ← النماذج المدربة وأوزان الشبكات (H5 & TFLite)
+│
+├── static/                  ← ملفات الويب الثابتة (CSS, JS, Three.js, MediaPipe models)
+├── templates/               ← واجهات الويب ولوحات التحكم (HTML Templates)
+│
+├── server.py                ← خادم الويب الأساسي (Flask Web Server)
+├── run_project.bat          ← ملف التشغيل التلقائي الذكي لنظام Windows
+├── requirements.txt         ← متطلبات التشغيل الدقيقة وحزم البيئة الافتراضية
+│
+├── collect_data.py          ← أداة جمع وعمل عينات لغة إشارة جديدة
+├── train_model.py           ← سكربت تدريب نماذج الذكاء الاصطناعي
+├── test_keypoints.py        ← سكريبت اختبار وتقييم دقة النموذج محلياً
+└── evaluate_external.py     ← سكريبت التقييم الخارجي للنموذج
 ```
 
 ---
 
-## متطلبات التشغيل الأساسية للبيئة
+## 🚀 طريقة التشغيل والتهيئة السهلة (Setup & Run)
 
-- Python 3.10
-- Node.js (لإدارة بعض حزم الويب إن لزم)
-- Android Studio (لتشغيل تطبيق الأندرويد)
+المشروع مهيأ ليعمل على أي جهاز بشكل كامل ومباشر، حيث تم تضمين ملفات النماذج (`.tflite`) مباشرة في المستودع دون الحاجة لتحميلها يدوياً.
 
-**لتشغيل خادم الويب والتدريب:**
-```bash
-pip install mediapipe==0.10.11 tensorflow==2.10.1 numpy==1.26.4
-pip install opencv-contrib-python Flask scikit-learn matplotlib
- ```
+### 💻 التشغيل على نظام Windows (نقرة واحدة):
+1. قم بفتح مجلد المشروع.
+2. انقر نقراً مزدوجاً على الملف: `run_project.bat`.
+3. سيقوم الملف تلقائياً بالآتي:
+   - التحقق من تثبيت بايثون.
+   - إنشاء بيئة افتراضية (`venv`) وتثبيت المتطلبات المحددة بدقة في `requirements.txt`.
+   - تشغيل خادم Flask.
+   - فتح متصفح الويب تلقائياً للبدء في استخدام النظام على الرابط: `http://localhost:5000/`.
 
 ---
 
-## التحميل السريع
+## 🛠️ التشغيل اليدوي للويب (Manual Setup)
 
-### تطبيق الأندرويد
-[⬇️ تحميل APK](https://github.com/mohamedonly1/graduation-project/releases/latest)
+إذا كنت ترغب في التشغيل يدوياً أو على نظام تشغيل آخر (Linux / macOS):
 
-### تشغيل الويب
-```bash
-git clone https://github.com/mohamedonly1/graduation-project
-cd graduation-project
-pip install -r requirements.txt
-# حمّل arabic_sign_model.tflite من Releases وضعه في arabic_model/
-python server.py
-```
+1. **إنشاء البيئة الافتراضية وتفعيلها**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # لنظام Linux/macOS
+   # أو venv\Scripts\activate لنظام Windows
+   ```
+2. **تثبيت متطلبات التشغيل**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. **تشغيل الخادم**:
+   ```bash
+   python server.py
+   ```
+4. افتح المتصفح على الرابط: `http://127.0.0.1:5000/`.
 
-## الدقة
-- النموذج الحالي: **96.74%** على 29 حرف (يونيو 2026)
-- تاريخ آخر تحديث: يونيو 2026
+---
+
+## 🧠 دقة النموذج (Model Accuracy)
+- **النموذج الحالي**: **96.74%** على 29 حرفاً وتدرجاً إشارياً (يونيو 2026).
+- **تاريخ آخر تحديث**: يونيو 2026.
+
 
