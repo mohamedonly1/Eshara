@@ -9,6 +9,10 @@ deleted_accounts_with_data.txt
 languages_data/**/*.csv
 *.csv
 
+# السماح برفع داتا سيت اللغة العربية
+!languages_data/ar/ar_keypoints.csv
+!languages_data/ar/ar_labels.csv
+
 # صور الحسابات المرفوعة من المستخدمين
 static/uploads/
 
